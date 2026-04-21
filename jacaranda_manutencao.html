@@ -1,3 +1,96 @@
+    /* ══════════════════════════════════════════════
+       LAYOUT RESPONSIVO — Desktop sidebar + Mobile bottom nav
+       ══════════════════════════════════════════════ */
+
+    /* ── BASE APP LAYOUT ── */
+    #app{display:flex;height:100vh;overflow:hidden;}
+    #sidebar{width:240px;min-width:240px;background:var(--login-blue-dk);display:flex;flex-direction:column;overflow-y:auto;border-right:1px solid rgba(0,0,0,.2);transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:500;}
+    #main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+
+    /* ── SIDEBAR LOGO ── */
+    .sidebar-logo{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;}
+    .logo-mark{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;line-height:1;letter-spacing:-1px;}
+    .logo-mark .lo{color:#fff;}
+    .logo-mark .gi{color:var(--login-green);}
+    .logo-mark .dot{color:var(--gold);}
+    .logo-tagline{font-size:9px;color:rgba(255,255,255,.4);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+    .vessel-badge{font-size:10px;color:rgba(255,255,255,.6);margin-top:6px;font-weight:600;}
+
+    /* ── NAV ITEMS ── */
+    .nav-section{padding:10px 0 4px;}
+    .nav-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.28);padding:4px 16px 6px;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;border-left:3px solid transparent;font-size:13px;color:rgba(255,255,255,.75);transition:background .15s,border-color .15s,color .15s;font-weight:500;}
+    .nav-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+    .nav-item.active{background:rgba(255,255,255,.12);border-left-color:var(--login-green);color:#fff;font-weight:600;}
+    .nav-item .ico{font-size:15px;width:20px;text-align:center;flex-shrink:0;}
+
+    /* ── HAMBURGER BUTTON (mobile only) ── */
+    #hamburger{display:none;align-items:center;justify-content:center;width:40px;height:40px;background:transparent;border:none;cursor:pointer;border-radius:8px;padding:0;flex-shrink:0;}
+    #hamburger:hover{background:rgba(255,255,255,.1);}
+    #hamburger span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;transition:all .25s;margin:4px auto;}
+
+    /* ── OVERLAY (mobile sidebar backdrop) ── */
+    #sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(5,20,50,.6);z-index:499;backdrop-filter:blur(2px);}
+
+    /* ── BOTTOM NAV (mobile) ── */
+    #bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:400;background:var(--login-blue-dk);border-top:1px solid rgba(255,255,255,.1);padding:0;padding-bottom:env(safe-area-inset-bottom);}
+    .bnav-row{display:flex;align-items:stretch;}
+    .bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px 6px;cursor:pointer;color:rgba(255,255,255,.6);font-size:10px;font-weight:600;gap:3px;transition:color .15s,background .15s;border-top:2px solid transparent;min-width:0;}
+    .bnav-item:hover,.bnav-item.active{color:#fff;background:rgba(255,255,255,.08);border-top-color:var(--login-green);}
+    .bnav-item .bnav-ico{font-size:20px;line-height:1;}
+    .bnav-item span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center;}
+    .bnav-more{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px 6px;cursor:pointer;color:rgba(255,255,255,.6);font-size:10px;font-weight:600;gap:3px;border-top:2px solid transparent;}
+    .bnav-more:hover,.bnav-more.active{color:#fff;background:rgba(255,255,255,.08);border-top-color:var(--gold);}
+
+    /* ── RESPONSIVE BREAKPOINTS ── */
+    @media (max-width: 768px){
+      #app{flex-direction:column;}
+
+      /* Hide desktop sidebar — slide it in as drawer */
+      #sidebar{
+        position:fixed;top:0;left:0;bottom:0;
+        transform:translateX(-100%);
+        width:80%;max-width:300px;
+        z-index:500;
+        box-shadow:4px 0 24px rgba(0,0,0,.4);
+      }
+      #sidebar.open{transform:translateX(0);}
+
+      /* Show overlay when sidebar open */
+      #sidebar-overlay.show{display:block;}
+
+      /* Show hamburger in topbar */
+      #hamburger{display:flex;}
+
+      /* Show bottom nav */
+      #bottom-nav{display:block;}
+
+      /* Content needs bottom padding for bottom nav */
+      #content{padding:12px 10px 80px;}
+
+      /* Topbar adjustments */
+      #topbar{padding:10px 12px;gap:8px;}
+      #topbar h1{font-size:15px;}
+      .topbar-right .clock{display:none;}
+
+      /* Main takes full height */
+      #main{height:100vh;flex:1;}
+    }
+
+    @media (max-width: 480px){
+      #content{padding:8px 8px 80px;}
+      #topbar h1{font-size:13px;}
+      .topbar-right .btn{font-size:11px;padding:5px 8px;}
+    }
+
+    /* ── DESKTOP: hide mobile nav elements ── */
+    @media (min-width: 769px){
+      #hamburger{display:none!important;}
+      #bottom-nav{display:none!important;}
+      #sidebar-overlay{display:none!important;}
+    }
+
+    /* ── TOPBAR ── */
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -51,27 +144,76 @@
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;height:100%;overflow:hidden;}
-  #app{display:flex;height:100vh;}
+  #app{display:flex;height:100vh;overflow:hidden;}
 
-  /* ── SIDEBAR ── */
-  #sidebar{width:228px;min-width:228px;background:var(--login-blue-dk);display:flex;flex-direction:column;overflow-y:auto;box-shadow:3px 0 16px rgba(8,28,60,.28);}
-  .sidebar-logo{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.18);}
-  /* SVG-style Log-In logo */
-  .logo-mark{display:flex;align-items:flex-end;gap:0;line-height:1;}
-  .logo-mark .lo{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:800;color:#FFFFFF;letter-spacing:-1px;}
-  .logo-mark .gi{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:800;color:var(--login-green-lt);letter-spacing:-1px;}
-  .logo-mark .dot{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:800;color:var(--login-blue-lt);}
-  .logo-tagline{font-family:'Barlow',sans-serif;font-size:9px;color:rgba(255,255,255,.42);letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;}
-  .vessel-badge{display:inline-block;background:var(--login-green);color:#fff;font-size:9px;font-weight:700;padding:3px 10px;border-radius:3px;margin-top:8px;letter-spacing:.8px;text-transform:uppercase;}
-  .nav-section{padding:8px 0 2px;}
-  .nav-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.28);padding:4px 16px 5px;}
-  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;border-left:3px solid transparent;font-size:13px;color:rgba(255,255,255,.62);transition:all .15s;}
-  .nav-item:hover{background:rgba(255,255,255,.09);color:#fff;border-left-color:rgba(255,255,255,.28);}
-  .nav-item.active{background:rgba(255,255,255,.14);color:#fff;border-left-color:var(--login-green-lt);font-weight:600;}
-  .nav-item .ico{font-size:15px;min-width:18px;text-align:center;}
+  /* ══ SIDEBAR — Desktop fixed, Mobile drawer ══ */
+  #sidebar{width:240px;min-width:240px;background:var(--login-blue-dk);display:flex;flex-direction:column;overflow-y:auto;border-right:1px solid rgba(0,0,0,.2);transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:500;flex-shrink:0;}
+  #main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+  .sidebar-logo{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;}
+  .logo-mark{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;line-height:1;letter-spacing:-1px;}
+  .logo-mark .lo{color:#fff;} .logo-mark .gi{color:var(--login-green);} .logo-mark .dot{color:var(--gold);}
+  .logo-tagline{font-size:9px;color:rgba(255,255,255,.4);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+  .vessel-badge{font-size:10px;color:rgba(255,255,255,.6);margin-top:6px;font-weight:600;}
+  .nav-section{padding:10px 0 4px;}
+  .nav-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.28);padding:4px 16px 6px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;border-left:3px solid transparent;font-size:13px;color:rgba(255,255,255,.75);transition:background .15s,border-color .15s,color .15s;font-weight:500;}
+  .nav-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+  .nav-item.active{background:rgba(255,255,255,.12);border-left-color:var(--login-green);color:#fff;font-weight:600;}
+  .nav-item .ico{font-size:15px;width:20px;text-align:center;flex-shrink:0;}
 
-  /* ── MAIN ── */
-  #main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  /* ══ HAMBURGER (mobile) ══ */
+  #hamburger{display:none;align-items:center;justify-content:center;width:40px;height:40px;background:transparent;border:none;cursor:pointer;border-radius:8px;padding:4px;flex-shrink:0;}
+  #hamburger:hover{background:rgba(255,255,255,.1);}
+  .hbg{display:block;width:22px;height:2px;background:#fff;border-radius:2px;transition:all .25s;margin:4px 0;}
+
+  /* ══ OVERLAY ══ */
+  #sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(5,20,50,.65);z-index:498;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);}
+
+  /* ══ BOTTOM NAV (mobile) ══ */
+  #bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:400;background:#0a2547;border-top:1px solid rgba(255,255,255,.1);padding-bottom:env(safe-area-inset-bottom,0px);}
+  .bnav-row{display:flex;}
+  .bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 2px 5px;cursor:pointer;color:rgba(255,255,255,.55);font-size:9px;font-weight:700;gap:2px;border-top:2px solid transparent;transition:all .15s;letter-spacing:.3px;text-transform:uppercase;min-width:0;}
+  .bnav-item .bi{font-size:19px;line-height:1;}
+  .bnav-item:active,.bnav-item.active{color:#fff;background:rgba(255,255,255,.1);border-top-color:var(--login-green);}
+  .bnav-more{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 2px 5px;cursor:pointer;color:rgba(255,255,255,.55);font-size:9px;font-weight:700;gap:2px;border-top:2px solid transparent;transition:all .15s;text-transform:uppercase;letter-spacing:.3px;}
+  .bnav-more:active,.bnav-more.active{color:#fff;background:rgba(255,255,255,.1);border-top-color:var(--gold);}
+  .bnav-more .bi{font-size:19px;}
+
+  /* ══ DRAWER MENU (tray above bottom nav) ══ */
+  #mobile-drawer{position:fixed;bottom:0;left:0;right:0;z-index:499;background:#0d2f5e;border-top:1px solid rgba(255,255,255,.12);border-radius:16px 16px 0 0;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);padding:0 0 env(safe-area-inset-bottom,0px);}
+  #mobile-drawer.open{transform:translateY(0);}
+  #mobile-drawer-handle{width:36px;height:4px;background:rgba(255,255,255,.3);border-radius:2px;margin:10px auto 8px;}
+  .drawer-title{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.4);text-transform:uppercase;text-align:center;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08);margin:0 14px;}
+  .drawer-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:10px 10px;max-height:55vh;overflow-y:auto;}
+  .drawer-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:10px;cursor:pointer;color:rgba(255,255,255,.8);font-size:10px;font-weight:600;text-align:center;transition:background .15s;line-height:1.2;}
+  .drawer-item .di{font-size:24px;line-height:1;}
+  .drawer-item:active,.drawer-item.active{background:rgba(255,255,255,.15);color:#fff;}
+  .drawer-overlay{position:fixed;inset:0;z-index:497;}
+
+  /* ══ RESPONSIVE ══ */
+  @media(max-width:768px){
+    #app{flex-direction:column;}
+    #sidebar{position:fixed;top:0;left:0;bottom:0;transform:translateX(-100%);width:82%;max-width:290px;box-shadow:6px 0 24px rgba(0,0,0,.5);}
+    #sidebar.open{transform:translateX(0);}
+    #sidebar-overlay.show{display:block;}
+    #hamburger{display:flex;}
+    #bottom-nav{display:block;}
+    #mobile-drawer.open ~ #bottom-nav,
+    #bottom-nav .bnav-more.active{border-top-color:var(--gold);}
+    #content{padding:12px 10px 72px;}
+    #topbar h1{font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .topbar-right .clock{display:none;}
+    .topbar-right .btn.btn-ghost:not(.keep){display:none;}
+  }
+  @media(max-width:480px){
+    #content{padding:8px 8px 68px;}
+  }
+  @media(min-width:769px){
+    #hamburger{display:none!important;}
+    #bottom-nav{display:none!important;}
+    #mobile-drawer{display:none!important;}
+  }
+
   #topbar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:#fff;border-bottom:3px solid var(--login-blue);box-shadow:0 2px 8px rgba(26,95,168,.1);min-height:54px;}
   #topbar h1{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--login-blue);}
   .topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
@@ -554,6 +696,9 @@
 <!-- MAIN -->
 <div id="main">
   <div id="topbar">
+    <button id="hamburger" onclick="toggleSidebar()" aria-label="Menu">
+      <span class="hbg"></span><span class="hbg"></span><span class="hbg"></span>
+    </button>
     <h1 id="page-title">📊 Painel Geral</h1>
     <div class="topbar-right">
       <div class="clock" id="clock-el">--:--:--</div>
@@ -1780,6 +1925,9 @@ function changePin(){
 function showPage(id){
   if(id==='config'&&!sessionStorage.getItem('jac_unlocked')){requirePin('config');return;}
   if(id==='config')sessionStorage.setItem('jac_unlocked','1');
+  closeSidebar();
+  closeDrawer();
+  updateBottomNav(id);
   _goPage(id);
 }
 function _goPage(id){
@@ -4463,6 +4611,80 @@ function initFloatBarDrag(){
   document.addEventListener('touchend', () => endDrag());
 }
 
+// ══════════════════════════════════════════════════
+// ── MOBILE NAV — Sidebar drawer + Bottom nav ──
+// ══════════════════════════════════════════════════
+
+function toggleSidebar(){
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  const open = sb.classList.toggle('open');
+  ov.classList.toggle('show', open);
+  document.body.style.overflow = open ? 'hidden' : '';
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+let _drawerOpen = false;
+function toggleDrawer(){
+  _drawerOpen ? closeDrawer() : openDrawer();
+}
+function openDrawer(){
+  _drawerOpen = true;
+  document.getElementById('mobile-drawer').classList.add('open');
+  document.getElementById('drawer-overlay').style.display = 'block';
+  document.getElementById('bn-more').classList.add('active');
+}
+function closeDrawer(){
+  _drawerOpen = false;
+  document.getElementById('mobile-drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').style.display = 'none';
+  document.getElementById('bn-more').classList.remove('active');
+}
+
+// navTo: navigate and close any open menus
+function navTo(page){
+  closeSidebar();
+  closeDrawer();
+  showPage(page);
+  updateBottomNav(page);
+}
+
+// Highlight active bottom nav item
+function updateBottomNav(page){
+  const bnMap = {dashboard:'bn-dashboard', novo:'bn-novo', semanal:'bn-semanal', inspecao:'bn-inspecao'};
+  document.querySelectorAll('.bnav-item').forEach(el => el.classList.remove('active'));
+  if(bnMap[page]){
+    const el = document.getElementById(bnMap[page]);
+    if(el) el.classList.add('active');
+  }
+}
+
+// Swipe to open sidebar on mobile
+(function initSwipe(){
+  let startX = 0, startY = 0;
+  document.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, {passive:true});
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = Math.abs(e.changedTouches[0].clientY - startY);
+    // Swipe right from left edge → open sidebar
+    if(startX < 30 && dx > 60 && dy < 80){
+      document.getElementById('sidebar').classList.add('open');
+      document.getElementById('sidebar-overlay').classList.add('show');
+    }
+    // Swipe left on open sidebar → close
+    if(dx < -60 && dy < 80 && document.getElementById('sidebar').classList.contains('open')){
+      closeSidebar();
+    }
+  }, {passive:true});
+})();
+
 // ── INIT ──
 loadData();kpis();renderDash();fillWeekSel();renderDriveLinks();
 fillDeptSelect('r-dept');fillRoleSelect('mc-fn');fillDeptSelect('mc-dp');
@@ -4479,5 +4701,50 @@ csnovo.oninput=()=>filterCrewSearch('novo');
 const clnovo=document.getElementById('crew-check-list-novo');
 if(clnovo&&clnovo.parentNode)clnovo.parentNode.insertBefore(csnovo,clnovo);
 </script>
+<!-- SIDEBAR OVERLAY -->
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- BOTTOM NAV (mobile) -->
+<div id="bottom-nav">
+  <div class="bnav-row">
+    <div class="bnav-item" id="bn-dashboard" onclick="navTo('dashboard')">
+      <span class="bi">📊</span><span>Painel</span>
+    </div>
+    <div class="bnav-item" id="bn-novo" onclick="navTo('novo')">
+      <span class="bi">✏️</span><span>Registro</span>
+    </div>
+    <div class="bnav-item" id="bn-semanal" onclick="navTo('semanal')">
+      <span class="bi">📅</span><span>Semanal</span>
+    </div>
+    <div class="bnav-item" id="bn-inspecao" onclick="navTo('inspecao')">
+      <span class="bi">🔍</span><span>Inspeção</span>
+    </div>
+    <div class="bnav-more" id="bn-more" onclick="toggleDrawer()">
+      <span class="bi">☰</span><span>Mais</span>
+    </div>
+  </div>
+</div>
+
+<!-- MOBILE DRAWER (slide up from bottom) -->
+<div id="mobile-drawer">
+  <div id="mobile-drawer-handle"></div>
+  <div class="drawer-title">Menu Completo</div>
+  <div class="drawer-grid">
+    <div class="drawer-item" onclick="navTo('desvios')"><span class="di">⚠️</span>Desvios</div>
+    <div class="drawer-item" onclick="navTo('oficina')"><span class="di">🏭</span>Oficina</div>
+    <div class="drawer-item" onclick="navTo('mensal')"><span class="di">📆</span>Mensal</div>
+    <div class="drawer-item" onclick="navTo('historico')"><span class="di">🗂️</span>Histórico</div>
+    <div class="drawer-item" onclick="navTo('tripulantes')"><span class="di">👥</span>Tripulantes</div>
+    <div class="drawer-item" onclick="navTo('embarque')"><span class="di">🚢</span>Embarque</div>
+    <div class="drawer-item" onclick="navTo('fotos')"><span class="di">📷</span>Fotos</div>
+    <div class="drawer-item" onclick="navTo('storage')"><span class="di">💾</span>Arquivos</div>
+    <div class="drawer-item" onclick="navTo('mobile')"><span class="di">📱</span>Celular</div>
+    <div class="drawer-item" onclick="navTo('config')"><span class="di">⚙️</span>Config.</div>
+    <div class="drawer-item" onclick="navTo('update')"><span class="di">🔄</span>Update</div>
+    <div class="drawer-item" onclick="saveData();closeDrawer();toast('✅ Salvo!','ok')"><span class="di">💾</span>Salvar</div>
+  </div>
+</div>
+<div id="drawer-overlay" style="display:none;position:fixed;inset:0;z-index:496;" onclick="closeDrawer()"></div>
+
 </body>
 </html>

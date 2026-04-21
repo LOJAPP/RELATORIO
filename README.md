@@ -1,41 +1,30 @@
 # ⚓ LOG-IN Jacarandá — Sistema de Relatórios a Bordo
 
-App PWA para gestão de trabalhos, inspeções, desvios e manutenção do M/V LOG-IN Jacarandá.
+App PWA para gestão de trabalhos, inspeções, desvios e manutenção do M/V LOG-IN Jacarandá — Linha Amazonas.
 
 ## 🚀 Abrir o App
 
-**[→ Clique aqui para abrir](https://SEU_USUARIO.github.io/jacaranda-app/)**
+**→ [Clique aqui para abrir](https://SEU_USUARIO.github.io/jacaranda-app/)**
 
 ## 📱 Instalar no Celular
 
-**Android (Chrome):**
-1. Abra o link acima no Chrome
-2. Toque nos 3 pontos ⋮ → "Adicionar à tela inicial"
+**Android:** Chrome → ⋮ → Adicionar à tela inicial  
+**iPhone:** Safari → □↑ Compartilhar → Adicionar à Tela de Início
 
-**iPhone (Safari):**
-1. Abra o link acima no Safari  
-2. Toque em □↑ Compartilhar → "Adicionar à Tela de Início"
-
-## 📋 Funcionalidades
-
-- ✏️ Registros de trabalho por departamento e semana
-- 🔍 Relatórios de inspeção com fotos
-- ⚠️ Cartões de desvio com abertura/fechamento
-- 🏭 Bloco/Oficina — serviços terceirizados
-- 📅 Relatório semanal com seções automáticas
-- 💾 Backup em pasta local/rede, Google Drive e download
-- 📱 Modo celular com barra flutuante destacável
-- ☁️ Sincronização via Google Apps Script
-
-## 📁 Arquivos
+## 📁 Arquivos para upload
 
 | Arquivo | Descrição |
 |---------|-----------|
-| `index.html` | Splash screen com detecção de dispositivo |
-| `jacaranda_manutencao.html` | App principal |
+| `index.html` | Splash screen com detecção automática |
+| `jacaranda_manutencao.html` | App completo |
 | `manifest.json` | Configuração PWA |
-| `service-worker.js` | Suporte offline |
-| `icon-192.png` | Ícone app (192×192) |
-| `icon-512.png` | Ícone app (512×512) |
+| `service-worker.js` | Cache offline |
+| `icon-192.png` | Ícone 192×192 |
+| `icon-512.png` | Ícone 512×512 |
 
-## 🛳️ M/V LOG-IN Jacarandá — Linha Amazonas
+## 🛠️ Como publicar no GitHub Pages
+
+1. Criar repositório `jacaranda-app` (Public)
+2. Upload de todos os 6 arquivos
+3. Settings → Pages → Source: main → Save
+4. Aguardar ~2 min → URL pronta
