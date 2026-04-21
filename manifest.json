@@ -1,29 +1,98 @@
 {
-  "name": "Jacarandá — Relatórios de Trabalhos a Bordo",
+  "name": "LOG-IN Jacarandá — Relatórios a Bordo",
   "short_name": "Jacarandá",
   "description": "Sistema de relatórios, inspeções e manutenção do M/V LOG-IN Jacarandá",
-  "start_url": "./jacaranda_manutencao.html",
+  "start_url": "/",
+  "id": "/",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
   "background_color": "#0E3D72",
   "theme_color": "#1A5FA8",
   "orientation": "any",
+  "scope": "/",
+  "lang": "pt-BR",
+  "dir": "ltr",
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Painel Jacarandá"
     }
   ],
   "categories": [
     "productivity",
-    "business"
+    "business",
+    "utilities"
   ],
-  "lang": "pt-BR"
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Novo Registro",
+      "short_name": "Registro",
+      "description": "Registrar trabalho",
+      "url": "/?page=novo",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Nova Inspeção",
+      "short_name": "Inspeção",
+      "description": "Relatório de inspeção",
+      "url": "/?page=inspecao",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Desvio",
+      "short_name": "Desvio",
+      "description": "Cartão de desvio",
+      "url": "/?page=desvios",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
 }

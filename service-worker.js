@@ -1,29 +1,31 @@
-// Jacarandá Service Worker — v1.0
-const CACHE = 'jacaranda-v1';
-const FILES = [
-  './',
-  './jacaranda_manutencao.html',
-  './manifest.json'
-];
+// Jacarandá Service Worker v2
+const CACHE_NAME = 'jacaranda-v2';
+const ASSETS = ['/', '/index.html', '/jacaranda_manutencao.html', '/manifest.json'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(FILES))
-  );
-  self.skipWaiting();
+  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
+  if(e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request).catch(() => caches.match('./jacaranda_manutencao.html')))
+    caches.match(e.request).then(cached => {
+      const fresh = fetch(e.request).then(res => {
+        if(res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => cached);
+      return cached || fresh;
+    })
   );
 });

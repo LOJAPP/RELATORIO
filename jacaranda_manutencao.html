@@ -237,6 +237,48 @@
   @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 
+  /* ── MOBILE ACTION CARD ── */
+  .mob-action-card{background:#fff;border:2px solid var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:transform .1s,background .15s;}
+  .mob-action-card:active{transform:scale(.96);}
+
+  /* ── FLOATING BAR ── */
+  #float-bar{
+    position:fixed;
+    z-index:8000;
+    min-width:240px;
+    max-width:320px;
+    background:linear-gradient(135deg,var(--login-blue-dk),var(--login-blue));
+    border-radius:14px;
+    box-shadow:0 8px 32px rgba(10,30,70,.4);
+    overflow:hidden;
+    user-select:none;
+    transition:box-shadow .2s;
+  }
+  #float-bar.dragging{box-shadow:0 16px 48px rgba(10,30,70,.6);opacity:.95;}
+  #float-bar-handle{
+    display:flex;align-items:center;gap:8px;
+    padding:10px 12px;
+    cursor:grab;
+    background:rgba(0,0,0,.15);
+    border-bottom:1px solid rgba(255,255,255,.1);
+  }
+  #float-bar-handle:active{cursor:grabbing;}
+  #float-bar-drag-icon{font-size:16px;color:rgba(255,255,255,.6);flex-shrink:0;}
+  #float-bar-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#fff;letter-spacing:.5px;}
+  #float-bar-body{padding:10px 12px;}
+  #float-bar-body.collapsed{display:none;}
+  #float-bar-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:0;}
+  .fbar-btn{
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+    border-radius:8px;padding:8px 4px;cursor:pointer;
+    transition:background .15s;color:#fff;font-size:10px;font-weight:700;
+    text-align:center;
+  }
+  .fbar-btn:hover{background:rgba(255,255,255,.25);}
+  .fbar-btn:active{transform:scale(.93);}
+  .fbar-btn .fbar-ico{font-size:20px;line-height:1;}
+
   /* ── CREW MULTISELECT ── */
   .crew-check-list{max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:5px;padding:6px;}
   .crew-check-item{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:4px;cursor:pointer;transition:background .1s;}
@@ -1273,31 +1315,48 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
     <!-- MODO CELULAR / TABLET -->
     <div id="page-mobile" class="page">
       <div style="background:linear-gradient(135deg,var(--login-blue-dk),var(--login-blue));color:#fff;border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;">📱 Modo Celular / Tablet</div>
-        <div style="font-size:12px;opacity:.8;margin-top:4px;">Acesso rápido às funções mais usadas em campo</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;">📱 Modo Celular / Tablet</div>
+            <div style="font-size:12px;opacity:.8;margin-top:4px;">Acesso rápido às funções mais usadas em campo</div>
+          </div>
+          <button onclick="toggleFloatBar()" style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;">
+            ⚡ Barra Flutuante
+          </button>
+        </div>
       </div>
 
       <!-- Quick actions grid -->
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px;">
-        <div onclick="showPage('novo')" style="background:#fff;border:2px solid var(--login-blue);border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:all .15s;" onmouseenter="this.style.background='var(--login-blue-xlt)'" onmouseleave="this.style.background='#fff'">
+        <div onclick="showPage('novo')" class="mob-action-card" style="border-color:var(--login-blue);">
           <div style="font-size:32px;margin-bottom:6px;">✏️</div>
           <div style="font-weight:700;color:var(--login-blue);font-family:'Barlow Condensed',sans-serif;font-size:15px;">NOVO REGISTRO</div>
           <div style="font-size:11px;color:var(--text-dim);">Registrar trabalho</div>
         </div>
-        <div onclick="showPage('inspecao')" style="background:#fff;border:2px solid var(--login-green);border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:all .15s;" onmouseenter="this.style.background='var(--login-green-xlt)'" onmouseleave="this.style.background='#fff'">
+        <div onclick="showPage('inspecao')" class="mob-action-card" style="border-color:var(--login-green);">
           <div style="font-size:32px;margin-bottom:6px;">🔍</div>
           <div style="font-weight:700;color:var(--login-green-dk);font-family:'Barlow Condensed',sans-serif;font-size:15px;">INSPEÇÃO</div>
           <div style="font-size:11px;color:var(--text-dim);">Relatório de inspeção</div>
         </div>
-        <div onclick="showPage('desvios')" style="background:#fff;border:2px solid var(--danger);border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:all .15s;" onmouseenter="this.style.background='#FEE2E2'" onmouseleave="this.style.background='#fff'">
+        <div onclick="showPage('desvios')" class="mob-action-card" style="border-color:var(--danger);">
           <div style="font-size:32px;margin-bottom:6px;">⚠️</div>
           <div style="font-weight:700;color:var(--danger);font-family:'Barlow Condensed',sans-serif;font-size:15px;">DESVIO</div>
           <div style="font-size:11px;color:var(--text-dim);">Abrir cartão de desvio</div>
         </div>
-        <div onclick="showPage('fotos')" style="background:#fff;border:2px solid var(--gold);border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:all .15s;" onmouseenter="this.style.background='#FEF3C7'" onmouseleave="this.style.background='#fff'">
+        <div onclick="showPage('fotos')" class="mob-action-card" style="border-color:var(--gold);">
           <div style="font-size:32px;margin-bottom:6px;">📷</div>
           <div style="font-weight:700;color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-size:15px;">FOTOS</div>
           <div style="font-size:11px;color:var(--text-dim);">Adicionar fotos</div>
+        </div>
+        <div onclick="showPage('semanal')" class="mob-action-card" style="border-color:var(--login-blue-lt);">
+          <div style="font-size:32px;margin-bottom:6px;">📅</div>
+          <div style="font-weight:700;color:var(--login-blue);font-family:'Barlow Condensed',sans-serif;font-size:15px;">RELATÓRIO</div>
+          <div style="font-size:11px;color:var(--text-dim);">Relatório semanal</div>
+        </div>
+        <div onclick="saveData();toast('✅ Salvo!','ok')" class="mob-action-card" style="border-color:var(--login-green);background:var(--login-green-xlt);">
+          <div style="font-size:32px;margin-bottom:6px;">💾</div>
+          <div style="font-weight:700;color:var(--login-green-dk);font-family:'Barlow Condensed',sans-serif;font-size:15px;">SALVAR</div>
+          <div style="font-size:11px;color:var(--text-dim);">Salvar dados agora</div>
         </div>
       </div>
 
@@ -1309,21 +1368,39 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
         </div>
       </div>
 
-      <!-- Últimas atividades compactas -->
-      <div class="panel" style="margin-top:12px;">
+      <!-- Últimas atividades -->
+      <div class="panel" style="margin-top:12px;margin-bottom:100px;">
         <div class="panel-header">🕐 Últimas Atividades</div>
         <div style="padding:10px;" id="mobile-recentes"></div>
-      </div>
-
-      <!-- Salvar rápido -->
-      <div style="position:sticky;bottom:16px;display:flex;gap:10px;margin-top:16px;">
-        <button class="btn btn-primary" style="flex:1;padding:14px;font-size:14px;" onclick="saveData()">💾 SALVAR AGORA</button>
-        <button class="btn btn-green" style="flex:1;padding:14px;font-size:14px;" onclick="sendToDrive(true);saveToFolder()">☁️ BACKUP</button>
       </div>
     </div>
 
   </div><!-- /content -->
 </div><!-- /main -->
+  <!-- BARRA FLUTUANTE -->
+  <div id="float-bar" style="display:none;">
+    <div id="float-bar-handle" title="Arrastar">
+      <span id="float-bar-drag-icon">⠿</span>
+      <span id="float-bar-title">⚡ Ações Rápidas</span>
+      <div style="display:flex;gap:4px;margin-left:auto;">
+        <button onclick="toggleFloatBarExpand()" id="btn-float-expand" title="Expandir/Recolher"
+          style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:13px;">▲</button>
+        <button onclick="hideFloatBar()" title="Fechar"
+          style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:14px;">✕</button>
+      </div>
+    </div>
+    <div id="float-bar-body">
+      <div id="float-bar-btns"></div>
+      <div style="border-top:1px solid rgba(255,255,255,.15);margin-top:8px;padding-top:8px;display:flex;gap:6px;">
+        <button onclick="saveData();toast('✅ Salvo!','ok')"
+          style="flex:1;background:var(--login-green);border:none;color:#fff;border-radius:7px;padding:8px 4px;font-size:11px;font-weight:700;cursor:pointer;">💾 SALVAR</button>
+        <button onclick="sendToDrive(true)"
+          style="flex:1;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:7px;padding:8px 4px;font-size:11px;font-weight:700;cursor:pointer;">☁️ DRIVE</button>
+        <button onclick="saveToFolder()"
+          style="flex:1;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:7px;padding:8px 4px;font-size:11px;font-weight:700;cursor:pointer;">💽 PASTA</button>
+      </div>
+    </div>
+  </div>
 </div><!-- /app -->
 
 <!-- POPUP EQUIPE INLINE (relatório semanal) -->
@@ -4251,10 +4328,146 @@ function updateDriveConnStatus(){
   }
 }
 
+// ══════════════════════════════════════════════════
+// ── BARRA FLUTUANTE DESTACÁVEL ──
+// ══════════════════════════════════════════════════
+
+const FLOAT_ACTIONS = [
+  {ico:'✏️', label:'REGISTRO', fn:"showPage('novo')"},
+  {ico:'🔍', label:'INSPEÇÃO', fn:"showPage('inspecao')"},
+  {ico:'⚠️', label:'DESVIO',   fn:"showPage('desvios')"},
+  {ico:'📷', label:'FOTOS',    fn:"showPage('fotos')"},
+  {ico:'📅', label:'SEMANA',   fn:"showPage('semanal')"},
+  {ico:'🗂️', label:'HISTÓRICO',fn:"showPage('historico')"},
+  {ico:'👥', label:'TRIPUL.',  fn:"showPage('tripulantes')"},
+  {ico:'📊', label:'PAINEL',   fn:"showPage('dashboard')"},
+];
+
+let _fbExpanded = true;
+let _fbDragging = false;
+let _fbOffX = 0, _fbOffY = 0;
+
+function buildFloatBtns(){
+  const el = document.getElementById('float-bar-btns');
+  if(!el) return;
+  el.innerHTML = FLOAT_ACTIONS.map(a =>
+    `<div class="fbar-btn" onclick="${a.fn}">
+       <span class="fbar-ico">${a.ico}</span>
+       <span>${a.label}</span>
+     </div>`
+  ).join('');
+}
+
+function toggleFloatBar(){
+  const bar = document.getElementById('float-bar');
+  if(!bar) return;
+  if(bar.style.display === 'none' || bar.style.display === ''){
+    showFloatBar();
+  } else {
+    hideFloatBar();
+  }
+}
+
+function showFloatBar(){
+  const bar = document.getElementById('float-bar');
+  if(!bar) return;
+  buildFloatBtns();
+  bar.style.display = 'block';
+
+  // Load saved position or default to bottom-right
+  const saved = (() => {try{return JSON.parse(localStorage.getItem('jac_float_pos')||'null');}catch(e){return null;}})();
+  if(saved && saved.x != null){
+    bar.style.left = saved.x + 'px';
+    bar.style.top  = saved.y + 'px';
+    bar.style.right = 'auto';
+    bar.style.bottom = 'auto';
+  } else {
+    bar.style.right  = '16px';
+    bar.style.bottom = '80px';
+    bar.style.left   = 'auto';
+    bar.style.top    = 'auto';
+  }
+  _fbExpanded = true;
+  document.getElementById('float-bar-body').classList.remove('collapsed');
+  document.getElementById('btn-float-expand').textContent = '▲';
+  toast('⚡ Barra flutuante ativada — arraste para mover','ok');
+}
+
+function hideFloatBar(){
+  const bar = document.getElementById('float-bar');
+  if(bar) bar.style.display = 'none';
+}
+
+function toggleFloatBarExpand(){
+  _fbExpanded = !_fbExpanded;
+  const body = document.getElementById('float-bar-body');
+  const btn  = document.getElementById('btn-float-expand');
+  if(body) body.classList.toggle('collapsed', !_fbExpanded);
+  if(btn)  btn.textContent = _fbExpanded ? '▲' : '▼';
+}
+
+// ── Drag (mouse + touch) ──
+function initFloatBarDrag(){
+  const bar    = document.getElementById('float-bar');
+  const handle = document.getElementById('float-bar-handle');
+  if(!bar || !handle) return;
+
+  function startDrag(cx, cy){
+    _fbDragging = true;
+    const rect = bar.getBoundingClientRect();
+    _fbOffX = cx - rect.left;
+    _fbOffY = cy - rect.top;
+    bar.classList.add('dragging');
+    bar.style.right  = 'auto';
+    bar.style.bottom = 'auto';
+  }
+
+  function moveDrag(cx, cy){
+    if(!_fbDragging) return;
+    let x = cx - _fbOffX;
+    let y = cy - _fbOffY;
+    // Clamp inside viewport
+    const maxX = window.innerWidth  - bar.offsetWidth  - 4;
+    const maxY = window.innerHeight - bar.offsetHeight - 4;
+    x = Math.max(4, Math.min(x, maxX));
+    y = Math.max(4, Math.min(y, maxY));
+    bar.style.left = x + 'px';
+    bar.style.top  = y + 'px';
+  }
+
+  function endDrag(){
+    if(!_fbDragging) return;
+    _fbDragging = false;
+    bar.classList.remove('dragging');
+    // Persist position
+    try{localStorage.setItem('jac_float_pos', JSON.stringify({
+      x: parseInt(bar.style.left), y: parseInt(bar.style.top)
+    }));}catch(e){}
+  }
+
+  // Mouse
+  handle.addEventListener('mousedown',  e => { e.preventDefault(); startDrag(e.clientX, e.clientY); });
+  document.addEventListener('mousemove', e => moveDrag(e.clientX, e.clientY));
+  document.addEventListener('mouseup',   () => endDrag());
+
+  // Touch
+  handle.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    startDrag(t.clientX, t.clientY);
+  }, {passive:true});
+  document.addEventListener('touchmove', e => {
+    if(!_fbDragging) return;
+    const t = e.touches[0];
+    moveDrag(t.clientX, t.clientY);
+  }, {passive:true});
+  document.addEventListener('touchend', () => endDrag());
+}
+
 // ── INIT ──
 loadData();kpis();renderDash();fillWeekSel();renderDriveLinks();
 fillDeptSelect('r-dept');fillRoleSelect('mc-fn');fillDeptSelect('mc-dp');
-setupAutoSync(); // start auto-sync if configured
+setupAutoSync();
+initFloatBarDrag(); // init draggable float bar
 const now=new Date();
 const mel=document.getElementById('mes-sel');
 if(mel)mel.value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;

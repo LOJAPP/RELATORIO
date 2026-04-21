@@ -1,8 +1,79 @@
 <!DOCTYPE html>
-<html><head>
-<meta charset="UTF-8">
-<meta http-equiv="refresh" content="0;url=jacaranda_manutencao.html">
-<title>Jacarandá</title>
-</head><body>
-<a href="jacaranda_manutencao.html">Abrir app</a>
-</body></html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1A5FA8">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Jacarandá">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" href="icon-192.png">
+  <title>LOG-IN Jacarandá</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0E3D72;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+    .splash{text-align:center;max-width:360px;}
+    .logo{font-size:56px;margin-bottom:16px;}
+    h1{font-size:22px;font-weight:800;margin-bottom:6px;letter-spacing:-0.5px;}
+    p{font-size:13px;opacity:.75;margin-bottom:24px;line-height:1.5;}
+    .btn{display:inline-block;background:#6DB847;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;margin-bottom:12px;width:100%;transition:opacity .15s;}
+    .btn:hover{opacity:.9;}
+    .hint{font-size:11px;opacity:.5;margin-top:16px;line-height:1.6;}
+    .bar{height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin:20px 0 16px;overflow:hidden;}
+    .bar-fill{height:100%;background:#6DB847;width:0%;animation:load 1.5s ease forwards;}
+    @keyframes load{to{width:100%}}
+  </style>
+</head>
+<body>
+<div class="splash">
+  <div class="logo">⚓</div>
+  <h1>LOG-IN Jacarandá</h1>
+  <p>Sistema de Relatórios de Trabalhos a Bordo<br>M/V LOG-IN Jacarandá — Linha Amazonas</p>
+  <div class="bar"><div class="bar-fill"></div></div>
+  <a href="jacaranda_manutencao.html" class="btn" id="launch-btn">🚀 Abrir App</a>
+  <div class="hint" id="install-hint"></div>
+</div>
+
+<script>
+// Detect mobile and auto-configure
+const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+  || window.navigator.standalone === true;
+
+const hint = document.getElementById('install-hint');
+
+if(isStandalone){
+  // Already installed — go straight to app
+  window.location.href = 'jacaranda_manutencao.html';
+} else if(isMobile){
+  if(isIOS){
+    hint.innerHTML = '📱 Para instalar no iPhone:<br>Toque em <strong>□↑ Compartilhar</strong> → <strong>"Adicionar à Tela de Início"</strong>';
+  } else {
+    hint.innerHTML = '📱 Para instalar no Android:<br>Toque em <strong>⋮ Menu</strong> → <strong>"Adicionar à tela inicial"</strong><br>ou aguarde o banner de instalação';
+  }
+
+  // Handle ?page= shortcut from PWA shortcuts
+  const urlPage = new URLSearchParams(window.location.search).get('page');
+  if(urlPage){
+    window.location.href = 'jacaranda_manutencao.html#' + urlPage;
+    return;
+  }
+
+  // Auto-redirect after splash
+  setTimeout(() => { window.location.href = 'jacaranda_manutencao.html'; }, 2000);
+} else {
+  hint.innerHTML = 'Também disponível para instalar como app<br>no Chrome/Edge: <strong>⋮ → Instalar app</strong>';
+  setTimeout(() => { window.location.href = 'jacaranda_manutencao.html'; }, 1500);
+}
+
+// Register service worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
