@@ -286,6 +286,14 @@
   @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 
+  /* ── INSPECTION ITEMS ── */
+  .insp-item{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;position:relative;}
+  .insp-item-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .insp-item-num{background:var(--login-blue);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;flex-shrink:0;}
+  .insp-item-del{margin-left:auto;background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;}
+  .insp-item-del:hover{background:#FEE2E2;}
+  .insp-res-badge{font-size:10px;font-weight:700;padding:2px 10px;border-radius:10px;}
+
   /* ── MOBILE ACTION CARD ── */
   .mob-action-card{background:#fff;border:2px solid var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:transform .1s,background .15s;}
   .mob-action-card:active{transform:scale(.96);}
@@ -1289,79 +1297,136 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
 
     <!-- RELATÓRIO DE INSPEÇÃO -->
     <div id="page-inspecao" class="page">
-      <div class="export-bar"><span>🔍</span><p>Relatórios de inspeção de área, equipamentos e conformidade.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button></div>
+      <div class="export-bar"><span>🔍</span><p>Relatórios de inspeção de área, equipamentos e conformidade.</p>
+        <button class="btn btn-ghost btn-sm" onclick="exportInspecaoJSON()">💾 Exportar JSON</button>
+        <button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button>
+      </div>
+
+      <!-- IMPORTAR INSPEÇÃO -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;margin:0;">
+          📂 Carregar inspeção (.json)
+          <input type="file" id="insp-import-file" accept=".json" style="display:none" onchange="importInspecaoJSON(this)">
+        </label>
+        <span style="font-size:11px;color:var(--text-dim);">Carregue um arquivo de inspeção exportado para visualizar ou editar</span>
+      </div>
 
       <div class="panel">
-        <div class="panel-header">🔍 Nova Inspeção</div>
+        <div class="panel-header">🔍 Nova Inspeção
+          <span style="margin-left:auto;font-size:11px;font-weight:400;opacity:.7;">Preencha os dados e adicione itens</span>
+        </div>
         <div style="padding:14px;">
-          <div class="form-row">
-            <div class="form-group" style="max-width:160px;"><label>Data da Inspeção *</label><input type="date" class="form-control" id="insp-data"></div>
-            <div class="form-group" style="max-width:160px;"><label>Hora</label><input type="time" class="form-control" id="insp-hora" value="08:00"></div>
-            <div class="form-group">
-              <label>Tipo de Inspeção</label>
-              <select class="form-control" id="insp-tipo">
-                <option>Inspeção de Rotina</option><option>Inspeção de Segurança</option>
-                <option>Inspeção de Manutenção</option><option>Inspeção de Carga</option>
-                <option>Inspeção Ambiental</option><option>Inspeção de Equipamentos</option><option>Outra</option>
-              </select>
+
+          <!-- CABEÇALHO DA INSPEÇÃO -->
+          <div style="background:var(--login-blue-xlt);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:14px;">
+            <div style="font-size:11px;font-weight:700;color:var(--login-blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">📋 Dados Gerais da Inspeção</div>
+            <div class="form-row">
+              <div class="form-group" style="max-width:160px;">
+                <label>Data *</label>
+                <input type="date" class="form-control" id="insp-data">
+              </div>
+              <div class="form-group" style="max-width:120px;">
+                <label>Hora</label>
+                <input type="time" class="form-control" id="insp-hora" value="08:00">
+              </div>
+              <div class="form-group">
+                <label>Tipo de Inspeção</label>
+                <select class="form-control" id="insp-tipo">
+                  <option>Inspeção de Rotina</option>
+                  <option>Inspeção de Segurança</option>
+                  <option>Inspeção de Manutenção</option>
+                  <option>Inspeção de Carga</option>
+                  <option>Inspeção Ambiental</option>
+                  <option>Inspeção de Equipamentos</option>
+                  <option>Inspeção de SOLAS</option>
+                  <option>Outra</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>📌 Título da Inspeção *</label>
+                <input type="text" class="form-control" id="insp-titulo"
+                  placeholder="Ex: Verificação sistema de combate a incêndio — Porão 02" style="font-weight:600;">
+              </div>
+              <div class="form-group" style="max-width:190px;">
+                <label>Resultado Geral</label>
+                <select class="form-control" id="insp-result">
+                  <option value="Conforme">✅ Conforme</option>
+                  <option value="Não Conforme">❌ Não Conforme</option>
+                  <option value="Parcial">⚠️ Parcialmente Conforme</option>
+                  <option value="Pendente">🔄 Pendente</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>👷 Oficial Responsável *</label>
+                <select class="form-control" id="insp-resp"><option value="">— Selecionar —</option></select>
+              </div>
+              <div class="form-group">
+                <label>👁 Testemunha / Acompanhante</label>
+                <select class="form-control" id="insp-test"><option value="">— Opcional —</option></select>
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>📝 Observações Gerais</label>
+              <textarea class="form-control" id="insp-desc" style="min-height:70px;white-space:pre-wrap;"
+                placeholder="Observações gerais da inspeção..."></textarea>
             </div>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>📍 Área / Local *</label>
-              <input type="text" class="form-control" id="insp-area" placeholder="Ex: Praça de Máquinas · Bay 10 · Convés Principal · Porão 02">
+
+          <!-- ITENS DE INSPEÇÃO -->
+          <div style="margin-bottom:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <div style="font-size:13px;font-weight:700;color:var(--login-blue);">📋 Itens de Inspeção</div>
+              <button class="btn btn-primary btn-sm" onclick="addInspItem()">+ Adicionar Item</button>
             </div>
-            <div class="form-group" style="max-width:200px;">
-              <label>Resultado</label>
-              <select class="form-control" id="insp-result">
-                <option value="Conforme">✅ Conforme</option>
-                <option value="Não Conforme">❌ Não Conforme</option>
-                <option value="Parcial">⚠️ Parcialmente Conforme</option>
-                <option value="Pendente">🔄 Pendente</option>
-              </select>
+            <div id="insp-items-list">
+              <div style="font-size:12px;color:var(--muted);padding:12px;text-align:center;border:1px dashed var(--border);border-radius:6px;">
+                Nenhum item adicionado. Clique em <strong>+ Adicionar Item</strong>.
+              </div>
             </div>
           </div>
-          <div class="form-group" style="margin-bottom:10px;">
-            <label>📌 Título da Inspeção *</label>
-            <input type="text" class="form-control" id="insp-titulo" placeholder="Ex: Verificação sistema de combate a incêndio — Porão 02" style="font-weight:600;">
-          </div>
-          <div class="form-group" style="margin-bottom:12px;">
-            <label>📝 Descrição / Observações</label>
-            <textarea class="form-control" id="insp-desc" style="min-height:90px;white-space:pre-wrap;" placeholder="Descreva os achados:&#10;- Condição encontrada&#10;- Itens verificados&#10;- Não conformidades&#10;- Ações recomendadas"></textarea>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>👷 Responsável pela Inspeção</label>
-              <select class="form-control" id="insp-resp"><option value="">— Selecionar —</option></select>
+
+          <!-- FOTOS DA INSPEÇÃO -->
+          <div style="margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:700;color:var(--login-blue);margin-bottom:8px;">📷 Fotos da Inspeção</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+              <label class="btn btn-primary btn-sm" style="cursor:pointer;gap:6px;">
+                📷 Tirar Foto
+                <input type="file" accept="image/*" capture="environment" style="display:none" onchange="addPhotos(this.files,'insp');this.value=''">
+              </label>
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer;gap:6px;">
+                🖼 Galeria / Arquivo
+                <input type="file" accept="image/*" multiple style="display:none" onchange="addPhotos(this.files,'insp');this.value=''">
+              </label>
             </div>
-            <div class="form-group">
-              <label>👷 Testemunha / Acompanhante</label>
-              <select class="form-control" id="insp-test"><option value="">— Opcional —</option></select>
-            </div>
+            <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">⚡ Fotos comprimidas automaticamente (máx 1024px, JPEG 70%)</div>
+            <div class="photo-grid" id="pg-insp"></div>
           </div>
-          <div class="sep"></div>
-          <div class="section-title">📷 Fotos da Inspeção</div>
-          <div class="compress-info">⚡ Fotos comprimidas automaticamente. Tire foto com a câmera ou selecione arquivo.</div>
-          <label class="photo-drop-zone" for="foto-insp">📷 Clique para tirar foto ou selecionar</label>
-          <input type="file" id="foto-insp" accept="image/*" multiple capture="environment" style="display:none" onchange="addPhotos(this.files,'insp')">
-          <div class="photo-grid" id="pg-insp"></div>
-          <div class="sep"></div>
-          <div style="display:flex;gap:10px;">
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <button class="btn btn-primary" onclick="saveInspecao()">💾 Salvar Inspeção</button>
+            <button class="btn btn-green btn-sm" onclick="exportInspecaoAtual()">📄 Exportar como arquivo</button>
             <button class="btn btn-ghost" onclick="clearInspForm()">🗑 Limpar</button>
           </div>
         </div>
       </div>
 
       <!-- Filtros -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
+        <strong style="font-size:12px;color:var(--text-dim);">Filtrar:</strong>
         <button class="btn btn-sm btn-primary" onclick="filterInsp('todas',this)">Todas</button>
         <button class="btn btn-ghost btn-sm" onclick="filterInsp('Conforme',this)">✅ Conformes</button>
         <button class="btn btn-ghost btn-sm" onclick="filterInsp('Não Conforme',this)">❌ Não Conformes</button>
         <button class="btn btn-ghost btn-sm" onclick="filterInsp('Parcial',this)">⚠️ Parciais</button>
+        <button class="btn btn-ghost btn-sm" onclick="filterInsp('Pendente',this)">🔄 Pendentes</button>
       </div>
 
-      <div id="insp-list"><div class="empty-state"><div class="ico">🔍</div><p>Nenhuma inspeção registrada</p></div></div>
+      <div id="insp-list">
+        <div class="empty-state"><div class="ico">🔍</div><p>Nenhuma inspeção registrada</p></div>
+      </div>
     </div>
 
     <!-- MODO CELULAR / TABLET -->
@@ -4214,23 +4279,168 @@ function exportPatchFile(){
 // ── INSPEÇÕES ──
 // ══════════════════════════════════════════════════
 let _inspFilter='todas';
+let _inspItems = []; // items temporários do formulário
 
+// ── DEPT list from config ──
+function getDeptsForInsp(){return getDepts();}
+
+// ── Fill selects with crew ──
 function fillInspSelects(){
   ['insp-resp','insp-test'].forEach(id=>{
     const sel=document.getElementById(id);if(!sel)return;
     sel.innerHTML=id==='insp-test'?'<option value="">— Opcional —</option>':'<option value="">— Selecionar —</option>';
     S.crew.forEach(c=>{
       const abbr=c.abbr||(ROLE_ABBR[c.fn]||c.fn.slice(0,3).toUpperCase());
-      const o=document.createElement('option');o.value=c.id;o.textContent='['+abbr+'] '+c.nm.split(' ').slice(0,2).join(' ');sel.appendChild(o);
+      const o=document.createElement('option');
+      o.value=c.id;
+      o.textContent='['+abbr+'] '+c.nm.split(' ').slice(0,2).join(' ')+' — '+c.dp;
+      sel.appendChild(o);
     });
   });
-  const d=document.getElementById('insp-data');if(d&&!d.value)d.value=new Date().toISOString().slice(0,10);
+  const d=document.getElementById('insp-data');
+  if(d&&!d.value)d.value=new Date().toISOString().slice(0,10);
 }
 
+// ── ADD ITEM to inspection form ──
+function addInspItem(){
+  const depts = getDeptsForInsp();
+  const crewOpts = S.crew.map(c=>{
+    const abbr=c.abbr||(ROLE_ABBR[c.fn]||c.fn.slice(0,3).toUpperCase());
+    return `<option value="${c.id}">[${abbr}] ${c.nm.split(' ').slice(0,2).join(' ')}</option>`;
+  }).join('');
+
+  const itemId = 'insp-item-'+Date.now();
+  const num = _inspItems.length+1;
+  _inspItems.push({id:itemId});
+
+  const div = document.createElement('div');
+  div.className='insp-item';
+  div.id=itemId;
+  div.innerHTML=`
+    <div class="insp-item-head">
+      <span class="insp-item-num">#${String(num).padStart(2,'0')}</span>
+      <strong style="font-size:12px;flex:1;">Item de Inspeção</strong>
+      <button class="insp-item-del" onclick="removeInspItem('${itemId}')">✕</button>
+    </div>
+    <div class="form-row" style="margin-bottom:8px;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label style="font-size:10px;">📍 Área / Item Inspecionado *</label>
+        <input type="text" class="form-control" id="${itemId}-area" placeholder="Ex: Extintor Bay 10 · Válvula porão 02 · Convés Popa">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:8px;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label style="font-size:10px;">📝 Descrição / Achado</label>
+        <textarea class="form-control" id="${itemId}-desc" style="min-height:60px;font-size:12px;" placeholder="Condição encontrada, medidas tomadas..."></textarea>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:8px;">
+      <div class="form-group" style="max-width:180px;margin-bottom:0;">
+        <label style="font-size:10px;">Resultado</label>
+        <select class="form-control" id="${itemId}-result" style="font-size:12px;">
+          <option value="Conforme">✅ Conforme</option>
+          <option value="Não Conforme">❌ Não Conforme</option>
+          <option value="Parcial">⚠️ Parcial</option>
+          <option value="Pendente">🔄 Pendente</option>
+        </select>
+      </div>
+      <div class="form-group" style="max-width:190px;margin-bottom:0;">
+        <label style="font-size:10px;">🏢 Departamento Responsável</label>
+        <select class="form-control" id="${itemId}-dept" style="font-size:12px;">
+          <option value="">— Selecionar —</option>
+          ${depts.map(d=>`<option value="${d}">${d}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label style="font-size:10px;">👷 Oficial Responsável pela Pendência</label>
+        <select class="form-control" id="${itemId}-resp" style="font-size:12px;">
+          <option value="">— Opcional —</option>
+          ${crewOpts}
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:6px;">
+      <label style="font-size:10px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">📷 Foto do Item</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <label class="btn btn-primary btn-sm" style="cursor:pointer;font-size:11px;">
+          📷 Câmera
+          <input type="file" accept="image/*" capture="environment" style="display:none" onchange="addItemPhoto(this,'${itemId}')">
+        </label>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;font-size:11px;">
+          🖼 Galeria
+          <input type="file" accept="image/*" multiple style="display:none" onchange="addItemPhoto(this,'${itemId}')">
+        </label>
+      </div>
+      <div id="${itemId}-fotos" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+    </div>`;
+
+  const list = document.getElementById('insp-items-list');
+  // Remove empty placeholder
+  if(list.querySelector('.empty-placeholder')) list.querySelector('.empty-placeholder').remove();
+  list.appendChild(div);
+  div.scrollIntoView({behavior:'smooth',block:'nearest'});
+  toast(`✅ Item #${num} adicionado`,'ok');
+}
+
+function removeInspItem(itemId){
+  _inspItems = _inspItems.filter(i=>i.id!==itemId);
+  const el = document.getElementById(itemId);
+  if(el) el.remove();
+  // Re-number
+  document.querySelectorAll('.insp-item-num').forEach((el,i)=>{
+    el.textContent='#'+String(i+1).padStart(2,'0');
+  });
+  if(!_inspItems.length){
+    document.getElementById('insp-items-list').innerHTML=
+      '<div class="empty-placeholder" style="font-size:12px;color:var(--muted);padding:12px;text-align:center;border:1px dashed var(--border);border-radius:6px;">Nenhum item adicionado. Clique em <strong>+ Adicionar Item</strong>.</div>';
+  }
+}
+
+// Item photos (stored in the item div itself)
+let _itemPhotos = {}; // {itemId: [dataURL,...]}
+function addItemPhoto(input, itemId){
+  const files = Array.from(input.files);
+  if(!files.length)return;
+  if(!_itemPhotos[itemId])_itemPhotos[itemId]=[];
+  files.forEach(f=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      compressImage(e.target.result, url=>{
+        _itemPhotos[itemId].push(url);
+        const container=document.getElementById(itemId+'-fotos');
+        if(container){
+          const img=document.createElement('div');
+          const idx=_itemPhotos[itemId].length-1;
+          img.style.cssText='position:relative;width:60px;height:60px;';
+          img.innerHTML=`<img src="${url}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
+            <button onclick="_itemPhotos['${itemId}'].splice(${idx},1);this.parentNode.remove()" style="position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;line-height:1;">✕</button>`;
+          container.appendChild(img);
+        }
+      });
+    };
+    r.readAsDataURL(f);
+  });
+  input.value='';
+}
+
+// Compress helper (uses canvas if available)
+function compressImage(dataURL, callback){
+  const img=new Image();
+  img.onload=()=>{
+    const MAX=1024;
+    let w=img.width,h=img.height;
+    if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+    const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+    canvas.getContext('2d').drawImage(img,0,0,w,h);
+    callback(canvas.toDataURL('image/jpeg',0.7));
+  };
+  img.src=dataURL;
+}
+
+// ── SAVE INSPECTION ──
 function saveInspecao(){
   const titulo=document.getElementById('insp-titulo').value.trim();
-  const area=document.getElementById('insp-area').value.trim();
-  if(!titulo||!area){toast('⚠️ Título e Área são obrigatórios','warn');return;}
+  if(!titulo){toast('⚠️ Título é obrigatório','warn');return;}
   const respId=document.getElementById('insp-resp').value;
   const testId=document.getElementById('insp-test').value;
   const respCrew=S.crew.find(c=>c.id===respId);
@@ -4238,53 +4448,208 @@ function saveInspecao(){
   const abbr=respCrew?(respCrew.abbr||(ROLE_ABBR[respCrew.fn]||respCrew.fn.slice(0,3).toUpperCase())):'';
   const data=document.getElementById('insp-data').value;
   const semana=data?String(wn(new Date(data+'T12:00:00'))).padStart(2,'0'):'00';
+
+  // Collect items
+  const items = _inspItems.map(({id})=>{
+    const area=(document.getElementById(id+'-area')?.value||'').trim();
+    const desc=(document.getElementById(id+'-desc')?.value||'').trim();
+    const result=document.getElementById(id+'-result')?.value||'Pendente';
+    const dept=document.getElementById(id+'-dept')?.value||'';
+    const respItemId=document.getElementById(id+'-resp')?.value||'';
+    const respItemCrew=S.crew.find(c=>c.id===respItemId);
+    const respItemNm=respItemCrew?respItemCrew.nm.split(' ').slice(0,2).join(' '):'';
+    const fotos=_itemPhotos[id]||[];
+    return {area,desc,result,dept,respItemNm,fotos};
+  }).filter(i=>i.area);
+
   const rec={
     id:gid(), semana, data,
     hora:document.getElementById('insp-hora').value||'',
     tipo:document.getElementById('insp-tipo').value,
-    area, titulo,
+    area:items.map(i=>i.area).join(', ')||'—',
+    titulo,
     desc:document.getElementById('insp-desc').value,
     result:document.getElementById('insp-result').value,
     respId, respNm:respCrew?'['+abbr+'] '+respCrew.nm.split(' ')[0]:'—',
     testNm:testCrew?testCrew.nm.split(' ').slice(0,2).join(' '):'',
     fotos:(S.tp.insp||[]).map(p=>p.u),
+    items,
     ts:Date.now()
   };
+
   S.inspecoes.push(rec);
-  S.tp.insp=[];document.getElementById('pg-insp').innerHTML='';
+  S.tp.insp=[];
+  document.getElementById('pg-insp').innerHTML='';
+  _inspItems=[];_itemPhotos={};
+  document.getElementById('insp-items-list').innerHTML=
+    '<div class="empty-placeholder" style="font-size:12px;color:var(--muted);padding:12px;text-align:center;border:1px dashed var(--border);border-radius:6px;">Nenhum item adicionado. Clique em <strong>+ Adicionar Item</strong>.</div>';
   saveData(true);clearInspForm();renderInspecao();
-  toast('✅ Inspeção registrada!','ok');
+  toast('✅ Inspeção salva!','ok');
 }
 
 function clearInspForm(){
-  ['insp-titulo','insp-area','insp-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['insp-titulo','insp-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   const r=document.getElementById('insp-resp');if(r)r.value='';
   const t=document.getElementById('insp-test');if(t)t.value='';
-  S.tp.insp=[];document.getElementById('pg-insp').innerHTML='';
+  S.tp.insp=[];
+  const pg=document.getElementById('pg-insp');if(pg)pg.innerHTML='';
 }
 
+// ── EXPORT / IMPORT INSPECTION JSON ──
+function exportInspecaoAtual(){
+  const titulo=document.getElementById('insp-titulo')?.value.trim()||'inspecao';
+  const respId=document.getElementById('insp-resp')?.value||'';
+  const testId=document.getElementById('insp-test')?.value||'';
+  const respCrew=S.crew.find(c=>c.id===respId);
+  const testCrew=S.crew.find(c=>c.id===testId);
+  const abbr=respCrew?(respCrew.abbr||(ROLE_ABBR[respCrew.fn]||respCrew.fn.slice(0,3).toUpperCase())):'';
+  const data=document.getElementById('insp-data')?.value||new Date().toISOString().slice(0,10);
+  const semana=data?String(wn(new Date(data+'T12:00:00'))).padStart(2,'0'):'00';
+
+  const items = _inspItems.map(({id})=>({
+    area:(document.getElementById(id+'-area')?.value||'').trim(),
+    desc:(document.getElementById(id+'-desc')?.value||'').trim(),
+    result:document.getElementById(id+'-result')?.value||'Pendente',
+    dept:document.getElementById(id+'-dept')?.value||'',
+    respItemNm:(()=>{const c=S.crew.find(x=>x.id===document.getElementById(id+'-resp')?.value);return c?c.nm.split(' ').slice(0,2).join(' '):'';})(),
+    fotos:_itemPhotos[id]||[]
+  })).filter(i=>i.area);
+
+  const rec={
+    _tipo:'inspecao_jacaranda',
+    _vessel:(getCfg().vessel?.vessel)||'LOG-IN JACARANDÁ',
+    _exportDate:new Date().toISOString(),
+    id:gid(), semana, data,
+    hora:document.getElementById('insp-hora')?.value||'',
+    tipo:document.getElementById('insp-tipo')?.value||'Inspeção de Rotina',
+    area:items.map(i=>i.area).join(', ')||'—',
+    titulo,
+    desc:document.getElementById('insp-desc')?.value||'',
+    result:document.getElementById('insp-result')?.value||'Pendente',
+    respId, respNm:respCrew?'['+abbr+'] '+respCrew.nm.split(' ')[0]:'—',
+    testNm:testCrew?testCrew.nm.split(' ').slice(0,2).join(' '):'',
+    fotos:(S.tp.insp||[]).map(p=>p.u),
+    items,
+    ts:Date.now()
+  };
+
+  const blob=new Blob([JSON.stringify(rec,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`INSPECAO_${titulo.replace(/\s+/g,'_').slice(0,30)}_${data}.json`;
+  a.click();
+  toast('📄 Inspeção exportada!','ok');
+}
+
+function exportInspecaoJSON(){
+  // Export all inspections
+  const data={
+    _tipo:'inspecoes_jacaranda',
+    _vessel:(getCfg().vessel?.vessel)||'LOG-IN JACARANDÁ',
+    _exportDate:new Date().toISOString(),
+    _count:S.inspecoes.length,
+    inspecoes:S.inspecoes
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`INSPECOES_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  toast(`📄 ${S.inspecoes.length} inspeções exportadas!`,'ok');
+}
+
+function importInspecaoJSON(input){
+  const f=input.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data._tipo||!data._tipo.includes('inspecao')){
+        toast('❌ Arquivo não é uma inspeção válida','err');return;
+      }
+      if(data._tipo==='inspecoes_jacaranda'){
+        // Multiple inspections
+        const inspecoes=data.inspecoes||[];
+        const existIds=new Set(S.inspecoes.map(i=>i.id));
+        let added=0;
+        inspecoes.forEach(ins=>{if(!existIds.has(ins.id)){S.inspecoes.push(ins);added++;}});
+        saveData(true);renderInspecao();
+        toast(`✅ ${added} inspeção(ões) importada(s)!`,'ok');
+      } else {
+        // Single inspection
+        if(!confirm(`Importar inspeção?\n\n"${data.titulo}"\nData: ${data.data}\n\nSerá adicionada às inspeções salvas.`))return;
+        const existIds=new Set(S.inspecoes.map(i=>i.id));
+        if(!existIds.has(data.id)){
+          S.inspecoes.push(data);
+          saveData(true);renderInspecao();
+          toast('✅ Inspeção importada!','ok');
+        } else {
+          toast('⚠️ Inspeção já existe','warn');
+        }
+      }
+    }catch(err){toast('❌ Erro ao ler arquivo: '+err.message,'err');}
+  };
+  reader.readAsText(f);
+  input.value='';
+}
+
+// ── FILTER ──
 function filterInsp(f,btn){
   _inspFilter=f;
-  document.querySelectorAll('#page-inspecao .btn-sm.btn-primary, #page-inspecao .btn-sm.btn-ghost').forEach(b=>{
-    if(['Todas','✅ Conformes','❌ Não Conformes','⚠️ Parciais'].some(t=>b.textContent.includes(t.slice(2)))){
+  document.querySelectorAll('#page-inspecao .btn-sm').forEach(b=>{
+    if(b.onclick&&b.onclick.toString().includes('filterInsp'))
       b.className='btn btn-ghost btn-sm';
-    }
   });
-  if(btn){btn.className='btn btn-sm btn-primary';}
+  if(btn)btn.className='btn btn-sm btn-primary';
   renderInspecao();
 }
 
+// ── RENDER INSPECTION CARD ──
 function renderInspCard(ins, i, showEdit=true){
-  const rC={'Conforme':'#D1FAE5;color:#065F46','Não Conforme':'#FEE2E2;color:#991B1B','Parcial':'#FEF3C7;color:#92400E','Pendente':'#EDE9FE;color:#5B21B6'};
+  const rC={'Conforme':'background:#D1FAE5;color:#065F46','Não Conforme':'background:#FEE2E2;color:#991B1B','Parcial':'background:#FEF3C7;color:#92400E','Pendente':'background:#EDE9FE;color:#5B21B6'};
   const rI={'Conforme':'✅','Não Conforme':'❌','Parcial':'⚠️','Pendente':'🔄'};
   const fc=rC[ins.result]||rC['Pendente'];
   const fi=rI[ins.result]||'🔄';
   const bc=ins.result==='Conforme'?'var(--login-green)':ins.result==='Não Conforme'?'var(--danger)':'var(--warn)';
+
+  // Items section
+  const itemsHtml=(ins.items||[]).length?`
+    <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
+      <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">📋 ${ins.items.length} Item(ns) Inspecionado(s)</div>
+      ${ins.items.map((it,j)=>{
+        const ibc=it.result==='Conforme'?'var(--login-green)':it.result==='Não Conforme'?'var(--danger)':'var(--warn)';
+        const ifc=rC[it.result]||rC['Pendente'];
+        const ifi=rI[it.result]||'🔄';
+        const itFotos=(it.fotos||[]).length?
+          `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">${it.fotos.map(u=>`<img src="${u}" onclick="viewP('${u}')" style="width:48px;height:48px;object-fit:cover;border-radius:5px;border:1px solid var(--border);cursor:pointer;">`).join('')}</div>`:'';
+        return `<div style="border-left:3px solid ${ibc};padding:6px 8px;margin-bottom:6px;background:var(--bg);border-radius:0 5px 5px 0;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
+            <span style="font-family:monospace;font-size:9px;background:${ibc};color:#fff;padding:1px 6px;border-radius:3px;">#${String(j+1).padStart(2,'0')}</span>
+            <strong style="font-size:12px;">${escHtml(it.area)}</strong>
+            <span style="${ifc};font-size:9px;font-weight:700;padding:1px 7px;border-radius:8px;">${ifi} ${it.result}</span>
+            ${it.dept?`<span style="font-size:10px;color:var(--text-dim);">🏢 ${it.dept}</span>`:''}
+            ${it.respItemNm?`<span style="font-size:10px;color:var(--text-dim);">👷 ${it.respItemNm}</span>`:''}
+          </div>
+          ${it.desc?`<div style="font-size:11px;color:var(--text-dim);white-space:pre-wrap;">${escHtml(it.desc)}</div>`:''}
+          ${itFotos}
+        </div>`;
+      }).join('')}
+    </div>`:''
+  ;
+
   const fotos=(ins.fotos||[]).length?
-    `<div class="act-photos"><div class="act-photos-label">📷 ${ins.fotos.length} foto(s)</div><div class="act-photos-grid">${
+    `<div class="act-photos"><div class="act-photos-label">📷 ${ins.fotos.length} foto(s) gerais</div><div class="act-photos-grid">${
       ins.fotos.map(u=>`<div class="act-photo-wrap" onclick="viewP('${u}')"><img src="${u}" loading="lazy"></div>`).join('')
-    }</div></div>`:'';
-  const editBtns=showEdit?`<div class="act-actions"><button class="btn btn-danger btn-sm" onclick="delInspecao('${ins.id}')">🗑</button></div>`:'';
+    }</div></div>`:''
+  ;
+
+  const editBtns=showEdit?`
+    <div class="act-actions">
+      <button class="btn btn-ghost btn-sm" onclick="exportSingleInsp('${ins.id}')" title="Exportar JSON">📄</button>
+      <button class="btn btn-danger btn-sm" onclick="delInspecao('${ins.id}')">🗑</button>
+    </div>`:''
+  ;
+
   return `<div class="act-card" style="border-left:3px solid ${bc};">
     <div class="act-card-head">
       <span class="act-num" style="background:${bc};font-size:10px;">${fi}</span>
@@ -4295,15 +4660,23 @@ function renderInspCard(ins, i, showEdit=true){
       ${editBtns}
     </div>
     <div class="act-meta">
-      <span class="act-meta-item">📍 <strong>${ins.area}</strong></span>
       <span class="act-meta-item">🔍 ${ins.tipo}</span>
       <span class="act-meta-item">👷 ${ins.respNm}</span>
       ${ins.testNm?'<span class="act-meta-item">👁 '+ins.testNm+'</span>':''}
-      <span class="act-meta-item"><span style="background:${fc};font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;">${ins.result}</span></span>
+      <span class="act-meta-item"><span style="${fc};font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;">${ins.result}</span></span>
       <span class="act-meta-item" style="margin-left:auto;color:var(--muted);font-size:10px;font-family:monospace;">${ins.data}${ins.hora?' '+ins.hora:''}</span>
     </div>
+    ${itemsHtml}
     ${fotos}
   </div>`;
+}
+
+function exportSingleInsp(id){
+  const ins=S.inspecoes.find(i=>i.id===id);if(!ins)return;
+  const blob=new Blob([JSON.stringify({...ins,_tipo:'inspecao_jacaranda',_vessel:(getCfg().vessel?.vessel)||'LOG-IN JACARANDÁ',_exportDate:new Date().toISOString()},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`INSPECAO_${ins.titulo.replace(/\s+/g,'_').slice(0,30)}_${ins.data}.json`;a.click();
+  toast('📄 Exportado!','ok');
 }
 
 function renderInspecao(){
@@ -4311,7 +4684,7 @@ function renderInspecao(){
   const list=document.getElementById('insp-list');if(!list)return;
   let insp=[...S.inspecoes].sort((a,b)=>b.ts-a.ts);
   if(_inspFilter!=='todas')insp=insp.filter(i=>i.result===_inspFilter);
-  if(!insp.length){list.innerHTML='<div class="empty-state"><div class="ico">🔍</div><p>Nenhuma inspeção</p></div>';return;}
+  if(!insp.length){list.innerHTML='<div class="empty-state"><div class="ico">🔍</div><p>Nenhuma inspeção registrada</p></div>';return;}
   const byW={};insp.forEach(i=>{byW[i.semana]=byW[i.semana]||[];byW[i.semana].push(i);});
   list.innerHTML=Object.entries(byW).sort((a,b)=>b[0].localeCompare(a[0])).map(([sem,items])=>`
     <div style="margin-bottom:16px;">
