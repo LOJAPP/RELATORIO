@@ -601,9 +601,11 @@
     <div class="nav-label">Arquivos</div>
     <div class="nav-item" onclick="showPage('fotos')"><span class="ico">📷</span> Fotos & Anexos</div>
     <div class="nav-item" onclick="showPage('storage')"><span class="ico">💾</span> Armazenamento</div>
+    <div class="nav-item" onclick="showPage('import')"><span class="ico">📥</span> Importar Arquivos</div>
     <div class="nav-item" onclick="showPage('inspecao')"><span class="ico">🔍</span> Relatório de Inspeção</div>
     <div class="nav-item" onclick="showPage('mobile')"><span class="ico">📱</span> Modo Celular / Tablet</div>
     <div class="nav-item" onclick="showPage('config')"><span class="ico">⚙️</span> Configurações</div>
+    <div class="nav-item" onclick="showPage('importar')" id="nav-importar"><span class="ico">📥</span> Importar Dados</div>
     <div class="nav-item" onclick="showPage('update')"><span class="ico">🔄</span> Atualização</div>
   </div>
 </nav>
@@ -1081,6 +1083,97 @@
       <input type="file" id="json-import" accept=".json" style="display:none" onchange="loadJSON(this)">
     </div>
 
+    <!-- IMPORTAR ARQUIVOS DE MANUTENÇÃO -->
+    <div id="page-import" class="page">
+      <div class="panel">
+        <div class="panel-header" style="background:linear-gradient(90deg,var(--login-blue-dk),var(--login-blue));">
+          📥 Importar Arquivos de Manutenção
+          <span style="margin-left:auto;font-size:11px;font-weight:400;opacity:.8;">Todos os formatos aceitos pelo Jacarandá</span>
+        </div>
+        <div style="padding:16px;">
+
+          <!-- Drop zone -->
+          <div id="import-drop-zone"
+            style="border:2px dashed var(--border2);border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--login-blue-xlt);margin-bottom:16px;"
+            onclick="document.getElementById('import-multi-file').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--login-blue)';this.style.background='#d4e6f7';"
+            ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--login-blue-xlt)';"
+            ondrop="handleImportDrop(event)">
+            <div style="font-size:40px;margin-bottom:8px;">📥</div>
+            <div style="font-size:15px;font-weight:700;color:var(--login-blue);margin-bottom:4px;">Arraste arquivos aqui ou clique para selecionar</div>
+            <div style="font-size:12px;color:var(--text-dim);">
+              Aceita: <strong>.json</strong> (backup, inspeção, condições, diagramas) &nbsp;·&nbsp;
+              <strong>.csv</strong> (planilha de manutenção) &nbsp;·&nbsp;
+              <strong>.xlsx</strong> (Excel de manutenção)
+            </div>
+            <input type="file" id="import-multi-file" accept=".json,.csv,.xlsx,.xls" multiple style="display:none" onchange="handleImportFiles(this)">
+          </div>
+
+          <!-- Tipos suportados -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px;">
+            <div style="background:var(--login-blue-xlt);border:1px solid var(--border2);border-radius:8px;padding:12px;">
+              <div style="font-size:13px;font-weight:700;color:var(--login-blue);margin-bottom:6px;">📦 Backup Jacarandá</div>
+              <div style="font-size:11px;color:var(--text-dim);line-height:1.6;">Arquivo <code>.json</code> exportado pelo próprio app. Importa registros, tripulantes, desvios, inspeções e oficina.</div>
+              <label class="btn btn-primary btn-sm" style="margin-top:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                📂 Carregar backup
+                <input type="file" accept=".json" style="display:none" onchange="importBackupJSON(this)">
+              </label>
+            </div>
+            <div style="background:var(--login-green-xlt);border:1px solid #A7F3D0;border-radius:8px;padding:12px;">
+              <div style="font-size:13px;font-weight:700;color:var(--login-green-dk);margin-bottom:6px;">🔍 Inspeção</div>
+              <div style="font-size:11px;color:var(--text-dim);line-height:1.6;">Arquivo de inspeção exportado da aba Inspeções. Importa como novo registro de inspeção.</div>
+              <label class="btn btn-green btn-sm" style="margin-top:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                📂 Carregar inspeção
+                <input type="file" accept=".json" style="display:none" onchange="importInspecaoFile(this)">
+              </label>
+            </div>
+            <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:12px;">
+              <div style="font-size:13px;font-weight:700;color:#92400E;margin-bottom:6px;">📊 Condições do Navio</div>
+              <div style="font-size:11px;color:var(--text-dim);line-height:1.6;">Exportação do <em>jacaranda_controle_condicoes.html</em>. Importa pendências como cartões de desvio.</div>
+              <label class="btn btn-sm" style="margin-top:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:var(--warn);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-weight:700;font-size:12px;">
+                📂 Carregar condições
+                <input type="file" accept=".json" style="display:none" onchange="importCondicoesFile(this)">
+              </label>
+            </div>
+            <div style="background:#F3E8FF;border:1px solid #DDD6FE;border-radius:8px;padding:12px;">
+              <div style="font-size:13px;font-weight:700;color:#5B21B6;margin-bottom:6px;">📐 Diagramas</div>
+              <div style="font-size:11px;color:var(--text-dim);line-height:1.6;">Exportação do <em>jacaranda_diagramas.html</em>. Importa itens críticos como desvios e registros de trabalho.</div>
+              <label class="btn btn-sm" style="margin-top:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:#7C3AED;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-weight:700;font-size:12px;">
+                📂 Carregar diagramas
+                <input type="file" accept=".json" style="display:none" onchange="importDiagramasFile(this)">
+              </label>
+            </div>
+            <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;">
+              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;">📋 Planilha CSV</div>
+              <div style="font-size:11px;color:var(--text-dim);line-height:1.6;">Planilha simples com colunas: <code>data,departamento,titulo,descricao,status,local</code></div>
+              <label class="btn btn-ghost btn-sm" style="margin-top:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                📂 Carregar CSV
+                <input type="file" accept=".csv,.txt" style="display:none" onchange="importCSVFile(this)">
+              </label>
+            </div>
+            <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;">
+              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;">📄 Gerar CSV Modelo</div>
+              <div style="font-size:11px;color:var(--text-dim);line-height:1.6;">Baixe um arquivo CSV de exemplo para preencher no Excel e reimportar.</div>
+              <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="downloadCSVTemplate()">⬇️ Baixar modelo CSV</button>
+            </div>
+          </div>
+
+          <!-- Preview / resultado do import -->
+          <div id="import-preview" style="display:none;">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--login-blue);margin-bottom:10px;">📋 Preview da Importação</div>
+            <div id="import-preview-body" style="max-height:320px;overflow-y:auto;"></div>
+            <div style="display:flex;gap:10px;margin-top:12px;" id="import-actions"></div>
+          </div>
+
+          <!-- Log -->
+          <div id="import-log" style="margin-top:12px;display:none;">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);margin-bottom:6px;">📋 Log de Importação</div>
+            <div id="import-log-body" style="background:var(--bg);border-radius:6px;padding:10px;font-size:11px;font-family:monospace;max-height:160px;overflow-y:auto;line-height:1.7;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- CONFIGURAÇÕES -->
     <div id="page-config" class="page">
       <div class="panel">
@@ -1232,6 +1325,76 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
             <div class="form-group"><label>Sub-Chefe de Máquinas</label><input type="text" class="form-control" id="cfg-scmaq" value="Cesar Diaz"></div>
           </div>
           <button class="btn btn-primary" onclick="saveVesselConfig()">💾 Salvar Configurações do Navio</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPORTAR DADOS -->
+    <div id="page-importar" class="page">
+      <div class="panel">
+        <div class="panel-header">📥 Importar Dados para o App</div>
+        <div style="padding:16px;">
+
+          <!-- What can be imported -->
+          <div style="background:var(--login-blue-xlt);border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:18px;">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--login-blue);margin-bottom:10px;">📋 O que pode ser importado</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;">
+              <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+                <div style="font-weight:700;font-size:12px;color:var(--login-blue);">💾 Backup do App</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">Arquivo JSON do próprio Jacarandá — restaura ou mescla dados</div>
+              </div>
+              <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+                <div style="font-weight:700;font-size:12px;color:var(--login-blue);">🔍 Inspeções JSON</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">Arquivos exportados da tela de Inspeção</div>
+              </div>
+              <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+                <div style="font-weight:700;font-size:12px;color:var(--login-blue);">📊 Condições do Navio</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">Exportação do jacaranda_diagramas.html ou controle_condicoes.html</div>
+              </div>
+              <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+                <div style="font-weight:700;font-size:12px;color:var(--login-blue);">🗂️ Módulo Departamento</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">Módulos exportados de outro dispositivo ou tripulante</div>
+              </div>
+              <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+                <div style="font-weight:700;font-size:12px;color:var(--login-blue);">📋 Mestre Consolidado</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">Arquivo mestre gerado na seção de Módulos</div>
+              </div>
+              <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+                <div style="font-weight:700;font-size:12px;color:var(--login-blue);">⚠️ Desvios / Registros</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">JSON com array de registros, desvios ou serviços de oficina</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Drop zone -->
+          <div id="imp-dropzone"
+            style="border:2px dashed var(--border2);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;background:var(--login-blue-xlt);transition:all .2s;margin-bottom:16px;"
+            onclick="document.getElementById('imp-file-input').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--login-blue)';this.style.background='#dbeafe';"
+            ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--login-blue-xlt)';"
+            ondrop="handleImpDrop(event)">
+            <div style="font-size:44px;margin-bottom:10px;">📥</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--login-blue);">Arraste arquivos aqui ou clique para selecionar</div>
+            <div style="font-size:12px;color:var(--text-dim);margin-top:6px;">Aceita <strong>.json</strong> de qualquer módulo do sistema Jacarandá</div>
+            <input type="file" id="imp-file-input" accept=".json" multiple style="display:none" onchange="handleImpFiles(this)">
+          </div>
+
+          <!-- Preview area -->
+          <div id="imp-preview" style="display:none;">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--login-blue);margin-bottom:10px;">📋 Arquivos Carregados — Revise antes de importar</div>
+            <div id="imp-cards" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;"></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="executeImports()">✅ Importar Selecionados</button>
+              <button class="btn btn-ghost" onclick="clearImports()">🗑 Limpar</button>
+            </div>
+          </div>
+
+          <!-- Import log -->
+          <div id="imp-log" style="display:none;margin-top:16px;">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--login-blue);margin-bottom:8px;">📄 Resultado da Importação</div>
+            <div id="imp-log-content" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:12px;font-family:'IBM Plex Mono',monospace;max-height:200px;overflow-y:auto;line-height:1.8;"></div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -1426,6 +1589,120 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
 
       <div id="insp-list">
         <div class="empty-state"><div class="ico">🔍</div><p>Nenhuma inspeção registrada</p></div>
+      </div>
+    </div>
+
+    <!-- EDITOR DE INSPEÇÃO (página dedicada) -->
+    <div id="page-insp-edit" class="page">
+      <div style="max-width:760px;margin:0 auto;">
+        <!-- Topbar do editor -->
+        <div style="background:var(--login-blue-dk);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="showPage('inspecao')" style="color:#fff;border-color:rgba(255,255,255,.3);">← Voltar</button>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:#fff;">✏️ Editar Inspeção</div>
+          <div id="ie-status-badge" style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;background:rgba(255,255,255,.15);color:#fff;"></div>
+          <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-green btn-sm" onclick="saveEditInsp()">💾 Salvar</button>
+            <button class="btn btn-ghost btn-sm" onclick="printInspCard(_editInspId)" style="color:#fff;border-color:rgba(255,255,255,.3);">🖨 PDF</button>
+            <button class="btn btn-ghost btn-sm" onclick="shareInspLink(_editInspId)" style="color:#fff;border-color:rgba(255,255,255,.3);">🔗 Link</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportSingleInsp(_editInspId)" style="color:#fff;border-color:rgba(255,255,255,.3);">📄 JSON</button>
+          </div>
+        </div>
+
+        <!-- Dados gerais -->
+        <div class="panel" style="margin-bottom:14px;">
+          <div class="panel-header">📋 Dados Gerais</div>
+          <div style="padding:14px;">
+            <div class="form-row">
+              <div class="form-group" style="max-width:160px;"><label>Data</label><input type="date" class="form-control" id="ie-data"></div>
+              <div class="form-group" style="max-width:110px;"><label>Hora</label><input type="time" class="form-control" id="ie-hora"></div>
+              <div class="form-group"><label>Tipo</label>
+                <select class="form-control" id="ie-tipo">
+                  <option>Inspeção de Rotina</option><option>Inspeção de Segurança</option>
+                  <option>Inspeção de Manutenção</option><option>Inspeção de Carga</option>
+                  <option>Inspeção Ambiental</option><option>Inspeção de Equipamentos</option>
+                  <option>Inspeção de SOLAS</option><option>Outra</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group"><label>Título *</label>
+              <input type="text" class="form-control" id="ie-titulo" style="font-weight:600;" placeholder="Título da inspeção">
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Área / Local</label>
+                <input type="text" class="form-control" id="ie-area" placeholder="Ex: Porão 02 · Bay 10 · Convés">
+              </div>
+              <div class="form-group" style="max-width:190px;"><label>Resultado Geral</label>
+                <select class="form-control" id="ie-result">
+                  <option value="Conforme">✅ Conforme</option>
+                  <option value="Não Conforme">❌ Não Conforme</option>
+                  <option value="Parcial">⚠️ Parcial</option>
+                  <option value="Pendente">🔄 Pendente</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Responsável</label><select class="form-control" id="ie-resp"></select></div>
+              <div class="form-group"><label>Testemunha</label><select class="form-control" id="ie-test"></select></div>
+            </div>
+            <div class="form-group"><label>Observações Gerais</label>
+              <textarea class="form-control" id="ie-desc" style="min-height:72px;" placeholder="Observações, notas, referências..."></textarea>
+            </div>
+            <!-- Fotos gerais da inspeção -->
+            <div style="margin-top:10px;">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);margin-bottom:6px;">📷 Fotos Gerais</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <label class="btn btn-primary btn-sm" style="cursor:pointer;">
+                  📷 Câmera<input type="file" accept="image/*" capture="environment" style="display:none" onchange="addInspEditPhoto(this,'general')">
+                </label>
+                <label class="btn btn-ghost btn-sm" style="cursor:pointer;">
+                  🖼 Galeria<input type="file" accept="image/*" multiple style="display:none" onchange="addInspEditPhoto(this,'general')">
+                </label>
+              </div>
+              <div id="ie-fotos-general" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Itens de inspeção editáveis -->
+        <div class="panel" style="margin-bottom:14px;">
+          <div class="panel-header" style="display:flex;align-items:center;">
+            📋 Itens Inspecionados
+            <span id="ie-items-count" class="ph-badge" style="margin-left:8px;">0</span>
+            <button class="btn btn-primary btn-sm" onclick="addIEItem()" style="margin-left:auto;">+ Adicionar Item</button>
+          </div>
+          <div id="ie-items-list" style="padding:10px;"></div>
+        </div>
+
+        <!-- Link compartilhável -->
+        <div class="panel" style="margin-bottom:14px;" id="ie-share-panel" style="display:none;">
+          <div class="panel-header">🔗 Compartilhar Inspeção</div>
+          <div style="padding:14px;">
+            <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">
+              Gere um link para enviar esta inspeção. O destinatário pode visualizar e adicionar fotos de conformidade.
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm" onclick="shareInspLink(_editInspId)">🔗 Gerar Link</button>
+              <button class="btn btn-ghost btn-sm" onclick="copyInspJSON(_editInspId)">📋 Copiar JSON</button>
+              <button class="btn btn-green btn-sm" onclick="exportSingleInsp(_editInspId)">📤 Exportar .json</button>
+            </div>
+            <div id="ie-share-url" style="margin-top:10px;display:none;">
+              <div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">Link gerado:</div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input type="text" id="ie-share-url-input" class="form-control" style="font-family:monospace;font-size:11px;" readonly>
+                <button class="btn btn-ghost btn-sm" onclick="copyShareURL()">📋</button>
+              </div>
+              <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">⚠️ O link contém os dados da inspeção codificados. Funciona offline — não requer servidor.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botões finais -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;">
+          <button class="btn btn-primary" onclick="saveEditInsp()">💾 Salvar Alterações</button>
+          <button class="btn btn-green btn-sm" onclick="printInspCard(_editInspId)">🖨 PDF</button>
+          <button class="btn btn-ghost btn-sm" onclick="shareInspLink(_editInspId)">🔗 Link para enviar</button>
+          <button class="btn btn-ghost" onclick="showPage('inspecao')">← Voltar sem salvar</button>
+        </div>
       </div>
     </div>
 
@@ -1857,7 +2134,7 @@ function toast(msg,t='ok'){document.querySelectorAll('.toast').forEach(x=>x.remo
 setInterval(()=>{const n=new Date();const el=document.getElementById('clock-el');if(el)el.textContent=[n.getHours(),n.getMinutes(),n.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');},1000);
 
 // ── NAV ──
-const PT={dashboard:'📊 Painel Geral',novo:'✏️ Novo Registro de Trabalho',semanal:'📅 Relatório Semanal de Trabalhos',mensal:'📆 Relatório Mensal de Trabalhos',historico:'🗂️ Histórico de Trabalhos',oficina:'🏭 Bloco / Oficina — Empresas Terceirizadas',desvios:'⚠️ Cartões de Desvio',inspecao:'🔍 Relatório de Inspeção',mobile:'📱 Modo Celular / Tablet',tripulantes:'👥 Tripulantes',embarque:'🚢 Relatório de Embarque',fotos:'📷 Fotos & Anexos',storage:'💾 Armazenamento',config:'⚙️ Configurações',update:'🔄 Atualização de Versão'};
+const PT={dashboard:'📊 Painel Geral',novo:'✏️ Novo Registro de Trabalho',semanal:'📅 Relatório Semanal de Trabalhos',mensal:'📆 Relatório Mensal de Trabalhos',historico:'🗂️ Histórico de Trabalhos',oficina:'🏭 Bloco / Oficina — Empresas Terceirizadas',desvios:'⚠️ Cartões de Desvio',inspecao:'🔍 Relatório de Inspeção','insp-edit':'✏️ Editar Inspeção',mobile:'📱 Modo Celular / Tablet',tripulantes:'👥 Tripulantes',embarque:'🚢 Relatório de Embarque',fotos:'📷 Fotos & Anexos',storage:'💾 Armazenamento',import:'📥 Importar Arquivos de Manutenção',config:'⚙️ Configurações',update:'🔄 Atualização de Versão',importar:'📥 Importar Dados'};
 
 // ── PIN / SENHA ──
 let _pinBuf='', _pinTarget=null;
@@ -1920,9 +2197,12 @@ function _goPage(id){
   if(id==='config'){renderConfigPage();}
   if(id==='oficina'){renderOficina();}
   if(id==='desvios'){renderDesvios();}
+  if(id==='import'){renderImportPage();}
   if(id==='inspecao'){renderInspecao();}
+  if(id==='insp-edit'){renderInspEdit();}
   if(id==='mobile'){renderMobile();}
   if(id==='update'){renderUpdatePage();}
+  if(id==='importar'){renderImportPage();}
 }
 
 // ── KPIs ──
@@ -2682,17 +2962,6 @@ function renderNetConfigFields(){
 }
 
 function importJSON(){document.getElementById('json-import').click();}
-function loadJSON(input){
-  const f=input.files[0];if(!f)return;
-  const r=new FileReader();r.onload=e=>{
-    try{
-      const d=JSON.parse(e.target.result);
-      if(!confirm(`Carregar backup de ${d.exp||'?'}?\n\nRegistros: ${(d.regs||[]).length}\nTripulantes: ${(d.crew||[]).length}\n\n⚠️ DADOS ATUAIS SERÃO SUBSTITUÍDOS`))return;
-      S.regs=d.regs||[];S.crew=d.crew||[];S.fotos=d.fotos||[];
-      saveData(true);kpis();renderDash();toast('✅ Backup carregado!','ok');
-    }catch(err){toast('❌ Arquivo inválido','err');}
-  };r.readAsText(f);input.value='';
-}
 function saveHTMLLocal(){
   const data=JSON.stringify({regs:S.regs,crew:S.crew,fotos:S.fotos,empresas:S.empresas,oficina:S.oficina,desvios:S.desvios});
   // Also carry over the config (includes drive links, PIN, vessel info, depts, roles)
@@ -4564,29 +4833,47 @@ function importInspecaoJSON(input){
   reader.onload=e=>{
     try{
       const data=JSON.parse(e.target.result);
-      if(!data._tipo||!data._tipo.includes('inspecao')){
-        toast('❌ Arquivo não é uma inspeção válida','err');return;
-      }
-      if(data._tipo==='inspecoes_jacaranda'){
-        // Multiple inspections
-        const inspecoes=data.inspecoes||[];
-        const existIds=new Set(S.inspecoes.map(i=>i.id));
-        let added=0;
-        inspecoes.forEach(ins=>{if(!existIds.has(ins.id)){S.inspecoes.push(ins);added++;}});
-        saveData(true);renderInspecao();
-        toast(`✅ ${added} inspeção(ões) importada(s)!`,'ok');
+
+      // Detect type — accept any format that looks like an inspection
+      const tipo = data._tipo||'';
+      let lista = [];
+
+      if(tipo==='inspecoes_jacaranda'||Array.isArray(data.inspecoes)){
+        // Multiple inspections in one file
+        lista = data.inspecoes||[];
+      } else if(tipo==='backup_jacaranda'||data.regs){
+        // Full backup — extract inspections
+        lista = data.inspecoes||[];
+        if(!lista.length){toast('⚠️ Backup sem inspeções registradas','warn');return;}
+      } else if(data.titulo||data.area||tipo.includes('inspecao')){
+        // Single inspection (any format)
+        lista = [data];
       } else {
-        // Single inspection
-        if(!confirm(`Importar inspeção?\n\n"${data.titulo}"\nData: ${data.data}\n\nSerá adicionada às inspeções salvas.`))return;
-        const existIds=new Set(S.inspecoes.map(i=>i.id));
-        if(!existIds.has(data.id)){
-          S.inspecoes.push(data);
-          saveData(true);renderInspecao();
-          toast('✅ Inspeção importada!','ok');
-        } else {
-          toast('⚠️ Inspeção já existe','warn');
-        }
+        // Last resort: try as single inspection anyway
+        lista = [data];
       }
+
+      if(!lista.length){toast('⚠️ Nenhuma inspeção encontrada no arquivo','warn');return;}
+
+      const existIds=new Set(S.inspecoes.map(i=>i.id));
+      const novas=lista.filter(i=>i.id&&!existIds.has(i.id));
+      const dups=lista.length-novas.length;
+
+      if(!novas.length){
+        toast(`⚠️ ${dups} inspeção(ões) já existem — nada a importar`,'warn');return;
+      }
+
+      const msg = lista.length===1
+        ?`Importar inspeção?\n\n"${lista[0].titulo||'—'}"\nData: ${lista[0].data||'—'}\nItens: ${(lista[0].items||[]).length}\n\nSerá adicionada às inspeções salvas.`
+        :`Importar ${novas.length} inspeção(ões)?\n${dups>0?dups+' duplicadas serão ignoradas.\n':''}\nSerão adicionadas às inspeções salvas.`;
+
+      if(!confirm(msg))return;
+
+      novas.forEach(ins=>S.inspecoes.push(ins));
+      saveData(true);renderInspecao();
+      toast(`✅ ${novas.length} inspeção(ões) importada(s)!`,'ok');
+      if(dups>0) toast(`ℹ️ ${dups} já existiam e foram ignoradas`,'ok');
+
     }catch(err){toast('❌ Erro ao ler arquivo: '+err.message,'err');}
   };
   reader.readAsText(f);
@@ -4611,73 +4898,613 @@ function renderInspCard(ins, i, showEdit=true){
   const fc=rC[ins.result]||rC['Pendente'];
   const fi=rI[ins.result]||'🔄';
   const bc=ins.result==='Conforme'?'var(--login-green)':ins.result==='Não Conforme'?'var(--danger)':'var(--warn)';
+  const sc={'Conforme':'background:#16a34a;color:#fff','Não Conforme':'background:#dc2626;color:#fff','Parcial':'background:#d97706;color:#fff','Pendente':'background:#7c3aed;color:#fff'};
+  const sbadge=sc[ins.result]||'background:#6b7280;color:#fff';
 
-  // Items section
-  const itemsHtml=(ins.items||[]).length?`
-    <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
-      <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">📋 ${ins.items.length} Item(ns) Inspecionado(s)</div>
-      ${ins.items.map((it,j)=>{
-        const ibc=it.result==='Conforme'?'var(--login-green)':it.result==='Não Conforme'?'var(--danger)':'var(--warn)';
-        const ifc=rC[it.result]||rC['Pendente'];
-        const ifi=rI[it.result]||'🔄';
-        const itFotos=(it.fotos||[]).length?
-          `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">${it.fotos.map(u=>`<img src="${u}" onclick="viewP('${u}')" style="width:48px;height:48px;object-fit:cover;border-radius:5px;border:1px solid var(--border);cursor:pointer;">`).join('')}</div>`:'';
-        return `<div style="border-left:3px solid ${ibc};padding:6px 8px;margin-bottom:6px;background:var(--bg);border-radius:0 5px 5px 0;">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
-            <span style="font-family:monospace;font-size:9px;background:${ibc};color:#fff;padding:1px 6px;border-radius:3px;">#${String(j+1).padStart(2,'0')}</span>
-            <strong style="font-size:12px;">${escHtml(it.area)}</strong>
-            <span style="${ifc};font-size:9px;font-weight:700;padding:1px 7px;border-radius:8px;">${ifi} ${it.result}</span>
-            ${it.dept?`<span style="font-size:10px;color:var(--text-dim);">🏢 ${it.dept}</span>`:''}
-            ${it.respItemNm?`<span style="font-size:10px;color:var(--text-dim);">👷 ${it.respItemNm}</span>`:''}
-          </div>
-          ${it.desc?`<div style="font-size:11px;color:var(--text-dim);white-space:pre-wrap;">${escHtml(it.desc)}</div>`:''}
-          ${itFotos}
-        </div>`;
-      }).join('')}
-    </div>`:''
-  ;
+  // Items
+  let itemsHtml='';
+  if((ins.items||[]).length){
+    itemsHtml='<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;"><div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">📋 '+ins.items.length+' Item(ns)</div>';
+    ins.items.forEach(function(it,j){
+      const ibc=it.result==='Conforme'?'var(--login-green)':it.result==='Não Conforme'?'var(--danger)':'var(--warn)';
+      const ifc=rC[it.result]||rC['Pendente'];
+      const ifi=rI[it.result]||'🔄';
+      let itFotos='';
+      if((it.fotos||[]).length){
+        itFotos='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">';
+        it.fotos.forEach(function(u){ itFotos+='<img src="'+u+'" onclick="viewP(\''+u+'\')" style="width:48px;height:48px;object-fit:cover;border-radius:5px;border:1px solid var(--border);cursor:pointer;">'; });
+        itFotos+='</div>';
+      }
+      itemsHtml+='<div style="border-left:3px solid '+ibc+';padding:6px 8px;margin-bottom:6px;background:var(--bg);border-radius:0 5px 5px 0;">';
+      itemsHtml+='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">';
+      itemsHtml+='<span style="font-family:monospace;font-size:9px;background:'+ibc+';color:#fff;padding:1px 6px;border-radius:3px;">#'+String(j+1).padStart(2,'0')+'</span>';
+      itemsHtml+='<strong style="font-size:12px;">'+escHtml(it.area||'')+'</strong>';
+      itemsHtml+='<span style="'+ifc+';font-size:9px;font-weight:700;padding:1px 7px;border-radius:8px;">'+ifi+' '+it.result+'</span>';
+      if(it.dept) itemsHtml+='<span style="font-size:10px;color:var(--text-dim);">🏢 '+it.dept+'</span>';
+      if(it.respItemNm) itemsHtml+='<span style="font-size:10px;color:var(--text-dim);">👷 '+it.respItemNm+'</span>';
+      itemsHtml+='</div>';
+      if(it.desc) itemsHtml+='<div style="font-size:11px;color:var(--text-dim);white-space:pre-wrap;">'+escHtml(it.desc)+'</div>';
+      itemsHtml+=itFotos+'</div>';
+    });
+    itemsHtml+='</div>';
+  }
 
-  const fotos=(ins.fotos||[]).length?
-    `<div class="act-photos"><div class="act-photos-label">📷 ${ins.fotos.length} foto(s) gerais</div><div class="act-photos-grid">${
-      ins.fotos.map(u=>`<div class="act-photo-wrap" onclick="viewP('${u}')"><img src="${u}" loading="lazy"></div>`).join('')
-    }</div></div>`:''
-  ;
+  // General photos
+  let fotos='';
+  if((ins.fotos||[]).length){
+    fotos='<div class="act-photos"><div class="act-photos-label">📷 '+ins.fotos.length+' foto(s)</div><div class="act-photos-grid">';
+    ins.fotos.forEach(function(u){ fotos+='<div class="act-photo-wrap" onclick="viewP(\''+u+'\')"><img src="'+u+'" loading="lazy"></div>'; });
+    fotos+='</div></div>';
+  }
 
-  const editBtns=showEdit?`
-    <div class="act-actions">
-      <button class="btn btn-ghost btn-sm" onclick="exportSingleInsp('${ins.id}')" title="Exportar JSON">📄</button>
-      <button class="btn btn-danger btn-sm" onclick="delInspecao('${ins.id}')">🗑</button>
-    </div>`:''
-  ;
+  // Action bar
+  let actionBar='';
+  if(showEdit){
+    const isOpen=ins.result!=='Conforme';
+    actionBar='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">';
+    actionBar+='<button class="btn btn-primary btn-sm" onclick="openEditInsp(\''+ins.id+'\')">✏️ Editar</button>';
+    if(isOpen){
+      actionBar+='<button class="btn btn-green btn-sm" onclick="fecharInsp(\''+ins.id+'\')">✅ Marcar Conforme</button>';
+    } else {
+      actionBar+='<button class="btn btn-ghost btn-sm" onclick="reabrirInsp(\''+ins.id+'\')">🔄 Reabrir</button>';
+    }
+    actionBar+='<button class="btn btn-ghost btn-sm" onclick="printInspCard(\''+ins.id+'\')">🖨 PDF</button>';
+    actionBar+='<button class="btn btn-ghost btn-sm" onclick="exportSingleInsp(\''+ins.id+'\')">📄 JSON</button>';
+    actionBar+='<button class="btn btn-ghost btn-sm" onclick="duplicarInsp(\''+ins.id+'\')" title="Duplicar">📋 Duplicar</button>';
+    actionBar+='<button class="btn btn-danger btn-sm" onclick="delInspecao(\''+ins.id+'\')" style="margin-left:auto;">🗑</button>';
+    actionBar+='</div>';
+  }
 
-  return `<div class="act-card" style="border-left:3px solid ${bc};">
-    <div class="act-card-head">
-      <span class="act-num" style="background:${bc};font-size:10px;">${fi}</span>
-      <div class="act-title-block">
-        <div class="act-title">${escHtml(ins.titulo)}</div>
-        ${ins.desc?'<div class="act-desc">'+escHtml(ins.desc)+'</div>':''}
-      </div>
-      ${editBtns}
-    </div>
-    <div class="act-meta">
-      <span class="act-meta-item">🔍 ${ins.tipo}</span>
-      <span class="act-meta-item">👷 ${ins.respNm}</span>
-      ${ins.testNm?'<span class="act-meta-item">👁 '+ins.testNm+'</span>':''}
-      <span class="act-meta-item"><span style="${fc};font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;">${ins.result}</span></span>
-      <span class="act-meta-item" style="margin-left:auto;color:var(--muted);font-size:10px;font-family:monospace;">${ins.data}${ins.hora?' '+ins.hora:''}</span>
-    </div>
-    ${itemsHtml}
-    ${fotos}
-  </div>`;
+  // Card HTML
+  let html='<div class="act-card" id="insp-card-'+ins.id+'" style="border-left:3px solid '+bc+';">';
+  html+='<div class="act-card-head">';
+  html+='<span class="act-num" style="background:'+bc+';font-size:10px;">'+fi+'</span>';
+  html+='<div class="act-title-block"><div class="act-title">'+escHtml(ins.titulo)+'</div>';
+  if(ins.desc) html+='<div class="act-desc">'+escHtml(ins.desc)+'</div>';
+  html+='</div>';
+  html+='<span style="'+sbadge+';font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;white-space:nowrap;flex-shrink:0;">'+fi+' '+ins.result+'</span>';
+  html+='</div>';
+  html+='<div class="act-meta">';
+  html+='<span class="act-meta-item">📅 '+ins.data+(ins.hora?' '+ins.hora:'')+'</span>';
+  html+='<span class="act-meta-item">🔍 '+(ins.tipo||'—')+'</span>';
+  if(ins.area&&ins.area!=='—') html+='<span class="act-meta-item">📍 '+escHtml(ins.area)+'</span>';
+  html+='<span class="act-meta-item">👷 '+(ins.respNm||'—')+'</span>';
+  if(ins.testNm) html+='<span class="act-meta-item">👁 '+ins.testNm+'</span>';
+  html+='<span class="act-meta-item" style="margin-left:auto;color:var(--muted);font-size:10px;font-family:monospace;">SEM '+(ins.semana||'—')+'</span>';
+  html+='</div>';
+  html+=itemsHtml+fotos+actionBar+'</div>';
+  return html;
 }
 
 function exportSingleInsp(id){
-  const ins=S.inspecoes.find(i=>i.id===id);if(!ins)return;
-  const blob=new Blob([JSON.stringify({...ins,_tipo:'inspecao_jacaranda',_vessel:(getCfg().vessel?.vessel)||'LOG-IN JACARANDÁ',_exportDate:new Date().toISOString()},null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`INSPECAO_${ins.titulo.replace(/\s+/g,'_').slice(0,30)}_${ins.data}.json`;a.click();
+  var ins=S.inspecoes.find(function(i){return i.id===id;});if(!ins)return;
+  var blob=new Blob([JSON.stringify(Object.assign({},ins,{_tipo:'inspecao_jacaranda',_vessel:(getCfg().vessel&&getCfg().vessel.vessel)||'LOG-IN JACARANDÁ',_exportDate:new Date().toISOString()}),null,2)],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='INSPECAO_'+ins.titulo.replace(/\s+/g,'_').slice(0,30)+'_'+ins.data+'.json';a.click();
   toast('📄 Exportado!','ok');
 }
+
+function fecharInsp(id){
+  var ins=S.inspecoes.find(function(i){return i.id===id;});if(!ins)return;
+  ins.result='Conforme';ins.ts=Date.now();
+  saveData(true);renderInspecao();
+  toast('✅ Marcada como Conforme!','ok');
+}
+
+function reabrirInsp(id){
+  var ins=S.inspecoes.find(function(i){return i.id===id;});if(!ins)return;
+  ins.result='Pendente';ins.ts=Date.now();
+  saveData(true);renderInspecao();
+  toast('🔄 Reaberta como Pendente','warn');
+}
+
+function duplicarInsp(id){
+  var ins=S.inspecoes.find(function(i){return i.id===id;});if(!ins)return;
+  var nova=Object.assign({},JSON.parse(JSON.stringify(ins)),{
+    id:gid(),ts:Date.now(),
+    titulo:ins.titulo+' (cópia)',
+    data:new Date().toISOString().slice(0,10),
+    semana:String(wn()).padStart(2,'0')
+  });
+  S.inspecoes.push(nova);saveData(true);renderInspecao();
+  toast('📋 Duplicada — edite os detalhes','ok');
+}
+
+var _editInspId = null;
+var _iePhotos   = {};   // {key: [dataURL,...]}  key = 'general' | 'item-N'
+
+// ── Navigate to full edit page ──
+function openEditInsp(id){
+  var ins = S.inspecoes.find(function(i){return i.id===id;});
+  if(!ins) return;
+  _editInspId = id;
+  _iePhotos   = {};
+  showPage('insp-edit');
+}
+
+// ── Render the full edit page ──
+function renderInspEdit(){
+  var id  = _editInspId;
+  var ins = id && S.inspecoes.find(function(i){return i.id===id;});
+  if(!ins){ showPage('inspecao'); return; }
+
+  // Status badge
+  var sbEl = document.getElementById('ie-status-badge');
+  if(sbEl) sbEl.textContent = ins.result;
+
+  // Populate header fields
+  var set = function(eid, val){ var e=document.getElementById(eid); if(e) e.value=val||''; };
+  set('ie-data',   ins.data);
+  set('ie-hora',   ins.hora);
+  set('ie-titulo', ins.titulo);
+  set('ie-area',   ins.area&&ins.area!=='—'?ins.area:'');
+  set('ie-desc',   ins.desc);
+
+  // tipo select
+  var tipoEl = document.getElementById('ie-tipo');
+  if(tipoEl){
+    var tipos=['Inspeção de Rotina','Inspeção de Segurança','Inspeção de Manutenção','Inspeção de Carga','Inspeção Ambiental','Inspeção de Equipamentos','Inspeção de SOLAS','Outra'];
+    tipoEl.innerHTML = tipos.map(function(t){
+      return '<option value="'+t+'"'+(ins.tipo===t?' selected':'')+'>'+t+'</option>';
+    }).join('');
+  }
+
+  // result select
+  var resEl = document.getElementById('ie-result');
+  if(resEl){
+    resEl.innerHTML = ['Conforme','Não Conforme','Parcial','Pendente'].map(function(s){
+      return '<option value="'+s+'"'+(ins.result===s?' selected':'')+'>'+s+'</option>';
+    }).join('');
+  }
+
+  // crew selects
+  var crewBase = '<option value="">— Selecionar —</option>';
+  var crewBaseT= '<option value="">— Opcional —</option>';
+  S.crew.forEach(function(c){
+    var abbr = c.abbr||(ROLE_ABBR[c.fn]||c.fn.slice(0,3).toUpperCase());
+    var opt  = '<option value="'+c.id+'">['+(abbr)+'] '+c.nm.split(' ').slice(0,2).join(' ')+'</option>';
+    crewBase += opt; crewBaseT += opt;
+  });
+  var respEl = document.getElementById('ie-resp');
+  var testEl = document.getElementById('ie-test');
+  if(respEl){ respEl.innerHTML=crewBase; if(ins.respId) respEl.value=ins.respId; }
+  if(testEl){
+    testEl.innerHTML=crewBaseT;
+    if(ins.testNm){
+      var tc = S.crew.find(function(c){return c.nm.includes(ins.testNm.split(' ')[0]);});
+      if(tc) testEl.value=tc.id;
+    }
+  }
+
+  // General photos
+  var gfEl = document.getElementById('ie-fotos-general');
+  if(gfEl){
+    gfEl.innerHTML = '';
+    (ins.fotos||[]).forEach(function(u, i){
+      gfEl.appendChild(makePhotoThumb(u, 'general-existing-'+i, function(){
+        ins.fotos.splice(i,1); renderInspEdit();
+      }));
+    });
+    // Show staged
+    (_iePhotos['general']||[]).forEach(function(u,i){
+      gfEl.appendChild(makePhotoThumb(u,'general-staged-'+i,function(){
+        _iePhotos['general'].splice(i,1); renderInspEdit();
+      }, true));
+    });
+  }
+
+  // Items
+  var depts = getDepts();
+  var itemsEl = document.getElementById('ie-items-list');
+  var countEl = document.getElementById('ie-items-count');
+  if(!itemsEl) return;
+  var items = ins.items||[];
+  if(countEl) countEl.textContent = items.length;
+
+  if(!items.length){
+    itemsEl.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:20px;font-size:13px;">Nenhum item. Clique <strong>+ Adicionar Item</strong> para começar.</div>';
+    return;
+  }
+
+  itemsEl.innerHTML = '';
+  items.forEach(function(it, j){
+    var icolor = it.result==='Conforme'?'var(--login-green)':it.result==='Não Conforme'?'var(--danger)':'var(--warn)';
+    var div = document.createElement('div');
+    div.style.cssText = 'border:1px solid var(--border);border-left:4px solid '+icolor+';border-radius:8px;margin-bottom:10px;overflow:hidden;';
+    div.id = 'ie-item-card-'+j;
+
+    // Item result options
+    var iResOpts = ['Conforme','Não Conforme','Parcial','Pendente'].map(function(s){
+      return '<option value="'+s+'"'+(it.result===s?' selected':'')+'>'+s+'</option>';
+    }).join('');
+
+    // Dept options
+    var dOpts = '<option value="">— Dpto —</option>';
+    depts.forEach(function(d){ dOpts += '<option value="'+d+'"'+(it.dept===d?' selected':'')+'>'+d+'</option>'; });
+
+    // Crew options for item responsible
+    var cOpts = '<option value="">— Oficial —</option>';
+    S.crew.forEach(function(c){
+      var abbr = c.abbr||(ROLE_ABBR[c.fn]||c.fn.slice(0,3).toUpperCase());
+      cOpts += '<option value="'+c.id+'"'+(it.respItemNm&&c.nm.includes(it.respItemNm.split(' ')[0])?' selected':'')+'>['+(abbr)+'] '+c.nm.split(' ').slice(0,2).join(' ')+'</option>';
+    });
+
+    // Existing photos
+    var existFotosHTML = '';
+    (it.fotos||[]).forEach(function(u,fi){
+      existFotosHTML += '<div style="position:relative;display:inline-block;">'
+        +'<img src="'+u+'" onclick="viewP(\''+u+'\')" style="width:56px;height:56px;object-fit:cover;border-radius:5px;border:1px solid var(--border);cursor:pointer;">'
+        +'<button onclick="removeItemFoto('+j+','+fi+',false)" style="position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;line-height:1;">✕</button>'
+        +'</div>';
+    });
+
+    div.innerHTML =
+      '<div style="background:var(--bg);padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;" onclick="toggleIEItem('+j+')">'
+        +'<span style="background:'+icolor+';color:#fff;font-family:monospace;font-size:9px;padding:2px 7px;border-radius:4px;">#'+String(j+1).padStart(2,'0')+'</span>'
+        +'<span style="font-size:13px;font-weight:700;flex:1;min-width:120px;">'+escHtml(it.area||'(sem área)')+'</span>'
+        +'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:'+icolor+'22;color:'+icolor+';">'+it.result+'</span>'
+        +((it.fotos||[]).length?'<span style="font-size:10px;color:var(--text-dim);">📷 '+(it.fotos||[]).length+'</span>':'')
+        +'<span style="font-size:12px;color:var(--text-dim);" id="ie-item-toggle-'+j+'">▼</span>'
+      +'</div>'
+      +'<div id="ie-item-body-'+j+'" style="padding:12px;display:none;">'
+        +'<div class="form-row">'
+          +'<div class="form-group"><label>Área / Componente</label>'
+            +'<input type="text" class="form-control" id="ie-area-'+j+'" value="'+escHtml(it.area||'')+'"></div>'
+          +'<div class="form-group" style="max-width:160px;"><label>Resultado</label>'
+            +'<select class="form-control" id="ie-result-'+j+'" onchange="updateIEItemColor('+j+')">'+iResOpts+'</select></div>'
+        +'</div>'
+        +'<div class="form-row">'
+          +'<div class="form-group"><label>Depto Responsável</label>'
+            +'<select class="form-control" id="ie-dept-'+j+'">'+dOpts+'</select></div>'
+          +'<div class="form-group"><label>Oficial Responsável pela Pendência</label>'
+            +'<select class="form-control" id="ie-crew-'+j+'">'+cOpts+'</select></div>'
+        +'</div>'
+        +'<div class="form-group"><label>Descrição / Achado</label>'
+          +'<textarea class="form-control" id="ie-desc-'+j+'" style="min-height:64px;">'+escHtml(it.desc||'')+'</textarea></div>'
+        // Photos section
+        +'<div style="margin-top:8px;">'
+          +'<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">📷 Fotos do Item <span style="font-weight:400;">(antes / depois / conformidade)</span></div>'
+          +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;" id="ie-fotos-item-'+j+'">'
+            +existFotosHTML
+          +'</div>'
+          +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+            +'<label class="btn btn-primary btn-sm" style="cursor:pointer;font-size:11px;">📷 Câmera'
+              +'<input type="file" accept="image/*" capture="environment" style="display:none" onchange="addInspEditPhoto(this,\'item-'+j+'\')"></label>'
+            +'<label class="btn btn-ghost btn-sm" style="cursor:pointer;font-size:11px;">🖼 Galeria'
+              +'<input type="file" accept="image/*" multiple style="display:none" onchange="addInspEditPhoto(this,\'item-'+j+'\')"></label>'
+          +'</div>'
+          +'<div id="ie-fotos-staged-'+j+'" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>'
+        +'</div>'
+        +'<div style="margin-top:10px;display:flex;gap:6px;">'
+          +'<button class="btn btn-ghost btn-sm" onclick="toggleIEItem('+j+')">▲ Recolher</button>'
+          +'<button class="btn btn-danger btn-sm" onclick="removeIEItem('+j+')">🗑 Remover Item</button>'
+        +'</div>'
+      +'</div>';
+
+    itemsEl.appendChild(div);
+
+    // Show staged photos for this item
+    var staged = _iePhotos['item-'+j]||[];
+    var stagedEl = document.getElementById('ie-fotos-staged-'+j);
+    if(stagedEl && staged.length){
+      staged.forEach(function(u,si){
+        var wrap = makePhotoThumb(u,'staged-'+j+'-'+si,function(){
+          _iePhotos['item-'+j].splice(si,1);
+          var el=document.getElementById('ie-fotos-staged-'+j);
+          if(el) el.removeChild(el.children[si]);
+        }, true);
+        stagedEl.appendChild(wrap);
+      });
+    }
+  });
+}
+
+function toggleIEItem(j){
+  var body = document.getElementById('ie-item-body-'+j);
+  var tog  = document.getElementById('ie-item-toggle-'+j);
+  if(!body) return;
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if(tog) tog.textContent = open ? '▼' : '▲';
+}
+
+function updateIEItemColor(j){
+  var sel = document.getElementById('ie-result-'+j);
+  var card= document.getElementById('ie-item-card-'+j);
+  if(!sel||!card) return;
+  var colors = {'Conforme':'var(--login-green)','Não Conforme':'var(--danger)','Parcial':'var(--warn)','Pendente':'var(--warn)'};
+  card.style.borderLeftColor = colors[sel.value]||'var(--border)';
+}
+
+// ── Add photo to inspection edit ──
+function addInspEditPhoto(input, key){
+  var files = Array.from(input.files);
+  if(!files.length) return;
+  if(!_iePhotos[key]) _iePhotos[key]=[];
+  files.forEach(function(f){
+    var r = new FileReader();
+    r.onload = function(e){
+      compress(f, function(u){
+        _iePhotos[key].push(u);
+        // Re-render just the photo area
+        if(key==='general'){
+          var gfEl=document.getElementById('ie-fotos-general');
+          if(gfEl){
+            var ins=S.inspecoes.find(function(i){return i.id===_editInspId;});
+            var existing=(ins&&ins.fotos)||[];
+            var thumbs=existing.map(function(u2,i2){return makePhotoThumb(u2,'g-ex-'+i2,function(){if(ins)ins.fotos.splice(i2,1);renderInspEdit();});});
+            _iePhotos['general'].forEach(function(u2,i2){thumbs.push(makePhotoThumb(u2,'g-st-'+i2,function(){_iePhotos['general'].splice(i2,1);renderInspEdit();},true));});
+            gfEl.innerHTML='';
+            thumbs.forEach(function(t){gfEl.appendChild(t);});
+          }
+        } else {
+          // item staged area
+          var j = parseInt(key.replace('item-',''));
+          var stagedEl = document.getElementById('ie-fotos-staged-'+j);
+          if(stagedEl){
+            var idx = _iePhotos[key].length-1;
+            stagedEl.appendChild(makePhotoThumb(u,'st-'+j+'-'+idx,function(){
+              _iePhotos[key].splice(idx,1);
+              stagedEl.removeChild(stagedEl.children[idx]);
+            },true));
+          }
+        }
+      });
+    };
+    r.readAsDataURL(f);
+  });
+  input.value='';
+}
+
+function makePhotoThumb(url, key, onRemove, isNew){
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'position:relative;display:inline-block;';
+  var img = document.createElement('img');
+  img.src = url; img.onclick = function(){viewP(url);};
+  img.style.cssText = 'width:56px;height:56px;object-fit:cover;border-radius:5px;cursor:pointer;border:'+(isNew?'2px solid var(--login-green)':'1px solid var(--border)')+';';
+  var btn = document.createElement('button');
+  btn.textContent='✕'; btn.onclick=onRemove;
+  btn.style.cssText='position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;line-height:1;';
+  if(isNew){
+    var badge=document.createElement('div');
+    badge.textContent='NOVA'; badge.style.cssText='position:absolute;bottom:0;left:0;right:0;background:var(--login-green);color:#fff;font-size:7px;font-weight:700;text-align:center;border-radius:0 0 4px 4px;';
+    wrap.appendChild(badge);
+  }
+  wrap.appendChild(img); wrap.appendChild(btn);
+  return wrap;
+}
+
+function removeItemFoto(j, fi, staged){
+  var ins = S.inspecoes.find(function(i){return i.id===_editInspId;});
+  if(!ins||!ins.items||!ins.items[j]) return;
+  if(!staged) ins.items[j].fotos.splice(fi,1);
+  renderInspEdit();
+}
+
+function addIEItem(){
+  var ins = S.inspecoes.find(function(i){return i.id===_editInspId;});
+  if(!ins) return;
+  ins.items = ins.items||[];
+  ins.items.push({area:'',desc:'',result:'Pendente',dept:'',respItemNm:'',fotos:[]});
+  renderInspEdit();
+  // Auto-open the new item
+  setTimeout(function(){
+    var j = ins.items.length-1;
+    toggleIEItem(j);
+    var el = document.getElementById('ie-area-'+j);
+    if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'nearest'});}
+  },100);
+}
+
+function removeIEItem(j){
+  var ins = S.inspecoes.find(function(i){return i.id===_editInspId;});
+  if(!ins||!ins.items) return;
+  if(!confirm('Remover este item?')) return;
+  ins.items.splice(j,1);
+  delete _iePhotos['item-'+j];
+  renderInspEdit();
+}
+
+// ── SAVE ──
+function saveEditInsp(){
+  var ins = S.inspecoes.find(function(i){return i.id===_editInspId;});
+  if(!ins){toast('❌ Inspeção não encontrada','err');return;}
+
+  ins.data   = document.getElementById('ie-data')?.value||ins.data;
+  ins.hora   = document.getElementById('ie-hora')?.value||'';
+  ins.tipo   = document.getElementById('ie-tipo')?.value||ins.tipo;
+  ins.titulo = (document.getElementById('ie-titulo')?.value||'').trim()||ins.titulo;
+  ins.area   = (document.getElementById('ie-area')?.value||'').trim();
+  ins.result = document.getElementById('ie-result')?.value||ins.result;
+  ins.desc   = document.getElementById('ie-desc')?.value||'';
+  ins.ts     = Date.now();
+
+  if(ins.data) ins.semana=String(wn(new Date(ins.data+'T12:00:00'))).padStart(2,'0');
+
+  // Responsável
+  var respId = document.getElementById('ie-resp')?.value||'';
+  var rc = S.crew.find(function(c){return c.id===respId;});
+  if(rc){var abbr=rc.abbr||(ROLE_ABBR[rc.fn]||rc.fn.slice(0,3).toUpperCase());ins.respId=respId;ins.respNm='['+abbr+'] '+rc.nm.split(' ')[0];}
+
+  // Testemunha
+  var testId = document.getElementById('ie-test')?.value||'';
+  var tc = S.crew.find(function(c){return c.id===testId;});
+  ins.testNm = tc?tc.nm.split(' ').slice(0,2).join(' '):'';
+
+  // General photos — merge staged
+  var gStaged = _iePhotos['general']||[];
+  ins.fotos = (ins.fotos||[]).concat(gStaged);
+
+  // Items
+  (ins.items||[]).forEach(function(it,j){
+    var a=(document.getElementById('ie-area-'+j)?.value||'').trim(); if(a) it.area=a;
+    var res=document.getElementById('ie-result-'+j)?.value; if(res) it.result=res;
+    var dept=document.getElementById('ie-dept-'+j)?.value; if(dept!==undefined) it.dept=dept;
+    var desc=document.getElementById('ie-desc-'+j)?.value; if(desc!==undefined) it.desc=desc;
+    // Crew responsible for item
+    var crewId=document.getElementById('ie-crew-'+j)?.value||'';
+    var ic=S.crew.find(function(c){return c.id===crewId;});
+    it.respItemNm=ic?ic.nm.split(' ').slice(0,2).join(' '):'';
+    // Staged photos for this item
+    var staged=_iePhotos['item-'+j]||[];
+    it.fotos=(it.fotos||[]).concat(staged);
+  });
+
+  _iePhotos={};
+  saveData(true);
+  toast('✅ Inspeção salva!','ok');
+  // Re-render to show updated data
+  renderInspEdit();
+}
+
+// ── SHARE LINK ──
+function shareInspLink(id){
+  var ins = S.inspecoes.find(function(i){return i.id===id;});
+  if(!ins){toast('⚠️ Salve primeiro','warn');return;}
+
+  // Encode as data URI with the inspection JSON
+  var data = JSON.stringify({...ins, _tipo:'inspecao_jacaranda', _shared:true, _sharedAt:new Date().toISOString()});
+  var b64  = btoa(unescape(encodeURIComponent(data)));
+  var url  = window.location.href.split('?')[0]+'?insp='+b64;
+
+  var panel = document.getElementById('ie-share-panel');
+  var urlBox= document.getElementById('ie-share-url');
+  var input = document.getElementById('ie-share-url-input');
+  if(panel) panel.style.display='block';
+  if(urlBox) urlBox.style.display='block';
+  if(input) input.value=url;
+
+  // Try navigator.share first (mobile)
+  if(navigator.share){
+    navigator.share({
+      title:'Inspeção: '+ins.titulo,
+      text:'Inspeção M/V Jacarandá — '+ins.titulo+' ('+ins.data+')',
+      url: url
+    }).then(function(){toast('✅ Compartilhado!','ok');}).catch(function(){copyShareURL();});
+  } else {
+    copyShareURL();
+    toast('🔗 Link copiado!','ok');
+  }
+}
+
+function copyShareURL(){
+  var input=document.getElementById('ie-share-url-input');
+  if(!input) return;
+  input.select();
+  try{ navigator.clipboard.writeText(input.value).then(function(){toast('📋 Link copiado!','ok');}); }
+  catch(e){ document.execCommand('copy'); toast('📋 Link copiado!','ok'); }
+}
+
+function copyInspJSON(id){
+  var ins=S.inspecoes.find(function(i){return i.id===id;});if(!ins)return;
+  var json=JSON.stringify({...ins,_tipo:'inspecao_jacaranda'},null,2);
+  navigator.clipboard.writeText(json).then(function(){toast('📋 JSON copiado!','ok');}).catch(function(){toast('⚠️ Não foi possível copiar','warn');});
+}
+
+// ── Auto-import from URL param on load ──
+function checkInspFromURL(){
+  var params=new URLSearchParams(window.location.search);
+  var insp=params.get('insp');
+  if(!insp) return;
+  try{
+    var data=JSON.parse(decodeURIComponent(escape(atob(insp))));
+    var existIds=new Set(S.inspecoes.map(function(i){return i.id;}));
+    if(!existIds.has(data.id)){
+      if(confirm('Inspeção recebida via link:\n\n"'+(data.titulo||'—')+'"\nData: '+(data.data||'—')+'\n\nImportar para o app?')){
+        S.inspecoes.push(data);saveData(true);
+        toast('✅ Inspeção importada do link!','ok');
+        showPage('inspecao');
+      }
+    } else {
+      toast('ℹ️ Esta inspeção já existe no app','ok');
+      showPage('inspecao');
+    }
+    // Remove param from URL without reload
+    window.history.replaceState({},'',window.location.pathname);
+  }catch(e){ console.warn('Erro ao ler inspeção do URL',e); }
+}
+
+
+function printInspCard(id){
+  var ins=S.inspecoes.find(function(i){return i.id===id;});if(!ins)return;
+  var vcfg=getCfg().vessel||{};
+  var rCcolor={'Conforme':'#16a34a','Não Conforme':'#dc2626','Parcial':'#d97706','Pendente':'#7c3aed'};
+  var rIp={'Conforme':'✅','Não Conforme':'❌','Parcial':'⚠️','Pendente':'🔄'};
+  var color=rCcolor[ins.result]||'#6b7280';
+
+  var itemsHtml='';
+  (ins.items||[]).forEach(function(it,j){
+    var icolor=rCcolor[it.result]||'#6b7280';
+    var itf='';
+    (it.fotos||[]).slice(0,4).forEach(function(u){ itf+='<img src="'+u+'" style="width:60px;height:60px;object-fit:cover;border-radius:4px;border:1px solid #e5e7eb;">'; });
+    itemsHtml+='<div style="border-left:3px solid '+icolor+';padding:6px 10px;margin-bottom:6px;background:#f9fafb;">';
+    itemsHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">';
+    itemsHtml+='<span style="font-family:monospace;font-size:9px;background:'+icolor+';color:#fff;padding:1px 6px;border-radius:3px;">#'+String(j+1).padStart(2,'0')+'</span>';
+    itemsHtml+='<strong style="font-size:12px;">'+escHtml(it.area||'')+'</strong>';
+    itemsHtml+='<span style="font-size:10px;font-weight:700;padding:1px 8px;border-radius:8px;background:'+icolor+'22;color:'+icolor+'">'+(rIp[it.result]||'—')+' '+it.result+'</span>';
+    if(it.dept) itemsHtml+='<span style="font-size:10px;color:#6b7280;">🏢 '+it.dept+'</span>';
+    if(it.respItemNm) itemsHtml+='<span style="font-size:10px;color:#6b7280;">👷 '+it.respItemNm+'</span>';
+    itemsHtml+='</div>';
+    if(it.desc) itemsHtml+='<div style="font-size:11px;color:#4b5563;">'+escHtml(it.desc)+'</div>';
+    if(itf) itemsHtml+='<div style="display:flex;gap:4px;margin-top:4px;">'+itf+'</div>';
+    itemsHtml+='</div>';
+  });
+
+  var fotosHtml='';
+  if((ins.fotos||[]).length){
+    fotosHtml='<div style="margin-top:12px;padding-top:8px;border-top:1px solid #e5e7eb;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">📷 Fotos</div><div style="display:flex;flex-wrap:wrap;gap:8px;">';
+    ins.fotos.forEach(function(u){ fotosHtml+='<img src="'+u+'" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;">'; });
+    fotosHtml+='</div></div>';
+  }
+
+  var vessel=vcfg.vessel||'LOG-IN JACARANDÁ';
+  var html='\x3C!DOCTYPE html>\n\x3Chtml lang="pt-BR">\n\x3Chead>\n\x3Cmeta charset="UTF-8">\n';
+  html+='<title>Inspeção: '+escHtml(ins.titulo)+'<\/title>\n';
+  html+='<style>\n@page{margin:12mm 14mm}\n';
+  html+='body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#1f2937;margin:0;padding:0;}\n';
+  html+='.hdr{background:'+color+';color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;}\n';
+  html+='.logo{font-size:22px;font-weight:900;letter-spacing:-1px;}\n';
+  html+='.body{padding:16px;}\n';
+  html+='.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 14px;border-radius:20px;font-weight:700;font-size:13px;background:'+color+'22;color:'+color+';border:2px solid '+color+';margin-bottom:12px;}\n';
+  html+='.meta{display:flex;flex-wrap:wrap;gap:6px 20px;margin-bottom:12px;font-size:11px;}\n';
+  html+='.ml{font-weight:700;color:#6b7280;text-transform:uppercase;font-size:9px;letter-spacing:.5px;}\n';
+  html+='.titl{font-size:20px;font-weight:800;margin-bottom:6px;color:#07182e;}\n';
+  html+='.desc{font-size:12px;color:#4b5563;white-space:pre-wrap;padding:8px 10px;background:#f9fafb;border-radius:5px;margin-bottom:10px;}\n';
+  html+='.ftr{margin-top:20px;padding-top:10px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af;}\n';
+  html+='.sig{border:1px solid #e5e7eb;border-radius:5px;padding:8px 14px;min-width:160px;text-align:center;}\n';
+  html+='.sigl{border-bottom:1px solid #374151;height:40px;margin-bottom:4px;}\n';
+  html+='@media print{body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}\n';
+  html+='<\/style>\n\x3C\/head>\n\x3Cbody>\n';
+  html+='<div class="hdr"><div><div class="logo">log<span style="color:#6DB847">in<\/span><span style="color:#f59e0b">.<\/span><\/div>';
+  html+='<div style="font-size:11px;margin-top:2px;opacity:.8;">'+vessel+' · Linha Amazonas<\/div><\/div>';
+  html+='<div style="text-align:right;font-size:11px;opacity:.85;"><div style="font-size:16px;font-weight:800;">RELATÓRIO DE INSPEÇÃO<\/div>';
+  html+='<div>'+(ins.data||'—')+(ins.hora?' · '+ins.hora:'')+' · SEM '+(ins.semana||'—')+'<\/div><\/div><\/div>\n';
+  html+='<div class="body">\n';
+  html+='<div class="titl">'+escHtml(ins.titulo)+'<\/div>\n';
+  html+='<div class="badge">'+(rIp[ins.result]||'—')+' '+ins.result+'<\/div>\n';
+  html+='<div class="meta">';
+  html+='<div><span class="ml">Tipo<\/span> '+(ins.tipo||'—')+'<\/div>';
+  html+='<div><span class="ml">Área<\/span> '+escHtml(ins.area||'—')+'<\/div>';
+  html+='<div><span class="ml">Responsável<\/span> '+(ins.respNm||'—')+'<\/div>';
+  if(ins.testNm) html+='<div><span class="ml">Testemunha<\/span> '+ins.testNm+'<\/div>';
+  html+='<div><span class="ml">Data<\/span> '+(ins.data||'—')+(ins.hora?' '+ins.hora:'')+'<\/div>';
+  html+='<\/div>\n';
+  if(ins.desc) html+='<div class="desc">'+escHtml(ins.desc)+'<\/div>\n';
+  if((ins.items||[]).length) html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:8px;padding-top:8px;border-top:1px solid #e5e7eb;">📋 '+ins.items.length+' Item(ns) Inspecionado(s)<\/div>'+itemsHtml+'\n';
+  html+=fotosHtml+'\n';
+  html+='<div class="ftr">';
+  html+='<div><div style="margin-bottom:14px;">&nbsp;<\/div><div class="sig"><div class="sigl"><\/div><div>'+(ins.respNm||'Responsável')+'<\/div><\/div><\/div>';
+  if(ins.testNm) html+='<div><div style="margin-bottom:14px;">&nbsp;<\/div><div class="sig"><div class="sigl"><\/div><div>'+ins.testNm+'<\/div><\/div><\/div>';
+  html+='<div style="text-align:right;align-self:flex-end;"><div>Gerado: '+new Date().toLocaleString('pt-BR')+'<\/div><div>ID: '+ins.id+'<\/div><\/div>';
+  html+='<\/div>\n<\/div>\n\x3C\/body>\n\x3C\/html>';
+
+  var w=window.open('','_blank','width=850,height=1000');
+  if(!w){toast('⚠️ Permita pop-ups para imprimir','warn');return;}
+  w.document.write(html);w.document.close();
+  w.onload=function(){w.focus();w.print();};
+  toast('🖨 Abrindo PDF...','ok');
+}
+
 
 function renderInspecao(){
   fillInspSelects();
@@ -4965,8 +5792,615 @@ function updateBottomNav(page){
   }, {passive:true});
 })();
 
+// ══════════════════════════════════════════════════
+// ── SISTEMA DE IMPORTAÇÃO DE ARQUIVOS ──
+// ══════════════════════════════════════════════════
+
+let _importPending = null; // {type, data, preview}
+
+function renderImportPage(){
+  // reset state
+  _importPending = null;
+  const prev = document.getElementById('import-preview');
+  const log  = document.getElementById('import-log');
+  if(prev) prev.style.display='none';
+  if(log)  log.style.display='none';
+}
+
+// ── Drag & drop multiple files ──
+function handleImportDrop(e){
+  e.preventDefault();
+  const dz = document.getElementById('import-drop-zone');
+  dz.style.borderColor='var(--border2)';dz.style.background='var(--login-blue-xlt)';
+  const files = Array.from(e.dataTransfer.files);
+  if(!files.length) return;
+  if(files.length===1) detectAndImport(files[0]);
+  else importMultipleFiles(files);
+}
+function handleImportFiles(input){
+  const files = Array.from(input.files);
+  if(!files.length) return;
+  if(files.length===1) detectAndImport(files[0]);
+  else importMultipleFiles(files);
+  input.value='';
+}
+
+// ── Auto-detect file type ──
+function detectAndImport(file){
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(ext==='csv'||ext==='txt'){ importCSVFileDirect(file); return; }
+  const r = new FileReader();
+  r.onload = e => {
+    try{
+      const data = JSON.parse(e.target.result);
+      // Detect by _tipo field
+      const tipo = data._tipo || detectJSONType(data);
+      addImportLog(`📄 ${file.name} — detectado como: ${tipo}`,'info');
+      switch(tipo){
+        case 'backup_jacaranda':     previewBackup(data, file.name); break;
+        case 'inspecao_jacaranda':   previewInspecao([data], file.name); break;
+        case 'inspecoes_jacaranda':  previewInspecao(data.inspecoes||[], file.name); break;
+        case 'condicoes_jacaranda':  previewCondicoes(data, file.name); break;
+        case 'diagramas_jacaranda':  previewDiagramas(data, file.name); break;
+        case 'modulo_dept':          previewModulo(data, file.name); break;
+        case 'mestre_consolidado':   previewBackup(data, file.name); break;
+        default:
+          addImportLog(`⚠️ Tipo não reconhecido — tentando como backup...`,'warn');
+          previewBackup(data, file.name);
+      }
+    }catch(err){
+      addImportLog(`❌ Erro ao ler ${file.name}: ${err.message}`,'err');
+      toast('❌ Arquivo inválido: '+err.message,'err');
+    }
+  };
+  r.readAsText(file);
+}
+
+function detectJSONType(data){
+  const tipo = data._tipo||'';
+  if(tipo) return tipo; // trust explicit _tipo field first
+  if(data.regs && data.crew) return 'backup_jacaranda';
+  if(data.inspecoes && Array.isArray(data.inspecoes)) return 'inspecoes_jacaranda';
+  if(data.items && data._vessel && !data.regs && !data.plans) return 'condicoes_jacaranda';
+  if(data.items && data.plans !== undefined) return 'diagramas_jacaranda';
+  if(data._dept && data.regs) return 'modulo_dept';
+  // Inspection: has titulo+result OR titulo+semana but no regs/crew
+  if((data.titulo||data.area) && (data.result||data.semana||data.tipo) && !data.regs && !data.crew) return 'inspecao_jacaranda';
+  return 'desconhecido';
+}
+
+function importMultipleFiles(files){
+  addImportLog(`📦 ${files.length} arquivos recebidos — processando...`,'info');
+  showImportLog();
+  files.forEach((f,i) => setTimeout(()=>detectAndImport(f), i*300));
+}
+
+// ── LOG ──
+function addImportLog(msg, type='info'){
+  const logBody = document.getElementById('import-log-body');
+  if(!logBody) return;
+  const colors={'info':'color:var(--login-blue)','warn':'color:var(--warn)','err':'color:var(--danger)','ok':'color:var(--login-green-dk)'};
+  const div = document.createElement('div');
+  div.style.cssText = colors[type]||'';
+  div.textContent = `[${new Date().toLocaleTimeString('pt-BR')}] ${msg}`;
+  logBody.appendChild(div);
+  logBody.scrollTop = logBody.scrollHeight;
+}
+function showImportLog(){
+  const log = document.getElementById('import-log');
+  if(log) log.style.display='block';
+}
+function showImportPreview(){
+  const prev = document.getElementById('import-preview');
+  if(prev) prev.style.display='block';
+  showImportLog();
+}
+
+// ══════════════════════════════════════════════════
+// ── BACKUP JACARANDÁ ──
+// ══════════════════════════════════════════════════
+function importBackupJSON(input){
+  const f=input.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{ previewBackup(JSON.parse(e.target.result), f.name); }
+    catch(err){ toast('❌ Arquivo inválido','err'); }
+  };
+  r.readAsText(f); input.value='';
+}
+
+function previewBackup(data, fname){
+  const regs   = data.regs||[];
+  const crew   = data.crew||[];
+  const desv   = data.desvios||[];
+  const insp   = data.inspecoes||[];
+  const ofic   = data.oficina||[];
+  const empr   = data.empresas||[];
+
+  const existRegs = new Set(S.regs.map(r=>r.id));
+  const newRegs   = regs.filter(r=>!existRegs.has(r.id));
+  const dupRegs   = regs.length - newRegs.length;
+  const existCrew = new Set(S.crew.map(c=>c.id));
+  const newCrew   = crew.filter(c=>!existCrew.has(c.id));
+
+  _importPending = {type:'backup', data, fname};
+
+  const body = document.getElementById('import-preview-body');
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px;">
+      <div style="background:var(--login-blue-xlt);border:1px solid var(--border2);border-radius:7px;padding:10px;text-align:center;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--login-blue);">${newRegs.length}</div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);">Novos Registros</div>
+        ${dupRegs>0?`<div style="font-size:10px;color:var(--muted);">${dupRegs} duplicados (ignorar)</div>`:''}
+      </div>
+      <div style="background:var(--login-green-xlt);border:1px solid #A7F3D0;border-radius:7px;padding:10px;text-align:center;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--login-green-dk);">${newCrew.length}</div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);">Novos Tripulantes</div>
+      </div>
+      <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:7px;padding:10px;text-align:center;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--warn);">${desv.length}</div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);">Desvios</div>
+      </div>
+      <div style="background:#EDE9FE;border:1px solid #DDD6FE;border-radius:7px;padding:10px;text-align:center;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:#5B21B6;">${insp.length}</div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);">Inspeções</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">
+      Arquivo: <strong>${fname}</strong>${data.exp?` &nbsp;·&nbsp; Exportado: ${new Date(data.exp).toLocaleString('pt-BR')}`:''}
+    </div>
+    <div style="background:var(--login-blue-xlt);border-radius:6px;padding:10px 12px;font-size:12px;color:var(--login-blue);margin-bottom:10px;">
+      ✅ Os dados serão <strong>mesclados</strong> (não substitui) — itens duplicados são ignorados automaticamente.
+    </div>
+    ${newRegs.length>0?'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);margin-bottom:6px;">Amostra dos novos registros:</div>'+
+      newRegs.slice(0,5).map(r=>`<div style="padding:6px;border-bottom:1px solid var(--border);font-size:12px;"><strong>${r.titulo||r.a||'—'}</strong> <span style="color:var(--muted);">SEM ${r.s} · ${r.dp}</span></div>`).join(''):''}
+  `;
+
+  const actions = document.getElementById('import-actions');
+  actions.innerHTML = `
+    <button class="btn btn-primary" onclick="applyBackup()">✅ Importar ${newRegs.length} registro(s)</button>
+    <button class="btn btn-ghost" onclick="cancelImport()">✕ Cancelar</button>
+  `;
+
+  addImportLog(`📦 Backup analisado: ${newRegs.length} novos registros, ${newCrew.length} tripulantes`,'info');
+  showImportPreview();
+}
+
+function applyBackup(){
+  if(!_importPending||_importPending.type!=='backup') return;
+  const data = _importPending.data;
+  let cnt = {regs:0,crew:0,desv:0,insp:0,ofic:0,empr:0};
+
+  const merge = (target, incoming, key='id') => {
+    const existing = new Set(target.map(i=>i[key]));
+    const added = incoming.filter(i=>!existing.has(i[key]));
+    added.forEach(i=>target.push(i));
+    return added.length;
+  };
+
+  cnt.regs = merge(S.regs, data.regs||[]);
+  cnt.crew = merge(S.crew, data.crew||[]);
+  cnt.desv = merge(S.desvios, data.desvios||[]);
+  cnt.insp = merge(S.inspecoes, data.inspecoes||[]);
+  cnt.ofic = merge(S.oficina, data.oficina||[]);
+  cnt.empr = merge(S.empresas, data.empresas||[]);
+
+  saveData(true); kpis(); renderDash();
+  cancelImport();
+
+  const msg = `✅ Importado: ${cnt.regs} registros · ${cnt.crew} tripulantes · ${cnt.desv} desvios · ${cnt.insp} inspeções`;
+  addImportLog(msg,'ok');
+  toast(msg,'ok');
+}
+
+// ══════════════════════════════════════════════════
+// ── INSPEÇÃO ──
+// ══════════════════════════════════════════════════
+function importInspecaoFile(input){
+  const f=input.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      // Reuse the same robust detection
+      const tipo=data._tipo||'';
+      let lista=[];
+      if(tipo==='inspecoes_jacaranda'||Array.isArray(data.inspecoes)){
+        lista=data.inspecoes||[];
+      } else if(data.regs){
+        lista=data.inspecoes||[];
+      } else {
+        lista=[data];
+      }
+      previewInspecao(lista, f.name);
+    }catch(err){ toast('❌ Arquivo inválido: '+err.message,'err'); }
+  };
+  r.readAsText(f); input.value='';
+}
+
+function previewInspecao(inspecoes, fname){
+  const existIds = new Set(S.inspecoes.map(i=>i.id));
+  const newInsp = inspecoes.filter(i=>i.id&&!existIds.has(i.id));
+  _importPending = {type:'inspecao', data:newInsp, fname};
+
+  const body = document.getElementById('import-preview-body');
+  body.innerHTML = `
+    <div style="background:var(--login-green-xlt);border:1px solid #A7F3D0;border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:15px;font-weight:700;color:var(--login-green-dk);">🔍 ${newInsp.length} inspeção(ões) para importar</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">${inspecoes.length-newInsp.length} duplicadas serão ignoradas</div>
+    </div>
+    ${newInsp.slice(0,5).map(i=>`
+      <div style="padding:8px;border-bottom:1px solid var(--border);">
+        <div style="font-size:12px;font-weight:700;">${i.titulo||'—'}</div>
+        <div style="font-size:11px;color:var(--text-dim);">📅 ${i.data||'—'} &nbsp;·&nbsp; 🔍 ${i.tipo||'—'} &nbsp;·&nbsp; ${i.result||'—'}</div>
+        ${(i.items||[]).length?`<div style="font-size:10px;color:var(--muted);">${i.items.length} itens</div>`:''}
+      </div>`).join('')}
+    ${newInsp.length>5?`<div style="font-size:11px;color:var(--muted);padding:6px;">+ ${newInsp.length-5} mais...</div>`:''}
+  `;
+  document.getElementById('import-actions').innerHTML=`
+    <button class="btn btn-green" onclick="applyInspecao()">✅ Importar ${newInsp.length} inspeção(ões)</button>
+    <button class="btn btn-ghost" onclick="cancelImport()">✕ Cancelar</button>
+  `;
+  addImportLog(`🔍 ${newInsp.length} inspeções novas encontradas`,'info');
+  showImportPreview();
+}
+
+function applyInspecao(){
+  if(!_importPending||_importPending.type!=='inspecao') return;
+  const added = _importPending.data;
+  added.forEach(i=>S.inspecoes.push(i));
+  saveData(true); cancelImport();
+  addImportLog(`✅ ${added.length} inspeções adicionadas`,'ok');
+  toast(`✅ ${added.length} inspeção(ões) importada(s)!`,'ok');
+}
+
+// ══════════════════════════════════════════════════
+// ── CONDIÇÕES DO NAVIO (jacaranda_controle_condicoes export) ──
+// ══════════════════════════════════════════════════
+function importCondicoesFile(input){
+  const f=input.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{ previewCondicoes(JSON.parse(e.target.result), f.name); }
+    catch(err){ toast('❌ Arquivo inválido','err'); }
+  };
+  r.readAsText(f); input.value='';
+}
+
+function previewCondicoes(data, fname){
+  // Extract items with status Ruim or Verificar → convert to Desvios
+  const items = Object.values(data.items||{});
+  const criticos = items.filter(i=>i.status==='Ruim'||i.status==='Verificar');
+  const existLocs = new Set(S.desvios.map(d=>d.local));
+  const novos = criticos.filter(i=>!existLocs.has(i.local));
+
+  _importPending = {type:'condicoes', data:novos, fname};
+
+  const body = document.getElementById('import-preview-body');
+  body.innerHTML=`
+    <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:700;color:#92400E;">📊 Controle de Condições → Cartões de Desvio</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">
+        <strong>${items.length}</strong> itens no arquivo &nbsp;·&nbsp;
+        <strong>${criticos.length}</strong> com status Ruim/Verificar &nbsp;·&nbsp;
+        <strong>${novos.length}</strong> novos (${criticos.length-novos.length} já existem)
+      </div>
+    </div>
+    ${novos.slice(0,6).map(i=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:7px;border-bottom:1px solid var(--border);">
+        <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;${i.status==='Ruim'?'background:#FEE2E2;color:#991B1B':'background:#FEF3C7;color:#92400E'};">${i.status==='Ruim'?'❌':'⚠️'} ${i.status}</span>
+        <div>
+          <div style="font-size:12px;font-weight:600;">${i.local}</div>
+          <div style="font-size:10px;color:var(--muted);">${i.sistema||''} ${i.obs?'· '+i.obs.slice(0,40):''}</div>
+        </div>
+      </div>`).join('')}
+    ${novos.length>6?`<div style="font-size:11px;color:var(--muted);padding:6px;">+ ${novos.length-6} mais...</div>`:''}
+    <div style="background:var(--login-blue-xlt);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--login-blue);margin-top:10px;">
+      ℹ️ Cada item crítico será criado como um <strong>Cartão de Desvio</strong> aberto no app.
+    </div>
+  `;
+  document.getElementById('import-actions').innerHTML=`
+    <button class="btn btn-warn btn-sm" onclick="applyCondicoes()">⚠️ Criar ${novos.length} Cartão(ões) de Desvio</button>
+    <button class="btn btn-ghost" onclick="cancelImport()">✕ Cancelar</button>
+  `;
+  addImportLog(`📊 ${novos.length} pendências críticas encontradas → serão criadas como Desvios`,'info');
+  showImportPreview();
+}
+
+function applyCondicoes(){
+  if(!_importPending||_importPending.type!=='condicoes') return;
+  const items = _importPending.data;
+  let added=0;
+  items.forEach(item=>{
+    const desvio={
+      id:gid(), num:'D'+String(S.desvios.length+1+added).padStart(3,'0'),
+      titulo:item.local||'Pendência importada',
+      local:item.local||'—',
+      desc:`Importado do Controle de Condições\nSistema: ${item.sistema||'—'}\nStatus anterior: ${item.status}\n${item.obs?'Obs: '+item.obs:''}`,
+      prioridade:item.status==='Ruim'?'Alta':'Média',
+      status:'aberto', dept:item.sec||'',
+      respId:'', respNm:'—',
+      dataAbertura:new Date().toISOString().slice(0,10),
+      dataFechamento:'', acaoCorretiva:'',
+      fotos:[], ts:Date.now()
+    };
+    if(item.date) desvio.dataAbertura=item.date;
+    S.desvios.push(desvio); added++;
+  });
+  saveData(true); kpis(); renderDash(); cancelImport();
+  addImportLog(`✅ ${added} cartões de desvio criados`,'ok');
+  toast(`✅ ${added} cartões de desvio criados!`,'ok');
+}
+
+// ══════════════════════════════════════════════════
+// ── DIAGRAMAS (jacaranda_diagramas export) ──
+// ══════════════════════════════════════════════════
+function importDiagramasFile(input){
+  const f=input.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{ previewDiagramas(JSON.parse(e.target.result), f.name); }
+    catch(err){ toast('❌ Arquivo inválido','err'); }
+  };
+  r.readAsText(f); input.value='';
+}
+
+function previewDiagramas(data, fname){
+  const items = Object.values(data.items||{});
+  const criticos = items.filter(i=>i.status==='Ruim'||i.status==='Verificar');
+  const novosDesv = criticos.filter(i=>{
+    return !S.desvios.some(d=>d.titulo===i.local&&d.status==='aberto');
+  });
+  // Also build work registers from history
+  const hist = data.history||[];
+
+  _importPending = {type:'diagramas', data:{novosDesv, hist}, fname};
+
+  const body = document.getElementById('import-preview-body');
+  body.innerHTML=`
+    <div style="background:#EDE9FE;border:1px solid #DDD6FE;border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:700;color:#5B21B6;">📐 Diagramas do Navio → Jacarandá</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">
+        <strong>${items.length}</strong> componentes analisados &nbsp;·&nbsp;
+        <strong>${criticos.length}</strong> críticos &nbsp;·&nbsp;
+        <strong>${novosDesv.length}</strong> novos desvios &nbsp;·&nbsp;
+        <strong>${hist.length}</strong> entradas no histórico
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div style="background:#EDE9FE;border-radius:6px;padding:10px;text-align:center;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;color:#5B21B6;">${novosDesv.length}</div>
+        <div style="font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;">Cartões de Desvio</div>
+      </div>
+      <div style="background:var(--login-blue-xlt);border-radius:6px;padding:10px;text-align:center;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;color:var(--login-blue);">${hist.length}</div>
+        <div style="font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;">Histórico</div>
+      </div>
+    </div>
+    ${novosDesv.slice(0,5).map(i=>`
+      <div style="padding:6px;border-bottom:1px solid var(--border);font-size:11px;">
+        <span style="font-weight:700;">${i.local}</span>
+        <span style="margin-left:8px;padding:1px 6px;border-radius:6px;font-size:10px;${i.status==='Ruim'?'background:#FEE2E2;color:#991B1B':'background:#FEF3C7;color:#92400E'};">${i.status}</span>
+        ${i.obs?`<div style="color:var(--muted);margin-top:2px;">${i.obs.slice(0,50)}</div>`:''}
+      </div>`).join('')}
+  `;
+  document.getElementById('import-actions').innerHTML=`
+    <button class="btn btn-primary btn-sm" onclick="applyDiagramas()">✅ Importar ${novosDesv.length} desvios</button>
+    <button class="btn btn-ghost" onclick="cancelImport()">✕ Cancelar</button>
+  `;
+  addImportLog(`📐 ${novosDesv.length} componentes críticos prontos para importar`,'info');
+  showImportPreview();
+}
+
+function applyDiagramas(){
+  if(!_importPending||_importPending.type!=='diagramas') return;
+  const {novosDesv} = _importPending.data;
+  let added=0;
+  novosDesv.forEach(item=>{
+    const parts = item.id?.split('_')||[];
+    const sec = parts[0]||item.sec||'';
+    const desvio={
+      id:gid(), num:'D'+String(S.desvios.length+1+added).padStart(3,'0'),
+      titulo:item.local,
+      local:item.local,
+      desc:`Sistema: ${item.sistema||sec}\nStatus: ${item.status}\n${item.obs?'Observação: '+item.obs:''}\nResponsável: ${item.resp||'—'}\nData inspeção: ${item.date||'—'}`,
+      prioridade:item.status==='Ruim'?'Alta':'Média',
+      status:'aberto', dept:'',
+      respNm:item.resp||'—', respId:'',
+      dataAbertura:item.date||new Date().toISOString().slice(0,10),
+      dataFechamento:'', acaoCorretiva:'',
+      fotos:[], ts:Date.now()
+    };
+    S.desvios.push(desvio); added++;
+  });
+  saveData(true); kpis(); cancelImport();
+  addImportLog(`✅ ${added} desvios criados a partir dos diagramas`,'ok');
+  toast(`✅ ${added} desvios importados!`,'ok');
+}
+
+// ══════════════════════════════════════════════════
+// ── MÓDULO DE DEPARTAMENTO ──
+// ══════════════════════════════════════════════════
+function previewModulo(data, fname){
+  _importPending = {type:'modulo', data, fname};
+  const regs = data.regs||[];
+  const existIds = new Set(S.regs.map(r=>r.id));
+  const novos = regs.filter(r=>!existIds.has(r.id));
+
+  const body = document.getElementById('import-preview-body');
+  body.innerHTML=`
+    <div style="background:var(--login-blue-xlt);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:700;color:var(--login-blue);">🗂️ Módulo: ${data._dept||'—'}</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">
+        ${novos.length} registros novos de ${regs.length} totais
+      </div>
+    </div>
+    ${novos.slice(0,5).map(r=>`<div style="padding:6px;border-bottom:1px solid var(--border);font-size:11px;"><strong>${r.titulo||r.a||'—'}</strong> · SEM ${r.s} · ${r.dp}</div>`).join('')}
+  `;
+  document.getElementById('import-actions').innerHTML=`
+    <button class="btn btn-primary" onclick="applyModulo()">✅ Importar ${novos.length} registro(s)</button>
+    <button class="btn btn-ghost" onclick="cancelImport()">✕ Cancelar</button>
+  `;
+  showImportPreview();
+}
+
+function applyModulo(){
+  if(!_importPending||_importPending.type!=='modulo') return;
+  const data = _importPending.data;
+  const existIds = new Set(S.regs.map(r=>r.id));
+  const novos = (data.regs||[]).filter(r=>!existIds.has(r.id));
+  novos.forEach(r=>S.regs.push(r));
+  saveData(true); kpis(); cancelImport();
+  toast(`✅ ${novos.length} registros importados!`,'ok');
+}
+
+// ══════════════════════════════════════════════════
+// ── CSV IMPORT ──
+// ══════════════════════════════════════════════════
+function importCSVFile(input){
+  const f=input.files[0]; if(!f)return;
+  importCSVFileDirect(f);
+  input.value='';
+}
+
+function importCSVFileDirect(file){
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const rows = parseCSV(e.target.result);
+      if(!rows.length){ toast('⚠️ CSV vazio','warn'); return; }
+      previewCSV(rows, file.name);
+    }catch(err){ toast('❌ Erro ao ler CSV: '+err.message,'err'); }
+  };
+  r.readAsText(file,'UTF-8');
+}
+
+function parseCSV(text){
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2) return [];
+  // Try to detect separator
+  const sep = lines[0].includes(';')?';':',';
+  const headers = lines[0].split(sep).map(h=>h.trim().toLowerCase()
+    .replace(/[áàã]/g,'a').replace(/[éê]/g,'e').replace(/[í]/g,'i')
+    .replace(/[óõ]/g,'o').replace(/[ú]/g,'u').replace(/ç/g,'c').replace(/\s+/g,'_'));
+  return lines.slice(1).map(line=>{
+    const vals = line.split(sep);
+    const obj={};
+    headers.forEach((h,i)=>{ obj[h]=(vals[i]||'').trim().replace(/^"|"$/g,''); });
+    return obj;
+  }).filter(r=>Object.values(r).some(v=>v));
+}
+
+function previewCSV(rows, fname){
+  // Map CSV fields → Jacarandá reg fields
+  const today = new Date().toISOString().slice(0,10);
+  const weekNum = String(wn()).padStart(2,'0');
+
+  const mapped = rows.map(r=>{
+    // Try multiple field name variations
+    const get = (...keys) => { for(const k of keys){ if(r[k]) return r[k]; } return ''; };
+    const data  = get('data','date','fecha','dt')||today;
+    const dept  = get('departamento','dept','depto','sistema','area')||'Convés';
+    const titulo= get('titulo','title','atividade','actividade','trabajo','tarefa','descricao_curta')||'Atividade importada';
+    const desc  = get('descricao','descripcion','description','observacao','obs','detalhe')||'';
+    const status= normalizeStatus(get('status','estado','situacao'));
+    const local = get('local','localizacion','location','area','bay','bay_number')||'';
+    const equipe= get('equipe','responsavel','responsible','tecnico','oficial')||'';
+    const s     = get('semana','semana_numero','week')||weekNum;
+    return {
+      id:gid(), s, lb:`SEM ${s}`, d:data, dp:dept,
+      titulo, a:desc, q:equipe, st:status, l:local,
+      fotos:[], ts:Date.now()
+    };
+  });
+
+  _importPending = {type:'csv', data:mapped, fname};
+
+  const body = document.getElementById('import-preview-body');
+  body.innerHTML=`
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:700;color:var(--text);">📋 CSV: ${rows.length} linhas → ${mapped.length} registros</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Arquivo: ${fname}</div>
+    </div>
+    <div style="overflow-x:auto;margin-bottom:10px;">
+      <table style="width:100%;border-collapse:collapse;font-size:11px;">
+        <thead><tr style="background:var(--bg);">
+          <th style="padding:5px 8px;text-align:left;border-bottom:1px solid var(--border);">Semana</th>
+          <th style="padding:5px 8px;text-align:left;border-bottom:1px solid var(--border);">Dept.</th>
+          <th style="padding:5px 8px;text-align:left;border-bottom:1px solid var(--border);">Título</th>
+          <th style="padding:5px 8px;text-align:left;border-bottom:1px solid var(--border);">Status</th>
+        </tr></thead>
+        <tbody>
+          ${mapped.slice(0,8).map(m=>`<tr>
+            <td style="padding:5px 8px;border-bottom:1px solid var(--border);font-family:monospace;">${m.s}</td>
+            <td style="padding:5px 8px;border-bottom:1px solid var(--border);">${m.dp}</td>
+            <td style="padding:5px 8px;border-bottom:1px solid var(--border);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.titulo}</td>
+            <td style="padding:5px 8px;border-bottom:1px solid var(--border);">${stg(m.st)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      ${mapped.length>8?`<div style="font-size:10px;color:var(--muted);padding:6px;">+ ${mapped.length-8} mais linhas...</div>`:''}
+    </div>
+    <div style="background:var(--login-blue-xlt);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--login-blue);">
+      ℹ️ Colunas esperadas: <code>data, departamento, titulo, descricao, status, local, equipe, semana</code>
+    </div>
+  `;
+  document.getElementById('import-actions').innerHTML=`
+    <button class="btn btn-primary" onclick="applyCSV()">✅ Importar ${mapped.length} linha(s)</button>
+    <button class="btn btn-ghost" onclick="cancelImport()">✕ Cancelar</button>
+  `;
+  addImportLog(`📋 CSV parseado: ${mapped.length} registros prontos`,'info');
+  showImportPreview();
+}
+
+function normalizeStatus(s){
+  if(!s) return 'Em Andamento';
+  const sl = s.toLowerCase();
+  if(sl.includes('conclu')||sl.includes('done')||sl.includes('ok')||sl.includes('feito')) return 'Concluído';
+  if(sl.includes('andamento')||sl.includes('progress')||sl.includes('em curso')) return 'Em Andamento';
+  if(sl.includes('pendente')||sl.includes('pending')||sl.includes('aberto')) return 'Pendente';
+  return 'Em Andamento';
+}
+
+function applyCSV(){
+  if(!_importPending||_importPending.type!=='csv') return;
+  const regs = _importPending.data;
+  regs.forEach(r=>S.regs.push(r));
+  saveData(true); kpis(); renderDash(); cancelImport();
+  addImportLog(`✅ ${regs.length} registros CSV adicionados`,'ok');
+  toast(`✅ ${regs.length} registros importados!`,'ok');
+}
+
+// ── CSV TEMPLATE ──
+function downloadCSVTemplate(){
+  const header = 'data,departamento,titulo,descricao,status,local,equipe,semana';
+  const examples = [
+    `2026-04-21,Convés,Pintura Bay 10 BE,"Aplicação 1ª e 2ª mão de pintura. Área de 12m²",Concluído,Bay 10 BE,Rafael Castro / Alex Santos,16`,
+    `2026-04-21,Máquinas,Revisão Bomba de Lastro,"Desmontagem e verificação da bomba de lastro n°2",Em Andamento,Praça de Máquinas,Jorge Murrieta,16`,
+    `2026-04-22,MC Reefer,Manutenção Reefer Bay 14,"Verificação e recarga de gás do container reefer",Pendente,Bay 14,Hélder Tabachi,17`,
+  ];
+  const csv = [header,...examples].join('\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='MODELO_IMPORTACAO_JACARANDA.csv'; a.click();
+  toast('📋 Modelo CSV baixado!','ok');
+}
+
+// ── CANCEL ──
+function cancelImport(){
+  _importPending = null;
+  const prev = document.getElementById('import-preview');
+  if(prev) prev.style.display='none';
+}
+
+// ── APPLY ACTIONS MAPPING ──
+const _importApply = {
+  backup:applyBackup, inspecao:applyInspecao, condicoes:applyCondicoes,
+  diagramas:applyDiagramas, modulo:applyModulo, csv:applyCSV
+};
+
 // ── INIT ──
-loadData();kpis();renderDash();fillWeekSel();renderDriveLinks();
+loadData();checkInspFromURL();kpis();renderDash();fillWeekSel();renderDriveLinks();
 fillDeptSelect('r-dept');fillRoleSelect('mc-fn');fillDeptSelect('mc-dp');
 setupAutoSync();
 initFloatBarDrag(); // init draggable float bar
