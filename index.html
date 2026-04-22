@@ -4,61 +4,75 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1A5FA8">
-<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Jacarandá">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Jacarandá ⚓</title>
+<!-- build:20260422_0000 -->
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d2a52;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.card{background:linear-gradient(160deg,#1a4a8a,#0d2a52);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:32px 24px;max-width:360px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
-.logo{font-size:52px;margin-bottom:12px}
-h1{color:#fff;font-size:22px;font-weight:800;margin-bottom:4px}
-.sub{color:rgba(255,255,255,.55);font-size:13px;margin-bottom:24px;line-height:1.5}
-.progress{height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin-bottom:24px;overflow:hidden}
-.bar{height:100%;background:#6DB847;border-radius:2px;animation:fill 1.8s ease forwards}
-@keyframes fill{from{width:0}to{width:100%}}
-.btn{display:block;background:#6DB847;color:#fff;font-weight:700;font-size:15px;padding:14px;border-radius:12px;text-decoration:none;margin-bottom:10px;transition:opacity .15s}
-.btn:hover{opacity:.9}
-.btn-outline{background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);font-size:13px;padding:10px;border-radius:10px;margin-bottom:0}
-.hint{color:rgba(255,255,255,.4);font-size:11px;margin-top:16px;line-height:1.7;padding:10px;background:rgba(255,255,255,.05);border-radius:8px}
-.hint strong{color:rgba(255,255,255,.7)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d2a52;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.card{background:linear-gradient(160deg,#1a4a8a 0%,#0d2a52 100%);border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:36px 24px 28px;max-width:340px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.5);}
+.anchor{font-size:58px;margin-bottom:14px;}
+h1{color:#fff;font-size:24px;font-weight:800;margin-bottom:6px;letter-spacing:-.5px;}
+.vessel{color:#6DB847;font-size:13px;font-weight:700;margin-bottom:4px;}
+.route{color:rgba(255,255,255,.45);font-size:11px;margin-bottom:28px;letter-spacing:1px;text-transform:uppercase;}
+.bar-wrap{height:3px;background:rgba(255,255,255,.08);border-radius:2px;margin-bottom:28px;overflow:hidden;}
+.bar{height:100%;background:linear-gradient(90deg,#6DB847,#4CAF50);border-radius:2px;animation:load 2s ease forwards;}
+@keyframes load{0%{width:0%}100%{width:100%}}
+.btn-main{display:flex;align-items:center;justify-content:center;gap:10px;background:#6DB847;color:#fff;font-weight:700;font-size:16px;padding:15px 20px;border-radius:13px;text-decoration:none;margin-bottom:12px;box-shadow:0 4px 16px rgba(109,184,71,.35);transition:transform .1s,opacity .15s;}
+.btn-main:active{transform:scale(.97);opacity:.9;}
+.hint{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;font-size:11px;color:rgba(255,255,255,.55);line-height:1.7;text-align:left;margin-top:4px;}
+.hint strong{color:rgba(255,255,255,.8);}
+.step{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;}
+.step:last-child{margin-bottom:0;}
+.step-num{background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px;}
 </style>
 </head>
 <body>
 <div class="card">
-  <div class="logo">⚓</div>
+  <div class="anchor">⚓</div>
   <h1>LOG-IN Jacarandá</h1>
-  <p class="sub">Sistema de Relatórios a Bordo<br>M/V LOG-IN Jacarandá · Linha Amazonas</p>
-  <div class="progress"><div class="bar"></div></div>
-  <a href="jacaranda_manutencao.html" class="btn" id="btn-open">🚀 Abrir App</a>
-  <div id="hint-box" class="hint" style="display:none"></div>
+  <div class="vessel">M/V LOG-IN JACARANDÁ</div>
+  <div class="route">Linha Amazonas · Relatórios a Bordo</div>
+  <div class="bar-wrap"><div class="bar"></div></div>
+  <a href="jacaranda_manutencao.html" class="btn-main" id="btn">🚀 &nbsp;Abrir App</a>
+  <div class="hint" id="hint"></div>
 </div>
 <script>
 const mob=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent);
-const standalone=window.matchMedia('(display-mode:standalone)').matches||navigator.standalone;
-const hint=document.getElementById('hint-box');
+const sa=window.matchMedia('(display-mode:standalone)').matches||window.navigator.standalone===true;
+const hint=document.getElementById('hint');
 
-if(standalone){
-  location.href='jacaranda_manutencao.html';
+if(sa){
+  location.replace('jacaranda_manutencao.html');
+} else if(ios){
+  hint.innerHTML=
+    '<div class="step"><div class="step-num">1</div><div>Abra no <strong>Safari</strong> (não Chrome)</div></div>'+
+    '<div class="step"><div class="step-num">2</div><div>Toque em <strong>□↑ Compartilhar</strong></div></div>'+
+    '<div class="step"><div class="step-num">3</div><div>Toque em <strong>Adicionar à Tela de Início</strong></div></div>'+
+    '<div class="step"><div class="step-num">4</div><div>Toque em <strong>Adicionar</strong> — ícone ⚓ aparece!</div></div>';
+  setTimeout(()=>location.replace('jacaranda_manutencao.html'), 3000);
+} else if(mob){
+  hint.innerHTML=
+    '<div class="step"><div class="step-num">1</div><div>Abra no <strong>Chrome</strong></div></div>'+
+    '<div class="step"><div class="step-num">2</div><div>Toque nos <strong>3 pontos ⋮</strong> no canto</div></div>'+
+    '<div class="step"><div class="step-num">3</div><div>Toque em <strong>"Adicionar à tela inicial"</strong></div></div>'+
+    '<div class="step"><div class="step-num">4</div><div>Confirme → ícone ⚓ aparece!</div></div>';
+  setTimeout(()=>location.replace('jacaranda_manutencao.html'), 3000);
 } else {
-  if(ios){
-    hint.style.display='block';
-    hint.innerHTML='📱 Para instalar no iPhone/iPad:<br><strong>□↑ Compartilhar</strong> → <strong>Adicionar à Tela de Início</strong>';
-  } else if(mob){
-    hint.style.display='block';
-    hint.innerHTML='📱 Para instalar no Android:<br>Toque em <strong>⋮ Menu</strong> → <strong>Adicionar à tela inicial</strong>';
-  } else {
-    hint.style.display='block';
-    hint.innerHTML='💻 No Chrome/Edge: <strong>⋮ → Instalar app</strong> para adicionar ao desktop';
-  }
-  setTimeout(()=>{ location.href='jacaranda_manutencao.html'; }, mob?2500:1500);
+  hint.innerHTML='<div class="step"><div class="step-num">💻</div><div>Chrome/Edge: <strong>⋮ → Instalar app</strong></div></div>';
+  setTimeout(()=>location.replace('jacaranda_manutencao.html'), 1500);
 }
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./service-worker.js')
+    .then(r=>console.log('SW OK',r.scope))
+    .catch(e=>console.log('SW err',e));
+}
 </script>
 </body>
 </html>

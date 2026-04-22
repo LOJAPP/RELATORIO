@@ -1,7 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="73" fill="#0d2a52"/>
-  <rect x="4" y="4" width="504" height="504" rx="64" fill="#1A5FA8"/>
-  <text x="256" y="266" font-family="Arial Black,sans-serif" font-size="140px" font-weight="900" fill="white" text-anchor="middle">log</text>
-  <text x="256" y="399" font-family="Arial Black,sans-serif" font-size="140px" font-weight="900" fill="#6DB847" text-anchor="middle">in.</text>
-  <text x="256" y="476" font-family="Arial,sans-serif" font-size="52px" fill="rgba(255,255,255,0.6)" text-anchor="middle">⚓ Jacarandá</text>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1A5FA8"/>
+      <stop offset="100%" stop-color="#0d2a52"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="73" fill="url(#bg)"/>
+  <text x="256" y="256" font-family="Arial Black,sans-serif" font-size="136" font-weight="900" fill="white" text-anchor="middle">log</text>
+  <text x="256" y="389" font-family="Arial Black,sans-serif" font-size="136" font-weight="900" fill="#6DB847" text-anchor="middle">in.</text>
+  <text x="256" y="465" font-family="Arial,sans-serif" font-size="48" fill="rgba(255,255,255,0.5)" text-anchor="middle">⚓ Jacarandá</text>
 </svg>

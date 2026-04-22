@@ -1,30 +1,44 @@
 # ⚓ LOG-IN Jacarandá — Sistema de Relatórios a Bordo
 
-App PWA para gestão de trabalhos, inspeções, desvios e manutenção do M/V LOG-IN Jacarandá — Linha Amazonas.
+**Build:** `20260422_0000`
 
-## 🚀 Abrir o App
+App PWA para gestão de trabalhos, inspeções, desvios e manutenção do M/V LOG-IN Jacarandá.
 
-**→ [Clique aqui para abrir](https://SEU_USUARIO.github.io/jacaranda-app/)**
+## 🚀 Abrir
 
-## 📱 Instalar no Celular
+**→ [Clique aqui para abrir o app](https://SEU_USUARIO.github.io/jacaranda-app/)**
 
-**Android:** Chrome → ⋮ → Adicionar à tela inicial  
-**iPhone:** Safari → □↑ Compartilhar → Adicionar à Tela de Início
+## 📱 Instalar no celular
 
-## 📁 Arquivos para upload
+**iPhone (Safari):**
+1. Abrir no Safari
+2. □↑ Compartilhar → "Adicionar à Tela de Início"
+
+**Android (Chrome):**
+1. Abrir no Chrome
+2. ⋮ → "Adicionar à tela inicial"
+
+## 📂 Arquivos
 
 | Arquivo | Descrição |
 |---------|-----------|
-| `index.html` | Splash screen com detecção automática |
-| `jacaranda_manutencao.html` | App completo |
+| `index.html` | Tela de entrada com detecção de dispositivo |
+| `jacaranda_manutencao.html` | App completo (261 KB) |
 | `manifest.json` | Configuração PWA |
 | `service-worker.js` | Cache offline |
-| `icon-192.png` | Ícone 192×192 |
-| `icon-512.png` | Ícone 512×512 |
+| `icon-192.png` | Ícone pequeno |
+| `icon-512.png` | Ícone grande |
 
-## 🛠️ Como publicar no GitHub Pages
+## ⬆️ Como atualizar no GitHub
 
-1. Criar repositório `jacaranda-app` (Public)
-2. Upload de todos os 6 arquivos
-3. Settings → Pages → Source: main → Save
-4. Aguardar ~2 min → URL pronta
+1. Ir em **Add file → Upload files**
+2. Arrastar os 6 arquivos (substituem os antigos)
+3. **Commit changes**
+4. Aguardar 1-2 min
+
+## 📱 Interface Mobile
+
+- **Barra inferior** com ícones de navegação rápida
+- **Drawer "Mais"** deslizante com todos os módulos
+- **Sidebar** como gaveta lateral (swipe ou botão ☰)
+- **Barra flutuante** destacável e arrastável
