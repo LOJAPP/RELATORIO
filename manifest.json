@@ -1,7 +1,6 @@
 {
   "name": "LOG-IN Jacarandá",
   "short_name": "Jacarandá",
-  "description": "Relatórios, inspeções e manutenção · M/V LOG-IN Jacarandá",
   "start_url": "./",
   "id": "./",
   "display": "standalone",
@@ -26,37 +25,5 @@
   "categories": [
     "productivity",
     "business"
-  ],
-  "shortcuts": [
-    {
-      "name": "Novo Registro",
-      "url": "./jacaranda_manutencao.html",
-      "icons": [
-        {
-          "src": "icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Nova Inspeção",
-      "url": "./jacaranda_manutencao.html",
-      "icons": [
-        {
-          "src": "icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Cartão de Desvio",
-      "url": "./jacaranda_manutencao.html",
-      "icons": [
-        {
-          "src": "icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    }
   ]
 }
