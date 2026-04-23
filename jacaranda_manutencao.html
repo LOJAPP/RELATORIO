@@ -1641,8 +1641,15 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
               </div>
             </div>
             <div class="form-row">
-              <div class="form-group"><label>Responsável</label><select class="form-control" id="ie-resp"></select></div>
-              <div class="form-group"><label>Testemunha</label><select class="form-control" id="ie-test"></select></div>
+              <div class="form-group"><label>Responsável pela Inspeção</label><select class="form-control" id="ie-resp"></select></div>
+              <div class="form-group" style="max-width:180px;"><label>Função / Cargo</label><input type="text" class="form-control" id="ie-resp-cargo" placeholder="Ex: Imediato, Mec. Chefe..."></div>
+            </div>
+            <div class="form-group">
+              <label>👥 Participantes / Fiscalizadores <span style="font-size:10px;font-weight:400;color:var(--text-dim);">(opcional — selecione um ou mais)</span></label>
+              <div id="ie-participants-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;min-height:28px;padding:4px 0;"></div>
+              <select class="form-control" id="ie-participant-add" onchange="addParticipant(this)" style="max-width:260px;">
+                <option value="">+ Adicionar participante...</option>
+              </select>
             </div>
             <div class="form-group"><label>Observações Gerais</label>
               <textarea class="form-control" id="ie-desc" style="min-height:72px;" placeholder="Observações, notas, referências..."></textarea>
@@ -1702,6 +1709,12 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
                 <span style="font-size:10px;opacity:.8;">Responder agora</span>
               </button>
             </div>
+
+            <!-- Enviar tudo junto -->
+            <button class="btn btn-primary" onclick="shareInspAndOpenForm(_editInspId)"
+              style="width:100%;padding:12px;margin-bottom:10px;font-size:14px;gap:8px;">
+              📤 Enviar .json + Abrir WhatsApp (tudo junto)
+            </button>
 
             <!-- WhatsApp texto simples -->
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
@@ -5016,10 +5029,28 @@ function renderInspCard(ins, i, showEdit=true){
 
 function exportSingleInsp(id){
   var ins=S.inspecoes.find(function(i){return i.id===id;});if(!ins)return;
-  var blob=new Blob([JSON.stringify(Object.assign({},ins,{_tipo:'inspecao_jacaranda',_vessel:(getCfg().vessel&&getCfg().vessel.vessel)||'LOG-IN JACARANDÁ',_exportDate:new Date().toISOString()}),null,2)],{type:'application/json'});
-  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='INSPECAO_'+ins.titulo.replace(/\s+/g,'_').slice(0,30)+'_'+ins.data+'.json';a.click();
-  toast('📄 Exportado!','ok');
+  var data=Object.assign({},ins,{
+    _tipo:'inspecao_jacaranda',
+    _vessel:(getCfg().vessel&&getCfg().vessel.vessel)||'LOG-IN JACARANDA',
+    _exportDate:new Date().toISOString()
+  });
+  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var safe=(ins.titulo||'insp').replace(/\s+/g,'_').replace(/[^\w-]/g,'').slice(0,30);
+  var fname='INSPECAO_'+safe+'_'+(ins.data||'').replace(/-/g,'')+'.json';
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click();
+  toast('📄 JSON exportado!','ok');
+  // Also offer to share with native file share (for sending to respondent)
+  setTimeout(function(){
+    if(navigator.canShare&&navigator.canShare({files:[new File([blob],fname,{type:'application/json'})]})){
+      if(confirm('Deseja enviar este arquivo para o responsável pela resposta?\n\nO formulário estará disponível em:\n'+buildFormURL())){
+        navigator.share({
+          title:'Inspeção: '+(ins.titulo||''),
+          text:'📋 Inspeção para resposta:\n'+(ins.titulo||'')+'\n\nFormulário: '+buildFormURL(),
+          files:[new File([blob],fname,{type:'application/json'})]
+        }).catch(function(){});
+      }
+    }
+  },300);
 }
 
 function fecharInsp(id){
@@ -5048,8 +5079,40 @@ function duplicarInsp(id){
   toast('📋 Duplicada — edite os detalhes','ok');
 }
 
-var _editInspId = null;
-var _iePhotos   = {};   // {key: [dataURL,...]}  key = 'general' | 'item-N'
+var _editInspId   = null;
+var _iePhotos     = {};
+var _editParticipants = [];  // array of crew IDs
+
+function renderParticipants(ids){
+  _editParticipants = ids||[];
+  var el = document.getElementById('ie-participants-list');
+  if(!el) return;
+  if(!_editParticipants.length){
+    el.innerHTML = '<span style="font-size:11px;color:var(--text-dim);font-style:italic;">Nenhum participante adicionado</span>';
+    return;
+  }
+  el.innerHTML = _editParticipants.map(function(id,i){
+    var c = S.crew.find(function(x){return x.id===id;});
+    if(!c) return '';
+    var abbr = c.abbr||(ROLE_ABBR[c.fn]||c.fn.slice(0,3).toUpperCase());
+    return '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--login-blue-xlt);border:1px solid var(--border2);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;">'
+      +'['+abbr+'] '+c.nm.split(' ').slice(0,2).join(' ')
+      +'<button onclick="removeParticipant('+i+')" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-dim);padding:0;line-height:1;">✕</button>'
+      +'</span>';
+  }).join('');
+}
+
+function addParticipant(sel){
+  var id = sel.value; sel.value=''; if(!id) return;
+  if(_editParticipants.includes(id)){ toast('Já adicionado','warn'); return; }
+  _editParticipants.push(id);
+  renderParticipants(_editParticipants);
+}
+
+function removeParticipant(i){
+  _editParticipants.splice(i,1);
+  renderParticipants(_editParticipants);
+}   // {key: [dataURL,...]}  key = 'general' | 'item-N'
 
 // ── Navigate to full edit page ──
 function openEditInsp(id){
@@ -5097,22 +5160,26 @@ function renderInspEdit(){
 
   // crew selects
   var crewBase = '<option value="">— Selecionar —</option>';
-  var crewBaseT= '<option value="">— Opcional —</option>';
   S.crew.forEach(function(c){
     var abbr = c.abbr||(ROLE_ABBR[c.fn]||c.fn.slice(0,3).toUpperCase());
-    var opt  = '<option value="'+c.id+'">['+(abbr)+'] '+c.nm.split(' ').slice(0,2).join(' ')+'</option>';
-    crewBase += opt; crewBaseT += opt;
+    crewBase += '<option value="'+c.id+'">['+(abbr)+'] '+c.nm.split(' ').slice(0,2).join(' ')+'</option>';
   });
   var respEl = document.getElementById('ie-resp');
-  var testEl = document.getElementById('ie-test');
   if(respEl){ respEl.innerHTML=crewBase; if(ins.respId) respEl.value=ins.respId; }
-  if(testEl){
-    testEl.innerHTML=crewBaseT;
-    if(ins.testNm){
-      var tc = S.crew.find(function(c){return c.nm.includes(ins.testNm.split(' ')[0]);});
-      if(tc) testEl.value=tc.id;
-    }
+  // Responsável cargo
+  var cargoEl = document.getElementById('ie-resp-cargo');
+  if(cargoEl) cargoEl.value = ins.respCargo||'';
+  // Participants select
+  var partAdd = document.getElementById('ie-participant-add');
+  if(partAdd){
+    partAdd.innerHTML = '<option value="">+ Adicionar participante...</option>';
+    S.crew.forEach(function(c){
+      var abbr = c.abbr||(ROLE_ABBR[c.fn]||c.fn.slice(0,3).toUpperCase());
+      partAdd.innerHTML += '<option value="'+c.id+'">['+(abbr)+'] '+c.nm.split(' ').slice(0,2).join(' ')+'</option>';
+    });
   }
+  // Render existing participants
+  renderParticipants(ins.participants||[]);
 
   // General photos
   var gfEl = document.getElementById('ie-fotos-general');
@@ -5363,15 +5430,25 @@ function saveEditInsp(){
 
   if(ins.data) ins.semana=String(wn(new Date(ins.data+'T12:00:00'))).padStart(2,'0');
 
-  // Responsável
+  // Responsável + cargo
   var respId = document.getElementById('ie-resp')?.value||'';
   var rc = S.crew.find(function(c){return c.id===respId;});
-  if(rc){var abbr=rc.abbr||(ROLE_ABBR[rc.fn]||rc.fn.slice(0,3).toUpperCase());ins.respId=respId;ins.respNm='['+abbr+'] '+rc.nm.split(' ')[0];}
+  if(rc){
+    var abbr=rc.abbr||(ROLE_ABBR[rc.fn]||rc.fn.slice(0,3).toUpperCase());
+    ins.respId=respId;
+    ins.respNm='['+abbr+'] '+rc.nm;  // full name
+  }
+  ins.respCargo = document.getElementById('ie-resp-cargo')?.value||'';
 
-  // Testemunha
-  var testId = document.getElementById('ie-test')?.value||'';
-  var tc = S.crew.find(function(c){return c.id===testId;});
-  ins.testNm = tc?tc.nm.split(' ').slice(0,2).join(' '):'';
+  // Participants (replaces single Testemunha)
+  ins.participants = _editParticipants||[];
+  // Keep testNm for backward compat (first participant)
+  if(ins.participants.length>0){
+    var fp = S.crew.find(function(c){return c.id===ins.participants[0];});
+    ins.testNm = fp?fp.nm.split(' ').slice(0,2).join(' '):'';
+  } else {
+    ins.testNm = '';
+  }
 
   // General photos — merge staged
   var gStaged = _iePhotos['general']||[];
@@ -5466,6 +5543,34 @@ function shareInspLink(id){
     toast('Arquivo baixado + link do formulario pronto','ok');
   }
 }
+
+// Combined: download JSON + open WhatsApp + then open form
+function shareInspAndOpenForm(id){
+  var ins=S.inspecoes.find(function(i){return i.id===id;});
+  if(!ins){toast('Salve a inspeção primeiro','warn');return;}
+  // 1. Download JSON file
+  downloadInspJSON(id);
+  // 2. Build WhatsApp message with form link
+  var formURL=buildFormURL();
+  var nItems=(ins.items||[]).length;
+  var ruim=(ins.items||[]).filter(function(it){return it.result==='Não Conforme'||it.result==='Pendente'||it.result==='Parcial';}).length;
+  var waMsg='📋 *INSPEÇÃO — PENDÊNCIAS PARA RESPOSTA*\n'
+    +(ins.titulo||'').slice(0,55)+'\n'
+    +'📅 '+(ins.data||'—')+(ins.hora?' · '+ins.hora:'')+'\n'
+    +'📋 '+nItems+' itens · '+ruim+' pendente(s)\n'
+    +'👷 Resp: '+(ins.respNm||'—')+'\n\n'
+    +'*Como responder:*\n'
+    +'1️⃣ Salve o arquivo .json que receberá\n'
+    +'2️⃣ Abra: '+formURL+'\n'
+    +'3️⃣ Carregue o arquivo → responda cada item\n'
+    +'4️⃣ Envie a resposta de volta\n\n'
+    +'_M/V LOG-IN JACARANDÁ · Linha Amazonas_';
+  setTimeout(function(){
+    window.open('https://wa.me/?text='+encodeURIComponent(waMsg),'_blank');
+  },600);
+  toast('📥 .json baixado · 💬 WhatsApp abrindo...','ok');
+}
+
 
 function copyShareURL(){
   var input=document.getElementById('ie-share-url-input');
@@ -5655,13 +5760,16 @@ function printInspCard(id){
     '.sn{font-size:12px;font-weight:700;color:#374151;margin-top:4px;}',
     '.sr{font-size:10px;color:#9ca3af;}',
     '.gen{font-size:10px;color:#9ca3af;text-align:right;align-self:flex-end;}',
-    // response link section (no-print)
-    '.resp-link{background:#f0f9ff;border-top:3px solid #0ea5e9;padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}',
+    '.resp-link{background:#f0f9ff;border-top:3px solid #0ea5e9;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:8px;}',
     '.resp-link-text{flex:1;min-width:160px;}',
-    '.resp-link-title{font-size:12px;font-weight:700;color:#0c4a6e;margin-bottom:6px;}',
-    '.resp-link-btn{display:inline-block;background:#0ea5e9;color:#fff;font-weight:700;font-size:13px;padding:9px 20px;border-radius:8px;text-decoration:none;margin-bottom:6px;}',
-    '.resp-link-url{font-size:10px;color:#0369a1;word-break:break-all;margin-top:4px;}',
-    '.resp-link-note{font-size:10px;color:#0369a1;margin-top:3px;}',
+    '.resp-link-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#0c4a6e;margin-bottom:6px;}',
+    '.resp-link-btn{display:inline-block;background:#0ea5e9;color:#fff;font-weight:700;font-size:12px;padding:8px 18px;border-radius:7px;text-decoration:none;margin-bottom:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}',
+    '.resp-link-url{font-size:10px;color:#0369a1;word-break:break-all;margin-top:4px;font-family:monospace;}',
+    '.resp-link-note{font-size:10px;color:#6b7280;margin-top:3px;}',
+    '.qr-wrap{text-align:center;flex-shrink:0;}',
+    '.qr-wrap img{width:120px;height:120px;border-radius:8px;border:2px solid #0ea5e9;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;}',
+    '.qr-lbl{font-size:8px;font-weight:700;color:#0369a1;margin-top:4px;text-align:center;letter-spacing:.5px;text-transform:uppercase;}',
+    '@media print{.resp-link{border:2px solid #0ea5e9;border-radius:8px;background:#f0f9ff;-webkit-print-color-adjust:exact;print-color-adjust:exact;} .resp-link-btn{background:#0ea5e9;color:#fff;}}',
   ].join('\n');
 
   // ── Summary table ──
@@ -5748,6 +5856,7 @@ function printInspCard(id){
     + '<div class="mc"><div class="ml">Responsável<\/div><div class="mv">'+(ins.respNm||'—')+'<\/div><\/div>'
     + '<div class="mc"><div class="ml">Testemunha<\/div><div class="mv">'+(ins.testNm||'—')+'<\/div><\/div>'
     + '<div class="mc"><div class="ml">Navio<\/div><div class="mv">'+vessel+'<\/div><\/div>'
+    + ((ins.participants&&ins.participants.length) ? '<div class="mc" style="grid-column:1/-1;"><div class="ml">Participantes<\/div><div class="mv">'+(ins.participants||[]).map(function(id){var c=S.crew.find(function(x){return x.id===id;});return c?c.nm:'?';}).join(' · ')+'<\/div><\/div>' : '')
     + '<\/div>'
 
     // ── Body ──
@@ -5798,16 +5907,19 @@ function printInspCard(id){
     + '<\/div>' // .ftr
     + '<\/div>' // page-break div
 
-    // ── Response Link (no-print) ──
-    + '<div class="no-print resp-link">'
+    // ── Response Link + QR — visible in screen AND print ──
+    + '<div class="resp-link">'
     + '<div class="resp-link-text">'
-    + '<div class="resp-link-title">📋 Responder esta inspeção online:<\/div>'
-    + '<a href="'+respFormUrl+'" target="_blank" class="resp-link-btn">📱 Abrir Formulário de Resposta<\/a>'
-    + '<div class="resp-link-url">'+respFormUrl+'<\/div>'
-    + '<div class="resp-link-note">Ou carregue o arquivo .json no formulário<\/div>'
-    + '<\/div>'
-    + '<img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data='+encodeURIComponent(respFormUrl)+'" alt="QR" style="width:100px;height:100px;border-radius:8px;border:2px solid #0ea5e9;flex-shrink:0;" onerror="this.style.display=none">'
-    + '<\/div>'
+    + '<div class="resp-link-title">📋 RESPONDER ESTA INSPEÇÃO</div>'
+    + '<a href="'+respFormUrl+'" target="_blank" class="resp-link-btn">📱 Abrir Formulário de Resposta</a>'
+    + '<div class="resp-link-url">'+respFormUrl+'</div>'
+    + '<div class="resp-link-note">Digital: clique no botão acima &nbsp;&nbsp;|&nbsp;&nbsp; Impresso: escaneie o QR Code</div>'
+    + '</div>'
+    + '<div class="qr-wrap">'
+    + '<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data='+encodeURIComponent(respFormUrl)+'" alt="QR" onerror="this.parentNode.style.display=\'none\'">'
+    + '<div class="qr-lbl">Escanear<br>para responder</div>'
+    + '</div>'
+    + '</div>'
 
     + '<\/div>\n' // .wrap
     + '\x3Cscript>\n'+toolbarJS+'\n<\/script>\n'
