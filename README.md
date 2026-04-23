@@ -1,2 +1,2 @@
-# ⚓ LOG-IN Jacarandá — build 20260423_0200
-Commit: `build 20260423_0200 - PDF link ao final + assinaturas com nome editavel`
+# ⚓ Jacarandá — build 20260423_0216
+Commit: `build 20260423_0216 - PDF visual corrigido + 4 fotos por linha + assinaturas editaveis`

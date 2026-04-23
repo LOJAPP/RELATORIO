@@ -1,7 +1,6 @@
 {
   "name": "LOG-IN Jacarandá — Relatórios a Bordo",
   "short_name": "Jacarandá",
-  "description": "Relatórios, inspeções e manutenção · M/V LOG-IN Jacarandá · Linha Amazonas",
   "start_url": "./",
   "id": "./",
   "display": "standalone",

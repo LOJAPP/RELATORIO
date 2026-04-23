@@ -5536,296 +5536,272 @@ function printInspCard(id){
     'Pendente':    { bg:'#7c3aed', lt:'#f5f3ff', border:'#ddd6fe', text:'#4c1d95' },
   };
   var ICONS = { 'Conforme':'✅', 'Não Conforme':'❌', 'Parcial':'⚠️', 'Pendente':'🔄' };
-
   var C  = COLORS[ins.result] || COLORS['Pendente'];
   var ic = ICONS[ins.result]  || '—';
 
-  // ── Helper: build a 4-per-row photo grid (larger images) ──
+  // ── Photo grid: strict 4 columns using CSS Grid ──
   function photoGrid(fotos, label){
     if(!fotos||!fotos.length) return '';
     var imgs = fotos.map(function(u){
-      return '<div style="width:calc(25% - 6px);min-width:160px;flex-grow:1;max-width:220px;overflow:hidden;border-radius:10px;border:1px solid #e5e7eb;background:#f3f4f6;box-shadow:0 1px 4px rgba(0,0,0,.08);">'
-           + '<img src="'+u+'" style="width:100%;height:180px;object-fit:cover;display:block;">'
+      return '<div style="overflow:hidden;border-radius:6px;border:1px solid #e5e7eb;background:#f9fafb;">'
+           + '<img src="'+u+'" style="width:100%;height:140px;object-fit:cover;display:block;">'
            + '</div>';
     }).join('');
-    return '<div style="margin-top:16px;">'
-         + (label?'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px;border-top:1px solid #e5e7eb;padding-top:10px;">'+label+'</div>':'')
-         + '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + imgs + '</div>'
+    return '<div style="margin-top:12px;">'
+         + (label?'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px;padding-top:10px;border-top:1px solid #e5e7eb;">'+label+'</div>':'')
+         + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">' + imgs + '</div>'
          + '</div>';
   }
 
-  // ── Items section ──
+  // ── Items ──
   var itemsHtml = '';
   (ins.items||[]).forEach(function(it, j){
     var IC = COLORS[it.result] || COLORS['Pendente'];
     var ii = ICONS[it.result]  || '—';
-
-    // Item fotos grid
     var itemFotos = photoGrid(it.fotos||[], '');
-
-    // Response field (editable when printed as form, filled if exists)
-    var resposta = it.resposta || '';
+    var resposta  = it.resposta || '';
 
     itemsHtml +=
-      '<div style="break-inside:avoid;border:1px solid '+IC.border+';border-left:5px solid '+IC.bg+';'
-      +'border-radius:8px;margin-bottom:12px;overflow:hidden;">'
+      '<div style="break-inside:avoid;border:1px solid '+IC.border+';border-left:5px solid '+IC.bg+';border-radius:8px;margin-bottom:14px;overflow:hidden;width:100%;box-sizing:border-box;">'
 
-      // Item header
-      + '<div style="background:'+IC.lt+';padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
-      + '<span style="background:'+IC.bg+';color:#fff;font-family:monospace;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;flex-shrink:0;">#'+String(j+1).padStart(2,'0')+'</span>'
-      + '<strong style="font-size:13px;flex:1;color:#111827;">'+escHtml(it.area||'—')+'</strong>'
-      + '<span style="background:'+IC.bg+';color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">'+ii+' '+it.result+'</span>'
+      // Header
+      + '<div style="background:'+IC.lt+';padding:9px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+      + '<span style="background:'+IC.bg+';color:#fff;font-family:monospace;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;">#'+('0'+(j+1)).slice(-2)+'</span>'
+      + '<span style="font-size:13px;font-weight:700;color:#111827;flex:1;min-width:0;">'  +escHtml(it.area||'—')+'</span>'
+      + '<span style="background:'+IC.bg+';color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;white-space:nowrap;">'+ii+' '+it.result+'</span>'
       + '</div>'
 
-      // Item body
-      + '<div style="padding:10px 14px;">'
-      + (it.dept||it.respItemNm ? '<div style="display:flex;gap:16px;margin-bottom:6px;font-size:11px;color:#6b7280;">'
-        +(it.dept?'<span>🏢 <strong>'+escHtml(it.dept)+'</strong></span>':'')
-        +(it.respItemNm?'<span>👷 <strong>'+escHtml(it.respItemNm)+'</strong></span>':'')
-        +'</div>' : '')
-      + (it.desc?'<div style="font-size:12px;color:#374151;background:#f9fafb;border-radius:5px;padding:8px 10px;margin-bottom:8px;white-space:pre-wrap;">'+escHtml(it.desc)+'</div>':'')
+      // Body
+      + '<div style="padding:10px 14px;width:100%;box-sizing:border-box;">'
+      + (it.dept||it.respItemNm?
+          '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px;font-size:11px;color:#6b7280;">'
+          +(it.dept?'<span>🏢 <strong style="color:#374151;">'+escHtml(it.dept)+'</strong></span>':'')
+          +(it.respItemNm?'<span>👷 <strong style="color:#374151;">'+escHtml(it.respItemNm)+'</strong></span>':'')
+          +'</div>' : '')
+      + (it.desc?'<div style="font-size:12px;color:#374151;background:#f9fafb;border-radius:5px;padding:8px 10px;margin-bottom:8px;white-space:pre-wrap;line-height:1.6;border:1px solid #f3f4f6;">'+escHtml(it.desc)+'</div>':'')
       + itemFotos
 
-      // Response / evidence section
+      // Response / evidence
       + '<div style="margin-top:10px;background:'+(resposta?'#f0fdf4':'#fafafa')+';border:1px dashed '+(resposta?'#86efac':'#d1d5db')+';border-radius:6px;padding:10px 12px;">'
-      + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+(resposta?'#16a34a':'#9ca3af')+';margin-bottom:6px;">📝 Resposta / Evidência de Conformidade</div>'
+      + '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+(resposta?'#16a34a':'#9ca3af')+';margin-bottom:6px;">📝 Resposta / Evidência de Conformidade</div>'
       + (resposta
-          ? '<div style="font-size:12px;color:#111827;white-space:pre-wrap;">'+escHtml(resposta)+'</div>'
-          : '<div style="height:32px;border-bottom:1px solid #d1d5db;color:#9ca3af;font-size:11px;padding-top:8px;">_________________________________________________________________________________________</div>'
+          ? '<div style="font-size:12px;color:#111827;white-space:pre-wrap;line-height:1.6;">'+escHtml(resposta)+'</div>'
+          : '<div style="height:28px;border-bottom:1px solid #d1d5db;color:#9ca3af;font-size:11px;padding-top:6px;">_______________________________________________</div>'
         )
       + '</div>'
 
-      + '</div>'
-      + '</div>';
+      + '</div>'  // body
+      + '</div>'; // item card
   });
 
-  // ── General fotos grid ──
+  // ── General photos ──
   var fotosGeralHtml = photoGrid(ins.fotos||[], '📷 Fotos Gerais da Inspeção');
 
-  // ── Full HTML document ──
-  var respFormUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/') + 'jacaranda_resposta.html';
-  var html = [
-    '\x3C!DOCTYPE html>',
-    '\x3Chtml lang="pt-BR">',
-    '\x3Chead>',
-    '\x3Cmeta charset="UTF-8">',
-    '\x3Cmeta name="viewport" content="width=device-width,initial-scale=1">',
-    '<title>Inspeção — '+escHtml(ins.titulo)+'<\/title>',
-    '<style>',
-    '@page { margin: 14mm 12mm; }',
-    'body { font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; color: #111827; margin: 0; padding: 0; background: #fff; }',
-    '.page-wrap { max-width: 860px; margin: 0 auto; padding: 0; }',
+  // ── Response form URL ──
+  var respFormUrl = window.location.origin
+    + window.location.pathname.replace(/\/[^\/]*$/, '/')
+    + 'jacaranda_resposta.html';
 
-    // Header
-    '.hdr { background: '+C.bg+'; color: #fff; padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; }',
-    '.hdr-logo { font-size: 26px; font-weight: 900; letter-spacing: -1.5px; line-height: 1; }',
-    '.hdr-logo .g { color: #6DB847; } .hdr-logo .d { color: #f59e0b; }',
-    '.hdr-vessel { font-size: 11px; opacity: .85; margin-top: 3px; letter-spacing: .5px; }',
-    '.hdr-right { text-align: right; }',
-    '.hdr-doc { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; }',
-    '.hdr-date { font-size: 11px; opacity: .8; margin-top: 3px; }',
+  // ── Build HTML ──
+  var css = [
+    '*{box-sizing:border-box;margin:0;padding:0;}',
+    '@page{margin:12mm 14mm;}',
+    'body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}',
+    '.wrap{max-width:800px;margin:0 auto;}',
+    '@media print{.wrap{max-width:100%;} .no-print{display:none!important;}}',
+    // header
+    '.hdr{background:'+C.bg+';color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;}',
+    '.hdr-logo{font-size:24px;font-weight:900;letter-spacing:-1.5px;line-height:1;}',
+    '.hdr-logo .g{color:#6DB847;}.hdr-logo .d{color:#f59e0b;}',
+    '.hdr-vessel{font-size:11px;opacity:.85;margin-top:3px;}',
+    '.hdr-right{text-align:right;}',
+    '.hdr-doc{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;}',
+    '.hdr-date{font-size:11px;opacity:.8;margin-top:3px;}',
+    // title
+    '.title-block{padding:16px 20px 12px;border-bottom:2px solid '+C.bg+';}',
+    '.insp-title{font-size:20px;font-weight:900;color:#07182e;margin-bottom:6px;line-height:1.2;}',
+    '.result-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 14px;border-radius:20px;font-weight:700;font-size:13px;background:'+C.lt+';color:'+C.text+';border:2px solid '+C.bg+';}',
+    // meta
+    '.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 20px;background:#f9fafb;border-bottom:1px solid #e5e7eb;}',
+    '.mc{padding:4px 0;}',
+    '.ml{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;margin-bottom:2px;}',
+    '.mv{font-size:12px;font-weight:600;color:#111827;}',
+    // body
+    '.body{padding:16px 20px;}',
+    '.sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;padding:10px 0 8px;border-top:1px solid #e5e7eb;margin-top:16px;}',
+    '.desc-box{font-size:12px;color:#374151;background:#f9fafb;border-radius:6px;padding:10px 12px;white-space:pre-wrap;border:1px solid #e5e7eb;margin-bottom:12px;line-height:1.6;}',
+    // summary table
+    '.st{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:11px;}',
+    '.st th{background:#f3f4f6;padding:6px 10px;text-align:left;font-weight:700;color:#374151;border:1px solid #e5e7eb;}',
+    '.st td{padding:6px 10px;border:1px solid #e5e7eb;vertical-align:middle;}',
+    '.st tr:nth-child(even) td{background:#f9fafb;}',
+    // sig
+    '.ftr{padding:14px 20px;border-top:2px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;}',
+    '.sb{text-align:center;flex:1;max-width:220px;}',
+    '.sb-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;margin-bottom:4px;}',
+    '.sb input{width:100%;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:12px;font-weight:700;font-family:inherit;margin-bottom:3px;}',
+    '.sb input.role-input{font-weight:400;font-size:11px;}',
+    '.sl{border-bottom:1.5px solid #374151;height:44px;margin-bottom:4px;}',
+    '.sn{font-size:12px;font-weight:700;color:#374151;margin-top:4px;}',
+    '.sr{font-size:10px;color:#9ca3af;}',
+    '.gen{font-size:10px;color:#9ca3af;text-align:right;align-self:flex-end;}',
+    // response link section (no-print)
+    '.resp-link{background:#f0f9ff;border-top:3px solid #0ea5e9;padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}',
+    '.resp-link-text{flex:1;min-width:160px;}',
+    '.resp-link-title{font-size:12px;font-weight:700;color:#0c4a6e;margin-bottom:6px;}',
+    '.resp-link-btn{display:inline-block;background:#0ea5e9;color:#fff;font-weight:700;font-size:13px;padding:9px 20px;border-radius:8px;text-decoration:none;margin-bottom:6px;}',
+    '.resp-link-url{font-size:10px;color:#0369a1;word-break:break-all;margin-top:4px;}',
+    '.resp-link-note{font-size:10px;color:#0369a1;margin-top:3px;}',
+  ].join('\n');
 
-    // Title block
-    '.title-block { padding: 18px 22px 12px; border-bottom: 2px solid '+C.bg+'; }',
-    '.insp-title { font-size: 22px; font-weight: 900; color: #07182e; margin-bottom: 6px; line-height: 1.2; }',
-    '.result-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 16px; border-radius: 20px; font-weight: 700; font-size: 13px; background: '+C.lt+'; color: '+C.text+'; border: 2px solid '+C.bg+'; }',
+  // ── Summary table ──
+  var summaryHtml = '';
+  if((ins.items||[]).length){
+    var rows = (ins.items||[]).map(function(it,j){
+      var IC = COLORS[it.result]||COLORS['Pendente'];
+      return '<tr>'
+        +'<td style="font-family:monospace;font-weight:700;color:'+IC.bg+';">#'+('0'+(j+1)).slice(-2)+'</td>'
+        +'<td style="font-weight:600;">'+escHtml(it.area||'—')+'</td>'
+        +'<td>'+escHtml(it.dept||'—')+'</td>'
+        +'<td>'+escHtml(it.respItemNm||'—')+'</td>'
+        +'<td><span style="background:'+IC.bg+';color:#fff;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">'+(ICONS[it.result]||'—')+' '+it.result+'</span></td>'
+        +'</tr>';
+    }).join('');
+    summaryHtml = '<div class="sec">📊 Resumo dos Itens ('+(ins.items||[]).length+')</div>'
+      + '<table class="st"><thead><tr><th>#</th><th>Área / Componente</th><th>Departamento</th><th>Responsável</th><th>Resultado</th></tr></thead>'
+      + '<tbody>'+rows+'</tbody></table>';
+  }
 
-    // Meta grid
-    '.meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px 22px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }',
-    '.meta-cell { }',
-    '.meta-lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #9ca3af; margin-bottom: 2px; }',
-    '.meta-val { font-size: 12px; font-weight: 600; color: #111827; }',
-
-    // Body
-    '.body { padding: 16px 22px; }',
-    '.section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #6b7280; padding: 10px 0 8px; border-top: 1px solid #e5e7eb; margin-top: 16px; }',
-    '.desc-box { font-size: 12px; color: #374151; background: #f9fafb; border-radius: 6px; padding: 10px 12px; white-space: pre-wrap; border: 1px solid #e5e7eb; margin-bottom: 12px; }',
-
-    // Summary table
-    '.summary-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 11px; }',
-    '.summary-table th { background: #f3f4f6; padding: 6px 10px; text-align: left; font-weight: 700; color: #374151; border: 1px solid #e5e7eb; }',
-    '.summary-table td { padding: 6px 10px; border: 1px solid #e5e7eb; vertical-align: middle; }',
-    '.summary-table tr:nth-child(even) td { background: #f9fafb; }',
-
-    // Footer / signatures
-    '.ftr { padding: 14px 22px; border-top: 2px solid #e5e7eb; display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; page-break-inside: avoid; }',
-    '.sig-block { text-align: center; flex: 1; max-width: 200px; }',
-    '.sig-name { font-size: 11px; font-weight: 700; color: #374151; margin-top: 6px; }',
-    '.sig-role { font-size: 10px; color: #9ca3af; }',
-    '.sig-line { border-bottom: 1.5px solid #374151; height: 44px; margin-bottom: 4px; }',
-    '.generated { font-size: 10px; color: #9ca3af; text-align: right; }',
-
-    '@media print {',
-    '  body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }',
-    '  .no-print { display: none !important; }',
-    '  .print-only { display: none; }',
-    '  .page-wrap { max-width: 100%; }',
-    '}',
-    '<\/style>',
-    '\x3C\/head>',
-    '\x3Cbody>',
-    '<div class="page-wrap">',
-
-    // ── PRINT / SEND BUTTONS (hidden when printing) ──
-    '<div class="no-print" style="background:#07182e;padding:10px 20px;display:flex;gap:8px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;flex-wrap:wrap;">',
-    '<span style="color:#fff;font-size:13px;font-weight:700;flex:1;min-width:160px;">⚓ '+escHtml(ins.titulo)+'</span>',
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;">',
-    '<button onclick="window.print()" style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Imprimir / Salvar PDF</button>',
-    '<button onclick="enviarRelatorio()" style="background:#1A5FA8;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;" id="btn-enviar">📤 Enviar</button>',
-    '<button onclick="whatsappRelatorio()" style="background:#25D366;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">💬 WhatsApp</button>',
-    '<button onclick="window.close()" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:8px 14px;font-size:13px;cursor:pointer;">✕</button>',
-    '</div>',
-    '</div>',
-
-    // ── HEADER ──
-    '<div class="hdr">',
-    '  <div>',
-    '    <div class="hdr-logo">log<span class="g">in<\/span><span class="d">.<\/span><\/div>',
-    '    <div class="hdr-vessel">'+vessel+' · '+route+'<\/div>',
-    '  <\/div>',
-    '  <div class="hdr-right">',
-    '    <div class="hdr-doc">Relatório de Inspeção<\/div>',
-    '    <div class="hdr-date">'+(ins.data||'—')+(ins.hora?' · '+ins.hora:'')+' · Semana '+(ins.semana||'—')+'<\/div>',
-    '  <\/div>',
-    '<\/div>',
-
-    // ── TITLE BLOCK ──
-    '<div class="title-block">',
-    '  <div class="insp-title">'+escHtml(ins.titulo)+'<\/div>',
-    '  <div class="result-badge">'+ic+' '+ins.result+'<\/div>',
-    '<\/div>',
-
-    // ── META GRID ──
-    '<div class="meta-grid">',
-    '  <div class="meta-cell"><div class="meta-lbl">Tipo de Inspeção<\/div><div class="meta-val">'+(ins.tipo||'—')+'<\/div><\/div>',
-    '  <div class="meta-cell"><div class="meta-lbl">Área / Local<\/div><div class="meta-val">'+escHtml(ins.area||'—')+'<\/div><\/div>',
-    '  <div class="meta-cell"><div class="meta-lbl">Data & Hora<\/div><div class="meta-val">'+(ins.data||'—')+(ins.hora?' · '+ins.hora:'')+'<\/div><\/div>',
-    '  <div class="meta-cell"><div class="meta-lbl">Responsável<\/div><div class="meta-val">'+(ins.respNm||'—')+'<\/div><\/div>',
-    '  <div class="meta-cell"><div class="meta-lbl">Testemunha<\/div><div class="meta-val">'+(ins.testNm||'—')+'<\/div><\/div>',
-    '  <div class="meta-cell"><div class="meta-lbl">Navio<\/div><div class="meta-val">'+vessel+'<\/div><\/div>',
-
-    '<div class="body">',
-
-    // Observations
-    (ins.desc ? '<div class="section-title">📝 Observações Gerais<\/div><div class="desc-box">'+escHtml(ins.desc)+'<\/div>' : ''),
-
-    // ── SUMMARY TABLE ──
-    ((ins.items||[]).length ? (
-      '<div class="section-title">📊 Resumo dos Itens ('+(ins.items||[]).length+')<\/div>'
-      + '<table class="summary-table">'
-      + '<thead><tr><th>#<\/th><th>Área \/ Componente<\/th><th>Departamento<\/th><th>Responsável<\/th><th>Resultado<\/th><\/tr><\/thead>'
-      + '<tbody>'
-      + (ins.items||[]).map(function(it,j){
-          var IC = COLORS[it.result]||COLORS['Pendente'];
-          return '<tr>'
-            + '<td style="font-family:monospace;font-weight:700;color:'+IC.bg+';">#'+String(j+1).padStart(2,'0')+'<\/td>'
-            + '<td style="font-weight:600;">'+escHtml(it.area||'—')+'<\/td>'
-            + '<td>'+escHtml(it.dept||'—')+'<\/td>'
-            + '<td>'+escHtml(it.respItemNm||'—')+'<\/td>'
-            + '<td><span style="background:'+IC.bg+';color:#fff;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">'+(ICONS[it.result]||'—')+' '+it.result+'<\/span><\/td>'
-            + '<\/tr>';
-        }).join('')
-      + '<\/tbody><\/table>'
-    ) : ''),
-
-    // ── DETAILED ITEMS ──
-    ((ins.items||[]).length ? '<div class="section-title">📋 Itens Detalhados — Achados e Evidências<\/div>' : ''),
-    itemsHtml,
-
-    // ── GENERAL PHOTOS ──
-    fotosGeralHtml,
-
-    // -- SIGNATURES --
-    '<div style="page-break-inside:avoid;margin-top:28px;">',
-    '<div class="section-title">Assinaturas<\/div>',
-    '<div class="no-print" style="background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:#92400e;">',
-    '  <strong>Antes de imprimir:<\/strong> preencha nome e funcao abaixo.',
-    '<\/div>',
-    '<div class="ftr">',
-    '<div class="sig-block">',
-    '  <div class="no-print" style="margin-bottom:8px;">',
-    '    <input type="text" id="s1n" placeholder="Nome completo" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:6px 8px;font-size:12px;font-weight:700;font-family:inherit;margin-bottom:4px;">',
-    '    <input type="text" id="s1f" placeholder="Funcao / Cargo" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:11px;font-family:inherit;">',
-    '  <\/div>',
-    '  <div class="sig-line"><\/div>',
-    '  <div class="sig-name" id="dn1">'+(ins.respNm||'________________________________')+'<\/div>',
-    '  <div class="sig-role">Responsavel pela Inspecao<\/div>',
-    '<\/div>',
-    '<div class="sig-block">',
-    '  <div class="no-print" style="margin-bottom:8px;">',
-    '    <input type="text" id="s2n" placeholder="Nome completo" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:6px 8px;font-size:12px;font-weight:700;font-family:inherit;margin-bottom:4px;">',
-    '    <input type="text" id="s2f" placeholder="Funcao / Cargo" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:11px;font-family:inherit;">',
-    '  <\/div>',
-    '  <div class="sig-line"><\/div>',
-    '  <div class="sig-name" id="dn2">'+(ins.testNm||'________________________________')+'<\/div>',
-    '  <div class="sig-role">Testemunha \/ Fiscalizador<\/div>',
-    '<\/div>',
-    '<div class="generated">',
-    '  <div>Gerado em: '+new Date().toLocaleString('pt-BR')+'<\/div>',
-    '  <div style="font-size:9px;">ID: '+ins.id+'<\/div>',
-    '  <div style="font-size:9px;">'+vessel+' . '+route+'<\/div>',
-    '<\/div>',
-    '<\/div>',
-    '<\/div>',
-    '<div class="no-print" style="background:#f0f9ff;border-top:3px solid #0ea5e9;padding:16px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">',
-    '  <div style="flex:1;min-width:180px;">',
-    '    <div style="font-size:12px;font-weight:700;color:#0c4a6e;margin-bottom:8px;">Responder esta inspecao online:<\/div>',
-    '    <a href="'+respFormUrl+'" target="_blank" style="display:inline-block;background:#0ea5e9;color:#fff;font-weight:700;font-size:13px;padding:10px 22px;border-radius:8px;text-decoration:none;">Abrir Formulario de Resposta<\/a>',
-    '    <div style="font-size:10px;color:#0369a1;word-break:break-all;margin-top:8px;">'+respFormUrl+'<\/div>',
-    '  <\/div>',
-    '  <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data='+encodeURIComponent(respFormUrl)+'" alt="QR" style="width:100px;height:100px;border-radius:8px;border:2px solid #0ea5e9;flex-shrink:0;" onerror="this.style.display=none">',
-    '<\/div>',
-    '<\/div>', // .body
-    '<\/div>', // .page-wrap
-
-    // Script for "Enviar Relatório" button
-    '\x3Cscript>',
-    '\x3Cscript>',
+  // ── Toolbar JS (for the popup window) ──
+  var toolbarJS = [
     'function enviarRelatorio(){',
     '  var btn=document.getElementById("btn-enviar");',
     '  var title=document.querySelector(".insp-title");',
-    '  var txt="Relatório de Inspeção\\n"+(title?title.textContent:"")+"\\n"+window.location.href;',
-    '  if(navigator.share){',
-    '    navigator.share({title:"Relatório de Inspeção — "+(title?title.textContent:""),text:txt,url:window.location.href})',
-    '      .then(function(){if(btn)btn.textContent="✅ Enviado!";})',
-    '      .catch(function(e){if(e.name!=="AbortError"){window.print();}});',
-    '  } else {',
-    '    if(btn)btn.textContent="🖨 Salve como PDF e envie";',
-    '    setTimeout(function(){window.print();},200);',
-    '    setTimeout(function(){if(btn)btn.textContent="📤 Enviar";},4000);',
-    '  }',
+    '  if(navigator.share){navigator.share({title:"Inspeção: "+(title?title.textContent:""),url:window.location.href}).then(function(){if(btn)btn.textContent="✅ Enviado!";}).catch(function(){});}',
+    '  else{if(btn)btn.textContent="🖨 Use Ctrl+P → Salvar como PDF";setTimeout(function(){if(btn)btn.textContent="📤 Enviar";},4000);window.print();}',
+    '}',
+    'function whatsappRelatorio(){',
+    '  var title=document.querySelector(".insp-title");',
+    '  var result=document.querySelector(".result-badge");',
+    '  var msg="📋 RELATÓRIO DE INSPEÇÃO\\n"+(title?title.textContent:"")+"\\n"+(result?result.textContent.trim()+"\\n":"")+"\\nM/V LOG-IN JACARANDÁ · Linha Amazonas";',
+    '  window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");',
     '}',
     'function updateSigNames(){',
-    '  ["s1n","s1f","s2n","s2f"].forEach(function(id){',
-    '    var el=document.getElementById(id); if(el&&!el._init){ el._init=1;',
-    '      el.oninput=function(){ var n=document.getElementById("s"+id[1]+"n"); var f=document.getElementById("s"+id[1]+"f"); var d=document.getElementById("dn"+id[1]); if(d&&n) d.textContent=n.value+(f&&f.value?" "+f.value:""); }; }',
+    '  var fields=[["s1n","s1f","dn1"],["s2n","s2f","dn2"]];',
+    '  fields.forEach(function(f){',
+    '    var n=document.getElementById(f[0]);var r=document.getElementById(f[1]);var d=document.getElementById(f[2]);',
+    '    if(d&&n&&n.value) d.textContent=n.value+(r&&r.value?" · "+r.value:"");',
     '  });',
     '}',
     'window.addEventListener("beforeprint",updateSigNames);',
     'document.addEventListener("DOMContentLoaded",function(){',
-    '  updateSigNames();',
-    '  ["s1n","s1f","s2n","s2f"].forEach(function(id){ var el=document.getElementById(id); if(el) el.oninput=updateSigNames; });',
+    '  ["s1n","s1f","s2n","s2f"].forEach(function(id){var el=document.getElementById(id);if(el)el.oninput=updateSigNames;});',
     '});',
-    'function whatsappRelatorio(){',
-    '  var title=document.querySelector(".insp-title");',
-    '  var result=document.querySelector(".result-badge");',
-    '  var metas=document.querySelectorAll(".meta-val");',
-    '  var data=metas[2]?metas[2].textContent:"";',
-    '  var resp=metas[3]?metas[3].textContent:"";',
-    '  var msg=\"🔍 *RELATÓRIO DE INSPEÇÃO*\\\\n\"',
-    '    +\"⚓ \"+(title?title.textContent:\"\")+\"\\\\n\"',
-    '    +(result?result.textContent.trim()+\"\\\\n\":\"\")',
-    '    +(data?\"📅 \"+data+\"\\\\n\":\"\")',
-    '    +(resp?\"👷 \"+resp+\"\\\\n\":\"\")',
-    '    +\"\\\\n_M\\/V LOG-IN JACARANDÁ · Linha Amazonas_\";',
-    '  var waUrl="https://wa.me/?text="+encodeURIComponent(msg);',
-    '  window.open(waUrl,"_blank");',
-    '}',
-    '\\x3C\/script>',
-
-    '\x3C\/body>',
-    '\x3C\/html>',
   ].join('\n');
+
+  // ── Full HTML ──
+  var html = '\x3C!DOCTYPE html>\n\x3Chtml lang="pt-BR">\n\x3Chead>\n'
+    + '\x3Cmeta charset="UTF-8">\n'
+    + '\x3Cmeta name="viewport" content="width=device-width,initial-scale=1">\n'
+    + '<title>Inspeção — '+escHtml(ins.titulo)+'<\/title>\n'
+    + '<style>\n'+css+'\n<\/style>\n'
+    + '\x3C\/head>\n\x3Cbody>\n'
+    + '<div class="wrap">\n'
+
+    // ── Toolbar (hidden when printing) ──
+    + '<div class="no-print" style="background:#07182e;padding:10px 20px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;position:sticky;top:0;z-index:100;">'
+    + '<span style="color:#fff;font-size:13px;font-weight:700;flex:1;min-width:140px;">⚓ '+escHtml(ins.titulo)+'</span>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    + '<button onclick="window.print()" style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Imprimir / PDF</button>'
+    + '<button onclick="enviarRelatorio()" id="btn-enviar" style="background:#1A5FA8;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">📤 Enviar</button>'
+    + '<button onclick="whatsappRelatorio()" style="background:#25D366;color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">💬</button>'
+    + '<button onclick="window.close()" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:8px 12px;font-size:13px;cursor:pointer;">✕</button>'
+    + '</div></div>'
+
+    // ── Header ──
+    + '<div class="hdr">'
+    + '<div><div class="hdr-logo">log<span class="g">in<\/span><span class="d">.<\/span><\/div><div class="hdr-vessel">'+vessel+' · '+route+'<\/div><\/div>'
+    + '<div class="hdr-right"><div class="hdr-doc">Relatório de Inspeção<\/div><div class="hdr-date">'+(ins.data||'—')+(ins.hora?' · '+ins.hora:'')+' · Sem '+(ins.semana||'—')+'<\/div><\/div>'
+    + '<\/div>'
+
+    // ── Title block ──
+    + '<div class="title-block">'
+    + '<div class="insp-title">'+escHtml(ins.titulo)+'<\/div>'
+    + '<div class="result-badge">'+ic+' '+ins.result+'<\/div>'
+    + '<\/div>'
+
+    // ── Meta grid ──
+    + '<div class="meta">'
+    + '<div class="mc"><div class="ml">Tipo<\/div><div class="mv">'+(ins.tipo||'—')+'<\/div><\/div>'
+    + '<div class="mc"><div class="ml">Área / Local<\/div><div class="mv">'+escHtml(ins.area||'—')+'<\/div><\/div>'
+    + '<div class="mc"><div class="ml">Data & Hora<\/div><div class="mv">'+(ins.data||'—')+(ins.hora?' · '+ins.hora:'')+'<\/div><\/div>'
+    + '<div class="mc"><div class="ml">Responsável<\/div><div class="mv">'+(ins.respNm||'—')+'<\/div><\/div>'
+    + '<div class="mc"><div class="ml">Testemunha<\/div><div class="mv">'+(ins.testNm||'—')+'<\/div><\/div>'
+    + '<div class="mc"><div class="ml">Navio<\/div><div class="mv">'+vessel+'<\/div><\/div>'
+    + '<\/div>'
+
+    // ── Body ──
+    + '<div class="body">'
+    + (ins.desc?'<div class="sec">📝 Observações Gerais<\/div><div class="desc-box">'+escHtml(ins.desc)+'<\/div>':'')
+    + summaryHtml
+    + ((ins.items||[]).length?'<div class="sec">📋 Itens Inspecionados — Achados e Evidências<\/div>':'')
+    + itemsHtml
+    + fotosGeralHtml
+    + '<\/div>' // .body
+
+    // ── Signatures ──
+    + '<div style="page-break-inside:avoid;margin-top:8px;">'
+    + '<div class="sec" style="margin-top:0;padding-top:8px;">✍️ Assinaturas<\/div>'
+    + '<div class="no-print" style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:#92400e;">✏️ <strong>Antes de imprimir:<\/strong> preencha nome e função nos campos abaixo.<\/div>'
+    + '<div class="ftr">'
+
+    // Sig 1
+    + '<div class="sb">'
+    + '<div class="sb-lbl">Responsável pela Inspeção<\/div>'
+    + '<div class="no-print" style="margin-bottom:6px;">'
+    + '<input type="text" id="s1n" placeholder="Nome completo">'
+    + '<input type="text" id="s1f" class="role-input" placeholder="Função / Cargo">'
+    + '<\/div>'
+    + '<div class="sl"><\/div>'
+    + '<div class="sn" id="dn1">'+(ins.respNm||'________________________________')+'<\/div>'
+    + '<div class="sr">Responsável<\/div>'
+    + '<\/div>'
+
+    // Sig 2
+    + '<div class="sb">'
+    + '<div class="sb-lbl">Testemunha / Fiscalizador<\/div>'
+    + '<div class="no-print" style="margin-bottom:6px;">'
+    + '<input type="text" id="s2n" placeholder="Nome completo">'
+    + '<input type="text" id="s2f" class="role-input" placeholder="Função / Cargo">'
+    + '<\/div>'
+    + '<div class="sl"><\/div>'
+    + '<div class="sn" id="dn2">'+(ins.testNm||'________________________________')+'<\/div>'
+    + '<div class="sr">Testemunha<\/div>'
+    + '<\/div>'
+
+    // Generated
+    + '<div class="gen">'
+    + '<div>Gerado em: '+new Date().toLocaleString('pt-BR')+'<\/div>'
+    + '<div style="margin-top:3px;font-size:9px;">ID: '+ins.id+'<\/div>'
+    + '<div style="margin-top:2px;font-size:9px;">'+vessel+' · '+route+'<\/div>'
+    + '<\/div>'
+    + '<\/div>' // .ftr
+    + '<\/div>' // page-break div
+
+    // ── Response Link (no-print) ──
+    + '<div class="no-print resp-link">'
+    + '<div class="resp-link-text">'
+    + '<div class="resp-link-title">📋 Responder esta inspeção online:<\/div>'
+    + '<a href="'+respFormUrl+'" target="_blank" class="resp-link-btn">📱 Abrir Formulário de Resposta<\/a>'
+    + '<div class="resp-link-url">'+respFormUrl+'<\/div>'
+    + '<div class="resp-link-note">Ou carregue o arquivo .json no formulário<\/div>'
+    + '<\/div>'
+    + '<img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data='+encodeURIComponent(respFormUrl)+'" alt="QR" style="width:100px;height:100px;border-radius:8px;border:2px solid #0ea5e9;flex-shrink:0;" onerror="this.style.display=none">'
+    + '<\/div>'
+
+    + '<\/div>\n' // .wrap
+    + '\x3Cscript>\n'+toolbarJS+'\n<\/script>\n'
+    + '\x3C\/body>\n\x3C\/html>';
 
   var w = window.open('', '_blank', 'width=920,height=1050');
   if(!w){ toast('⚠️ Permita pop-ups para abrir o relatório','warn'); return; }
@@ -5834,8 +5810,6 @@ function printInspCard(id){
   w.onload = function(){ w.focus(); };
   toast('🖨 Relatório aberto!','ok');
 }
-
-
 
 
 function renderInspecao(){
