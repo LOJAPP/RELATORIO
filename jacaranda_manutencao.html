@@ -5500,13 +5500,20 @@ function buildLiteJSON(ins){
 function downloadInspJSON(id){
   var ins=S.inspecoes.find(function(i){return i.id===id;});
   if(!ins){toast('Nao encontrada','warn');return;}
-  var blob=new Blob([buildLiteJSON(ins)],{type:'application/json'});
+  // Include photos in the JSON so recipient can see them in the response form
+  var data=JSON.stringify(Object.assign({},ins,{
+    _tipo:'inspecao_jacaranda',_shared:true,
+    _sharedAt:new Date().toISOString(),
+    _vessel:(getCfg().vessel&&getCfg().vessel.vessel)||'LOG-IN JACARANDA'
+    // fotos kept intact — item.fotos kept intact
+  }));
+  var blob=new Blob([data],{type:'application/json'});
   var a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   var safe=(ins.titulo||'insp').replace(/\s+/g,'_').replace(/[^\w-]/g,'').slice(0,28);
   a.download='INSP_'+safe+'_'+(ins.data||'').replace(/-/g,'')+'.json';
   a.click();
-  toast('Arquivo baixado — envie pelo WhatsApp!','ok');
+  toast('Arquivo baixado com fotos — envie pelo WhatsApp!','ok');
 }
 
 function shareInspLink(id){

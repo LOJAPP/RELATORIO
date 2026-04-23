@@ -1,2 +1,2 @@
-# ⚓ Jacarandá — build 20260423_0305
-Commit: `build 20260423_0305 - PDF QR imprimivel + exportar com envio + dados gerais corrigidos`
+# ⚓ Jacarandá — build 20260423_1917
+Commit: `build 20260423_1917 - fotos visiveis no celular + JSON com fotos incluidas`
