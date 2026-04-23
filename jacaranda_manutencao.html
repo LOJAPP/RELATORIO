@@ -1705,7 +1705,8 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
                 <button class="btn btn-ghost btn-sm" onclick="copyShareURL()">📋</button>
               </div>
               <div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.6;">
-                ✅ Sem fotos = link curto &nbsp;·&nbsp; 📱 Abre no formulário de resposta &nbsp;·&nbsp; 📎 Use o <strong>.json baixado</strong> para enviar por WhatsApp
+                🗜 Comprimido com deflate · <strong id="ie-share-size">—</strong> &nbsp;·&nbsp;
+                ✅ Sem fotos · 📱 Abre no formulário de resposta
               </div>
             </div>
           </div>
@@ -3153,6 +3154,8 @@ function buildSnapshotHTML(data,vessel,cmte,exportDate){
       </div>`;
     }).join('')}`:'';
 
+
+  var respFormUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/') + 'jacaranda_resposta.html?json=' + ins.id.slice(0,8);
   return `\x3C!DOCTYPE html>
 \x3Chtml lang="pt-BR">
 \x3Chead>
@@ -5379,78 +5382,132 @@ function saveEditInsp(){
 
 // ── SHARE LINK ──
 // ── Fix shareInspLink: link to inspection only, not full app URL ──
+// ── PAKO (deflate) loader — loaded once on demand ──
+var _pakoLoaded = false;
+var _pakoCallbacks = [];
+function loadPako(cb){
+  if(window.pako){ cb(); return; }
+  if(_pakoLoaded){ _pakoCallbacks.push(cb); return; }
+  _pakoLoaded = true;
+  var s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
+  s.onload = function(){
+    _pakoCallbacks.forEach(function(f){ f(); });
+    _pakoCallbacks = [];
+    cb();
+  };
+  s.onerror = function(){
+    // Fallback: use plain base64 without compression
+    window.pako = null;
+    cb();
+  };
+  document.head.appendChild(s);
+}
+
+// Build minimal inspection data (no photos, trimmed strings)
+function buildLiteInsp(ins){
+  var vcfg = getCfg().vessel||{};
+  return {
+    id: ins.id,
+    t:  (ins.titulo||'').slice(0,80),
+    d:  ins.data||'',
+    hr: ins.hora||'',
+    tp: (ins.tipo||'').slice(0,40),
+    r:  ins.result||'Pendente',
+    rn: (ins.respNm||'').slice(0,30),
+    tn: (ins.testNm||'').slice(0,30),
+    ar: (ins.area||'').slice(0,60),
+    v:  (vcfg.vessel||'LOG-IN JACARANDÁ').slice(0,30),
+    sm: ins.semana||'',
+    i:  (ins.items||[]).map(function(it){
+      return {
+        a:  (it.area||'').slice(0,60),
+        r:  (it.result||'Pendente').slice(0,20),
+        dp: (it.dept||'').slice(0,25),
+        rn: (it.respItemNm||'').slice(0,25),
+        dc: (it.desc||'').slice(0,120)
+      };
+    })
+  };
+}
+
+// Encode: deflate → base64url
+function encodeCompact(obj){
+  var json = JSON.stringify(obj, null, 0);
+  if(window.pako){
+    try{
+      var compressed = pako.deflate(json);
+      var b64 = btoa(String.fromCharCode.apply(null, compressed))
+        .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+      return {str:b64, param:'z', size:b64.length};
+    }catch(e){}
+  }
+  // Fallback: plain base64 (no pako)
+  var b64 = btoa(unescape(encodeURIComponent(json)));
+  return {str:b64, param:'i', size:b64.length};
+}
+
 function shareInspLink(id){
   var ins = S.inspecoes.find(function(i){return i.id===id;});
   if(!ins){ toast('⚠️ Salve a inspeção primeiro','warn'); return; }
 
-  // Build a LIGHTWEIGHT copy — strip all base64 photos to keep the link short
-  var lite = JSON.parse(JSON.stringify(ins));
-  lite.fotos = [];   // remove general photos
-  if(lite.items){ lite.items.forEach(function(it){ it.fotos=[]; }); } // remove item photos
-  lite._tipo      = 'inspecao_jacaranda';
-  lite._shared    = true;
-  lite._sharedAt  = new Date().toISOString();
-  lite._vessel    = (getCfg().vessel&&getCfg().vessel.vessel)||'LOG-IN JACARANDÁ';
+  loadPako(function(){
+    var lite    = buildLiteInsp(ins);
+    var encoded = encodeCompact(lite);
+    var nItems  = (ins.items||[]).length;
 
-  var dataStr = JSON.stringify(lite);
-  var b64     = btoa(unescape(encodeURIComponent(dataStr)));
+    var base = window.location.origin
+      + window.location.pathname.replace(/\/[^\/]*$/, '/')
+      + 'jacaranda_resposta.html';
+    var url = base + '?' + encoded.param + '=' + encoded.str;
 
-  // URL points to the RESPONSE FORM (jacaranda_resposta.html), not the main app
-  var base = window.location.origin
-    + window.location.pathname.replace(/\/[^\/]*$/, '/')
-    + 'jacaranda_resposta.html';
-  var url = base + '?insp=' + b64;
+    // Show link info
+    var urlBox = document.getElementById('ie-share-url');
+    var input  = document.getElementById('ie-share-url-input');
+    var sizeEl = document.getElementById('ie-share-size');
+    if(urlBox) urlBox.style.display = 'block';
+    if(input)  input.value = url;
+    if(sizeEl) sizeEl.textContent = encoded.size + ' chars · ' + nItems + ' itens';
 
-  // WhatsApp message
-  var nItems = (ins.items||[]).length;
-  var waMsg = '📋 *INSPEÇÃO PARA RESPOSTA*\n'
-    + '⚓ '+(ins.titulo||'—')+'\n'
-    + '📅 '+(ins.data||'—')+(ins.hora?' · '+ins.hora:'')+'\n'
-    + '🔍 '+(ins.tipo||'—')+'\n'
-    + (ins.area&&ins.area!=='—'?'📍 '+ins.area+'\n':'')
-    + '📋 '+nItems+' item(ns) para verificar\n'
-    + '👷 Resp: '+(ins.respNm||'—')+'\n'
-    + '\nClique no link para abrir o formulário de resposta:\n'
-    + url;
+    // WhatsApp: just short text + URL (no URL in the message text — WA adds preview)
+    var waMsg = '📋 *Inspeção para resposta*\n'
+      + '⚓ ' + (ins.titulo||'').slice(0,60) + '\n'
+      + '📅 ' + (ins.data||'—') + ' · ' + (ins.tipo||'—') + '\n'
+      + '📋 ' + nItems + ' item(ns) · Resp: ' + (ins.respNm||'—') + '\n\n'
+      + url;
 
-  // Update WhatsApp button href
-  var waBtn = document.getElementById('ie-whatsapp-btn');
-  if(waBtn) waBtn.href = 'https://wa.me/?text='+encodeURIComponent(waMsg);
+    var waBtn = document.getElementById('ie-whatsapp-btn');
+    if(waBtn) waBtn.href = 'https://wa.me/?text=' + encodeURIComponent(waMsg);
 
-  // Show link box
-  var urlBox = document.getElementById('ie-share-url');
-  var input  = document.getElementById('ie-share-url-input');
-  if(urlBox) urlBox.style.display='block';
-  if(input)  input.value = url;
+    // Also auto-download lightweight JSON (without photos)
+    var liteJSON = JSON.stringify(Object.assign({}, ins, {
+      _tipo:'inspecao_jacaranda',
+      _shared:true,
+      _sharedAt:new Date().toISOString(),
+      fotos:[],
+      items:(ins.items||[]).map(function(it){
+        return Object.assign({},it,{fotos:[]});
+      })
+    }));
+    var blob = new Blob([liteJSON],{type:'application/json'});
+    var a    = document.createElement('a');
+    a.href   = URL.createObjectURL(blob);
+    var safe = (ins.titulo||'inspecao').replace(/\s+/g,'_').replace(/[^\w-]/g,'').slice(0,30);
+    a.download = 'INSP_' + safe + '_' + (ins.data||'').replace(/-/g,'') + '.json';
+    a.click();
 
-  // Also offer to download the lightweight JSON
-  var liteBlob = new Blob([dataStr],{type:'application/json'});
-  var liteA    = document.createElement('a');
-  liteA.href   = URL.createObjectURL(liteBlob);
-  var safe     = (ins.titulo||'inspecao').replace(/\s+/g,'_').slice(0,30);
-  liteA.download = 'INSPECAO_'+safe+'_'+(ins.data||'').replace(/-/g,'')+'.json';
-  // Auto-download the JSON file
-  liteA.click();
-
-  // Mobile: native share sheet
-  if(navigator.share){
-    navigator.share({
-      title: 'Inspeção: '+(ins.titulo||''),
-      text:  waMsg,
-      url:   url
-    }).then(function(){ toast('✅ Compartilhado!','ok'); })
-      .catch(function(e){ if(e.name!=='AbortError') toast('🔗 Link gerado!','ok'); });
-  } else {
-    copyShareURL();
-    toast('🔗 Link copiado! Arquivo .json baixado.','ok');
-  }
-}
-
-// Helper: show size estimate before sharing
-function getInspSizeKB(id){
-  var ins = S.inspecoes.find(function(i){return i.id===id;});
-  if(!ins) return 0;
-  return Math.round(JSON.stringify(ins).length/1024);
+    if(navigator.share){
+      navigator.share({
+        title: 'Inspeção: ' + (ins.titulo||''),
+        text:  waMsg,
+        url:   url
+      }).then(function(){ toast('✅ Compartilhado!','ok'); })
+        .catch(function(e){ if(e.name!=='AbortError'){ copyShareURL(); }});
+    } else {
+      copyShareURL();
+      toast('🔗 Link copiado! (' + encoded.size + ' chars)','ok');
+    }
+  });
 }
 
 
@@ -5674,6 +5731,12 @@ function printInspCard(id){
     '  <div class="meta-cell"><div class="meta-lbl">Testemunha<\/div><div class="meta-val">'+(ins.testNm||'—')+'<\/div><\/div>',
     '  <div class="meta-cell"><div class="meta-lbl">Navio<\/div><div class="meta-val">'+vessel+'<\/div><\/div>',
     '<\/div>',
+    '<div class="no-print" style="background:#e0f2fe;padding:10px 22px;display:flex;align-items:center;gap:12px;border-bottom:2px solid #0ea5e9;flex-wrap:wrap;">',
+    '  <span style="font-size:12px;font-weight:700;color:#0c4a6e;">📱 Responder esta inspeção online:</span>',
+    '  <a href="'+respFormUrl+'" style="color:#0ea5e9;font-weight:700;font-size:11px;word-break:break-all;font-family:monospace;">'+respFormUrl+'<\/a>',
+    '  <span style="font-size:10px;color:#0369a1;margin-left:auto;">Abra o link · Responda os itens · Envie de volta<\/span>',
+    '<\/div>',
+
 
     '<div class="body">',
 
