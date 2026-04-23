@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d2a52">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Formulário de Resposta — Inspeção</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#07182e;--navy2:#0e2540;--blue:#1A5FA8;--blue-lt:#2478c8;--blue-xlt:#e8f4ff;
+  --green:#16a34a;--green-lt:#f0fdf4;--green-dk:#14532d;
+  --warn:#d97706;--warn-lt:#fffbeb;
+  --danger:#dc2626;--danger-lt:#fff1f2;
+  --purple:#7c3aed;--purple-lt:#f5f3ff;
+  --gold:#f59e0b;--gray:#6b7280;
+  --border:#e5e7eb;--bg:#f4f6fb;--white:#fff;--radius:10px;
+  --shadow:0 2px 14px rgba(7,24,46,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:#1a2236;min-height:100vh;}
+
+/* TOPBAR */
+#topbar{background:linear-gradient(135deg,var(--navy),var(--navy2));
+  padding:0 16px;height:56px;display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.4);}
+.logo{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;letter-spacing:-1px;}
+.logo .lo{color:#fff;}.logo .gi{color:#6DB847;}.logo .dot{color:var(--gold);}
+.tb-title{font-size:14px;font-weight:700;color:rgba(255,255,255,.9);
+  border-left:2px solid rgba(255,255,255,.2);padding-left:12px;}
+.tb-sub{font-size:10px;color:rgba(255,255,255,.45);margin-top:1px;letter-spacing:.5px;}
+.tb-right{margin-left:auto;display:flex;gap:8px;}
+.tb-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  color:#fff;font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;
+  padding:6px 14px;border-radius:6px;cursor:pointer;transition:all .15s;}
+.tb-btn:hover{background:rgba(255,255,255,.2);}
+.tb-btn.green{background:#16a34a;border-color:#16a34a;}
+.tb-btn.blue{background:var(--blue);border-color:var(--blue);}
+.tb-btn.wa{background:#25D366;border-color:#25D366;}
+
+/* MAIN */
+#main{max-width:680px;margin:0 auto;padding:20px 16px 80px;}
+
+/* SCREEN STATES */
+.screen{display:none;}
+.screen.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* LOAD SCREEN */
+.load-card{background:var(--white);border-radius:14px;padding:28px 24px;
+  box-shadow:var(--shadow);text-align:center;margin-bottom:16px;}
+.load-title{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;
+  color:var(--navy);margin-bottom:6px;}
+.load-sub{font-size:13px;color:var(--gray);margin-bottom:20px;}
+.drop-zone{border:2px dashed var(--border);border-radius:var(--radius);
+  padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;
+  background:var(--bg);margin-bottom:14px;}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--blue);background:var(--blue-xlt);}
+.drop-zone .dz-icon{font-size:40px;margin-bottom:8px;}
+.drop-zone .dz-title{font-weight:700;color:var(--blue);font-size:15px;margin-bottom:4px;}
+.drop-zone .dz-sub{font-size:12px;color:var(--gray);}
+
+/* INSP HEADER CARD */
+.insp-header{background:var(--white);border-radius:var(--radius);
+  overflow:hidden;box-shadow:var(--shadow);margin-bottom:16px;}
+.insp-hdr-band{padding:14px 18px;color:#fff;display:flex;align-items:center;
+  justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.insp-hdr-title{font-family:'Barlow Condensed',sans-serif;font-size:20px;
+  font-weight:800;margin-bottom:2px;}
+.insp-hdr-meta{font-size:11px;opacity:.85;letter-spacing:.3px;}
+.insp-badge{padding:3px 12px;border-radius:12px;font-size:11px;font-weight:700;
+  background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);}
+.insp-meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:0;border-top:1px solid var(--border);}
+.insp-meta-cell{padding:10px 16px;border-right:1px solid var(--border);}
+.insp-meta-cell:last-child{border-right:none;}
+.insp-meta-lbl{font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.5px;color:var(--gray);margin-bottom:2px;}
+.insp-meta-val{font-size:12px;font-weight:600;color:#1f2937;}
+
+/* PROGRESS BAR */
+.progress-wrap{background:var(--white);border-radius:var(--radius);padding:14px 18px;
+  margin-bottom:16px;box-shadow:var(--shadow);}
+.prog-label{display:flex;justify-content:space-between;font-size:12px;
+  font-weight:600;margin-bottom:6px;}
+.prog-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:4px;background:var(--green);
+  transition:width .4s ease;}
+
+/* ITEM CARD */
+.item-card{background:var(--white);border-radius:var(--radius);
+  margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow);
+  border-left:4px solid var(--border);transition:border-color .2s;}
+.item-card.status-conforme   {border-left-color:var(--green);}
+.item-card.status-nao-conforme{border-left-color:var(--danger);}
+.item-card.status-parcial    {border-left-color:var(--warn);}
+.item-card.status-pendente   {border-left-color:var(--purple);}
+.item-card.status-executado  {border-left-color:var(--green);}
+
+.item-head{display:flex;align-items:center;gap:10px;padding:12px 14px;
+  cursor:pointer;user-select:none;background:var(--bg);flex-wrap:wrap;}
+.item-num{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;
+  padding:2px 8px;border-radius:4px;color:#fff;flex-shrink:0;}
+.item-area{font-size:14px;font-weight:700;flex:1;min-width:100px;color:#111827;}
+.item-status-badge{font-size:10px;font-weight:700;padding:2px 10px;border-radius:10px;
+  white-space:nowrap;flex-shrink:0;}
+.item-photo-count{font-size:11px;color:var(--gray);flex-shrink:0;}
+.item-chevron{font-size:12px;color:var(--gray);flex-shrink:0;transition:transform .2s;}
+.item-chevron.open{transform:rotate(180deg);}
+
+.item-body{padding:14px;border-top:1px solid var(--border);display:none;}
+.item-body.open{display:block;}
+
+/* ORIGINAL ACHADO */
+.achado-box{background:#f9fafb;border:1px solid var(--border);border-radius:7px;
+  padding:10px 12px;margin-bottom:12px;font-size:12px;color:#374151;
+  white-space:pre-wrap;line-height:1.6;}
+.achado-label{font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.5px;color:var(--gray);margin-bottom:4px;}
+
+/* RESPOSTA FIELD */
+.resp-section{margin-bottom:14px;}
+.resp-section label{display:block;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.5px;color:var(--gray);margin-bottom:6px;}
+.resp-section textarea{width:100%;border:1px solid var(--border);border-radius:7px;
+  padding:10px 12px;font-size:13px;font-family:'Barlow',sans-serif;
+  min-height:80px;resize:vertical;transition:border-color .15s;}
+.resp-section textarea:focus{outline:none;border-color:var(--blue);}
+.resp-section textarea.filled{border-color:var(--green);background:#f0fdf4;}
+
+/* STATUS SELECTOR */
+.status-selector{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;
+  margin-bottom:14px;}
+@media(min-width:400px){.status-selector{grid-template-columns:repeat(4,1fr);}}
+.status-opt{border:2px solid var(--border);border-radius:8px;padding:10px 6px;
+  text-align:center;cursor:pointer;transition:all .15s;font-size:11px;
+  font-weight:700;color:var(--gray);}
+.status-opt:hover{transform:translateY(-1px);}
+.status-opt.sel-conforme{background:var(--green-lt);border-color:var(--green);color:var(--green-dk);}
+.status-opt.sel-parcial{background:var(--warn-lt);border-color:var(--warn);color:#78350f;}
+.status-opt.sel-pendente{background:var(--purple-lt);border-color:var(--purple);color:#4c1d95;}
+.status-opt.sel-executado{background:#e0f2fe;border-color:#0ea5e9;color:#0c4a6e;}
+.status-opt .so-icon{font-size:20px;margin-bottom:4px;display:block;}
+
+/* PHOTO SECTION */
+.photo-section{margin-bottom:12px;}
+.photo-section-label{font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.5px;color:var(--gray);margin-bottom:8px;display:flex;
+  align-items:center;gap:6px;}
+.photo-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+.photo-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;
+  border-radius:7px;font-size:12px;font-weight:700;border:none;cursor:pointer;
+  transition:all .15s;}
+.photo-btn.cam{background:var(--blue);color:#fff;}
+.photo-btn.gal{background:var(--bg);border:1px solid var(--border);color:#374151;}
+.photo-btn:hover{opacity:.9;}
+.photo-grid{display:flex;flex-wrap:wrap;gap:8px;}
+.photo-thumb{position:relative;width:80px;height:80px;border-radius:8px;
+  overflow:hidden;border:1px solid var(--border);}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;cursor:pointer;}
+.photo-thumb .rm-btn{position:absolute;top:3px;right:3px;background:var(--danger);
+  color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-weight:700;line-height:1;}
+.photo-new-badge{position:absolute;bottom:0;left:0;right:0;background:var(--green);
+  color:#fff;font-size:7px;font-weight:700;text-align:center;padding:1px 0;
+  letter-spacing:.5px;text-transform:uppercase;}
+
+/* EXISTING PHOTOS (from original inspection) */
+.existing-photos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.existing-photo{width:72px;height:72px;border-radius:7px;overflow:hidden;
+  border:1px solid var(--border);cursor:pointer;}
+.existing-photo img{width:100%;height:100%;object-fit:cover;}
+
+/* SEND BUTTON */
+#btn-send{position:fixed;bottom:0;left:0;right:0;background:var(--green);
+  color:#fff;font-family:'Barlow',sans-serif;font-size:16px;font-weight:700;
+  border:none;cursor:pointer;padding:16px 20px;display:flex;align-items:center;
+  justify-content:center;gap:10px;box-shadow:0 -2px 16px rgba(0,0,0,.15);
+  transition:all .2s;}
+#btn-send:hover{background:var(--green-dk);}
+#btn-send .prog-label{font-size:12px;opacity:.8;margin-left:8px;}
+
+/* DONE SCREEN */
+.done-card{background:var(--white);border-radius:14px;padding:36px 24px;
+  text-align:center;box-shadow:var(--shadow);}
+.done-icon{font-size:64px;margin-bottom:16px;}
+.done-title{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;
+  color:var(--green-dk);margin-bottom:8px;}
+.done-sub{font-size:14px;color:var(--gray);margin-bottom:24px;line-height:1.6;}
+.done-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+
+/* VIEWER */
+#photo-viewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);
+  z-index:500;align-items:center;justify-content:center;}
+#photo-viewer.open{display:flex;}
+#photo-viewer img{max-width:95vw;max-height:90vh;border-radius:8px;object-fit:contain;}
+#photo-viewer-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.2);
+  color:#fff;border:none;border-radius:50%;width:36px;height:36px;font-size:18px;
+  cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="logo"><span class="lo">log</span><span class="gi">in</span><span class="dot">.</span></div>
+  <div>
+    <div class="tb-title" id="tb-title">Formulário de Resposta</div>
+    <div class="tb-sub">M/V LOG-IN JACARANDÁ</div>
+  </div>
+  <div class="tb-right">
+    <button class="tb-btn green" id="tb-save" onclick="exportResposta()" style="display:none;">📥 Baixar Resposta</button>
+    <button class="tb-btn wa" id="tb-wa" style="display:none;" onclick="sendWhatsApp()">💬 WhatsApp</button>
+  </div>
+</div>
+
+<div id="main">
+
+  <!-- SCREEN: LOAD -->
+  <div class="screen active" id="screen-load">
+    <div class="load-card">
+      <div style="font-size:52px;margin-bottom:12px;">📋</div>
+      <div class="load-title">Formulário de Resposta de Inspeção</div>
+      <div class="load-sub">Carregue o arquivo de inspeção para responder cada item com evidências, fotos e status.</div>
+    </div>
+
+    <div class="drop-zone" id="dz"
+      onclick="document.getElementById('file-input').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleDrop(event)">
+      <div class="dz-icon">📂</div>
+      <div class="dz-title">Clique ou arraste o arquivo aqui</div>
+      <div class="dz-sub">Aceita: <strong>INSPECAO_*.json</strong> exportado pelo app Jacarandá</div>
+      <input type="file" id="file-input" accept=".json" style="display:none" onchange="loadFile(this)">
+    </div>
+
+    <div style="background:var(--white);border-radius:var(--radius);padding:16px 18px;
+      box-shadow:var(--shadow);font-size:12px;color:var(--gray);line-height:1.7;">
+      <strong style="color:#1f2937;font-size:13px;">Como funciona:</strong><br>
+      1. Receba o arquivo <code>.json</code> da inspeção via WhatsApp ou email<br>
+      2. Abra este formulário e carregue o arquivo<br>
+      3. Responda cada item: escreva evidência, tire fotos antes/depois<br>
+      4. Marque se a pendência foi executada ✅<br>
+      5. Baixe a resposta e envie de volta ao responsável
+    </div>
+  </div>
+
+  <!-- SCREEN: FORM -->
+  <div class="screen" id="screen-form">
+
+    <!-- Inspection header -->
+    <div class="insp-header" id="insp-header"></div>
+
+    <!-- Progress -->
+    <div class="progress-wrap">
+      <div class="prog-label">
+        <span>Progresso de resposta</span>
+        <span id="prog-text">0 / 0 itens respondidos</span>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- Items -->
+    <div id="items-list"></div>
+
+    <!-- Observations / general note -->
+    <div class="item-card" style="border-left-color:var(--blue);">
+      <div class="item-head" style="cursor:default;">
+        <span class="item-num" style="background:var(--blue);">OBS</span>
+        <span class="item-area">Observações Gerais do Responsável</span>
+      </div>
+      <div class="item-body open">
+        <div class="resp-section">
+          <label>Notas, referências, data de execução...</label>
+          <textarea id="obs-geral" placeholder="Adicione observações gerais sobre as ações tomadas, datas, recursos utilizados..."
+            oninput="updateProgress()"></textarea>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /screen-form -->
+
+  <!-- SCREEN: DONE -->
+  <div class="screen" id="screen-done">
+    <div class="done-card">
+      <div class="done-icon">✅</div>
+      <div class="done-title">Resposta Enviada!</div>
+      <div class="done-sub" id="done-sub">Sua resposta foi baixada. Envie o arquivo ao responsável pela inspeção.</div>
+      <div class="done-actions">
+        <button class="tb-btn green" onclick="exportResposta()" style="font-size:14px;padding:10px 20px;">📥 Baixar novamente</button>
+        <button class="tb-btn wa" onclick="sendWhatsApp()" style="font-size:14px;padding:10px 20px;">💬 Enviar WhatsApp</button>
+        <button class="tb-btn blue" onclick="location.reload()" style="font-size:14px;padding:10px 20px;">🔄 Nova inspeção</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- Fixed send button (shown on form screen) -->
+<button id="btn-send" style="display:none;" onclick="submitForm()">
+  💾 Salvar Resposta &nbsp;
+  <span class="prog-label" id="btn-send-count"></span>
+</button>
+
+<!-- Photo viewer -->
+<div id="photo-viewer" onclick="closeViewer()">
+  <img id="viewer-img" src="" alt="">
+  <button id="photo-viewer-close" onclick="closeViewer()">✕</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+var INS   = null;   // loaded inspection
+var RESP  = {};     // {itemIndex: {resposta, status, fotos:[dataURL]}}
+var GOBS  = '';     // general observations
+
+// Status configs
+var ST_CFG = {
+  'Conforme':    {icon:'✅', label:'Conforme',     cls:'sel-conforme',  color:'#16a34a', ltbg:'#f0fdf4'},
+  'Parcial':     {icon:'⚠️', label:'Parcial',      cls:'sel-parcial',   color:'#d97706', ltbg:'#fffbeb'},
+  'Pendente':    {icon:'🔄', label:'Pendente',     cls:'sel-pendente',  color:'#7c3aed', ltbg:'#f5f3ff'},
+  'Executado':   {icon:'✅', label:'Executado ✓',  cls:'sel-executado', color:'#0ea5e9', ltbg:'#e0f2fe'},
+};
+
+// ═══════════════════════════════════════════
+// FILE LOAD
+// ═══════════════════════════════════════════
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('dz').classList.remove('drag');
+  var f = e.dataTransfer.files[0];
+  if(f) readFile(f);
+}
+function loadFile(input){
+  var f = input.files[0];
+  if(f) readFile(f);
+  input.value='';
+}
+function readFile(file){
+  var r = new FileReader();
+  r.onload = function(e){
+    try{
+      var data = JSON.parse(e.target.result);
+      // Accept any inspection-like JSON
+      if(!data.titulo && !data.area && !data.items){
+        alert('Arquivo não parece ser uma inspeção válida. Verifique se é o arquivo correto.');
+        return;
+      }
+      INS = data;
+      initForm();
+    }catch(err){
+      alert('Erro ao ler arquivo: ' + err.message);
+    }
+  };
+  r.readAsText(file, 'UTF-8');
+}
+
+// Also check URL params on load
+function checkURLParam(){
+  var params = new URLSearchParams(window.location.search);
+  var raw = params.get('insp');
+  if(!raw) return;
+  try{
+    var json = JSON.parse(decodeURIComponent(escape(atob(raw))));
+    INS = json;
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
+    initForm();
+  }catch(e){
+    console.warn('Could not parse URL param:', e);
+  }
+}
+
+// ═══════════════════════════════════════════
+// INIT FORM
+// ═══════════════════════════════════════════
+function initForm(){
+  if(!INS) return;
+
+  // Initialize RESP for all items
+  RESP = {};
+  (INS.items||[]).forEach(function(it, j){
+    RESP[j] = {
+      resposta: it.resposta||'',
+      status: it.result||'Pendente',
+      fotos: []
+    };
+  });
+
+  // Update topbar
+  document.getElementById('tb-title').textContent = INS.titulo || 'Inspeção';
+  document.getElementById('tb-save').style.display = 'block';
+  document.getElementById('tb-wa').style.display = 'block';
+  document.getElementById('btn-send').style.display = 'flex';
+
+  // Render header
+  renderInspHeader();
+
+  // Render items
+  renderItems();
+
+  // Switch screen
+  showScreen('form');
+}
+
+// ═══════════════════════════════════════════
+// RENDER HEADER
+// ═══════════════════════════════════════════
+function renderInspHeader(){
+  var COLORS = {
+    'Conforme':    '#16a34a',
+    'Não Conforme':'#dc2626',
+    'Parcial':     '#d97706',
+    'Pendente':    '#7c3aed',
+  };
+  var color = COLORS[INS.result] || '#1A5FA8';
+  var el = document.getElementById('insp-header');
+  el.innerHTML =
+    '<div class="insp-hdr-band" style="background:'+color+';">'
+    + '<div>'
+    + '  <div class="insp-hdr-title">' + esc(INS.titulo||'—') + '</div>'
+    + '  <div class="insp-hdr-meta">📅 '+(INS.data||'—')+(INS.hora?' · '+INS.hora:'')+'</div>'
+    + '</div>'
+    + '<div class="insp-badge">' + (INS.result||'—') + '</div>'
+    + '</div>'
+    + '<div class="insp-meta-grid">'
+    + metaCell('Tipo', INS.tipo||'—')
+    + metaCell('Responsável', INS.respNm||'—')
+    + metaCell('Navio', INS._vessel||'LOG-IN JACARANDÁ')
+    + metaCell('Semana', 'SEM '+(INS.semana||'—'))
+    + '</div>';
+}
+function metaCell(lbl, val){
+  return '<div class="insp-meta-cell">'
+    + '<div class="insp-meta-lbl">'+esc(lbl)+'</div>'
+    + '<div class="insp-meta-val">'+esc(val)+'</div>'
+    + '</div>';
+}
+
+// ═══════════════════════════════════════════
+// RENDER ITEMS
+// ═══════════════════════════════════════════
+function renderItems(){
+  var list = document.getElementById('items-list');
+  list.innerHTML = '';
+  (INS.items||[]).forEach(function(it, j){
+    list.appendChild(buildItemCard(it, j));
+  });
+  updateProgress();
+}
+
+function buildItemCard(it, j){
+  var r    = RESP[j]||{};
+  var st   = r.status || it.result || 'Pendente';
+  var cfg  = ST_CFG[st] || ST_CFG['Pendente'];
+  var fotos= r.fotos||[];
+  var existFotos = it.fotos||[];
+
+  var card = document.createElement('div');
+  card.className = 'item-card status-' + st.toLowerCase().replace(/\s/g,'-');
+  card.id = 'item-card-' + j;
+
+  // Head
+  var headDiv = document.createElement('div');
+  headDiv.className = 'item-head';
+  headDiv.innerHTML =
+    '<span class="item-num" style="background:'+cfg.color+';">#'+pad(j+1)+'</span>'
+    + '<span class="item-area">' + esc(it.area||'Item '+(j+1)) + '</span>'
+    + '<span class="item-status-badge" style="background:'+cfg.color+'22;color:'+cfg.color+';border:1px solid '+cfg.color+'66;">'
+      + cfg.icon + ' ' + cfg.label
+    + '</span>'
+    + (fotos.length ? '<span class="item-photo-count">📷 '+fotos.length+'</span>' : '')
+    + '<span class="item-chevron" id="chev-'+j+'">▼</span>';
+  headDiv.onclick = function(){ toggleItem(j); };
+  card.appendChild(headDiv);
+
+  // Body
+  var body = document.createElement('div');
+  body.className = 'item-body' + (j===0?' open':'');
+  body.id = 'item-body-' + j;
+  if(j===0) document.getElementById('chev-0') && (document.getElementById('chev-0').classList.add('open'));
+
+  // Original achado
+  var achadoHTML = '';
+  if(it.desc){
+    achadoHTML = '<div class="achado-box"><div class="achado-label">📋 Achado Original</div>' + esc(it.desc) + '</div>';
+  }
+  if(it.dept || it.respItemNm){
+    achadoHTML += '<div style="display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap;font-size:11px;color:var(--gray);">'
+      + (it.dept?'<span>🏢 <strong>'+esc(it.dept)+'</strong></span>':'')
+      + (it.respItemNm?'<span>👷 <strong>'+esc(it.respItemNm)+'</strong></span>':'')
+      + '</div>';
+  }
+
+  // Existing photos
+  var existHTML = '';
+  if(existFotos.length){
+    existHTML = '<div style="margin-bottom:12px;">'
+      + '<div class="achado-label">📷 Fotos da Inspeção Original</div>'
+      + '<div class="existing-photos">'
+      + existFotos.map(function(u){
+          return '<div class="existing-photo" onclick="viewPhoto(\''+u+'\')">'
+            + '<img src="'+u+'" loading="lazy" alt="foto"></div>';
+        }).join('')
+      + '</div></div>';
+  }
+
+  // Status selector
+  var statusHTML = '<div style="margin-bottom:14px;">'
+    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray);margin-bottom:8px;">Status da Pendência</div>'
+    + '<div class="status-selector">';
+  ['Conforme','Parcial','Pendente','Executado'].forEach(function(s){
+    var sc = ST_CFG[s];
+    var sel = st===s ? sc.cls : '';
+    statusHTML += '<div class="status-opt '+sel+'" id="st-opt-'+j+'-'+s.replace(/\s/g,'')+'" '
+      + 'onclick="selectStatus('+j+',\''+s+'\')">'
+      + '<span class="so-icon">'+sc.icon+'</span>'
+      + sc.label
+      + '</div>';
+  });
+  statusHTML += '</div></div>';
+
+  // Response textarea
+  var respHTML = '<div class="resp-section">'
+    + '<label>📝 Resposta / Evidência de Conformidade</label>'
+    + '<textarea id="resp-'+j+'" placeholder="Descreva a ação tomada, data de execução, material utilizado..."'
+    + ' oninput="onRespInput('+j+')">'
+    + esc(r.resposta||'')
+    + '</textarea></div>';
+
+  // Photo section
+  var photoHTML = '<div class="photo-section">'
+    + '<div class="photo-section-label">📷 Fotos Antes / Depois / Evidência'
+    + (fotos.length ? ' <span style="color:var(--green);font-size:11px;">('+fotos.length+')</span>' : '')
+    + '</div>'
+    + '<div class="photo-btns">'
+    + '<label class="photo-btn cam" style="cursor:pointer;">'
+    + '  📷 Câmera'
+    + '  <input type="file" accept="image/*" capture="environment" style="display:none" onchange="addItemPhoto('+j+',this)">'
+    + '</label>'
+    + '<label class="photo-btn gal" style="cursor:pointer;">'
+    + '  🖼 Galeria'
+    + '  <input type="file" accept="image/*" multiple style="display:none" onchange="addItemPhoto('+j+',this)">'
+    + '</label>'
+    + '</div>'
+    + '<div class="photo-grid" id="photo-grid-'+j+'">'
+    + renderPhotoGrid(j)
+    + '</div>'
+    + '</div>';
+
+  body.innerHTML = achadoHTML + existHTML + statusHTML + respHTML + photoHTML;
+  card.appendChild(body);
+  return card;
+}
+
+function renderPhotoGrid(j){
+  return (RESP[j].fotos||[]).map(function(u, i){
+    return '<div class="photo-thumb">'
+      + '<img src="'+u+'" onclick="viewPhoto(\''+u+'\')" alt="foto '+(i+1)+'">'
+      + '<button class="rm-btn" onclick="removePhoto('+j+','+i+')">✕</button>'
+      + '<div class="photo-new-badge">NOVA</div>'
+      + '</div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// INTERACTIONS
+// ═══════════════════════════════════════════
+function toggleItem(j){
+  var body = document.getElementById('item-body-'+j);
+  var chev = document.getElementById('chev-'+j);
+  if(!body) return;
+  var open = body.classList.contains('open');
+  body.classList.toggle('open', !open);
+  if(chev) chev.classList.toggle('open', !open);
+}
+
+function selectStatus(j, st){
+  RESP[j].status = st;
+  var cfg = ST_CFG[st]||ST_CFG['Pendente'];
+
+  // Update button visuals
+  ['Conforme','Parcial','Pendente','Executado'].forEach(function(s){
+    var el = document.getElementById('st-opt-'+j+'-'+s.replace(/\s/g,''));
+    if(!el) return;
+    el.className = 'status-opt' + (s===st ? ' '+ST_CFG[s].cls : '');
+  });
+
+  // Update card border + badge
+  var card = document.getElementById('item-card-'+j);
+  if(card){
+    card.className = 'item-card status-' + st.toLowerCase().replace(/\s/g,'-');
+    var badge = card.querySelector('.item-status-badge');
+    if(badge){
+      badge.style.background = cfg.color+'22';
+      badge.style.color = cfg.color;
+      badge.style.borderColor = cfg.color+'66';
+      badge.textContent = cfg.icon + ' ' + cfg.label;
+    }
+  }
+  updateProgress();
+}
+
+function onRespInput(j){
+  var el = document.getElementById('resp-'+j);
+  if(!el) return;
+  RESP[j].resposta = el.value;
+  el.classList.toggle('filled', el.value.length > 0);
+  updateProgress();
+}
+
+function addItemPhoto(j, input){
+  var files = Array.from(input.files);
+  if(!files.length) return;
+  files.forEach(function(f){
+    var r = new FileReader();
+    r.onload = function(e){
+      compressImg(e.target.result, function(url){
+        RESP[j].fotos.push(url);
+        var grid = document.getElementById('photo-grid-'+j);
+        if(grid) grid.innerHTML = renderPhotoGrid(j);
+        // Update count badge in head
+        var card = document.getElementById('item-card-'+j);
+        if(card){
+          var cnt = card.querySelector('.item-photo-count');
+          var total = RESP[j].fotos.length;
+          if(total > 0){
+            if(!cnt){
+              cnt = document.createElement('span');
+              cnt.className = 'item-photo-count';
+              card.querySelector('.item-head').insertBefore(cnt, card.querySelector('.item-chevron'));
+            }
+            cnt.textContent = '📷 ' + total;
+          }
+        }
+        updateProgress();
+      });
+    };
+    r.readAsDataURL(f);
+  });
+  input.value = '';
+}
+
+function removePhoto(j, i){
+  RESP[j].fotos.splice(i, 1);
+  var grid = document.getElementById('photo-grid-'+j);
+  if(grid) grid.innerHTML = renderPhotoGrid(j);
+  updateProgress();
+}
+
+// ═══════════════════════════════════════════
+// PROGRESS
+// ═══════════════════════════════════════════
+function updateProgress(){
+  var total = (INS.items||[]).length;
+  if(!total){ document.getElementById('prog-fill').style.width='100%'; return; }
+
+  var answered = 0;
+  (INS.items||[]).forEach(function(_, j){
+    var r = RESP[j]||{};
+    if(r.resposta||(r.fotos&&r.fotos.length)||(r.status&&r.status!=='Pendente'&&r.status!==((INS.items[j]||{}).result||'Pendente'))){
+      answered++;
+    }
+  });
+
+  var pct = Math.round(answered/total*100);
+  document.getElementById('prog-fill').style.width = pct+'%';
+  document.getElementById('prog-text').textContent = answered+' / '+total+' itens respondidos';
+  document.getElementById('btn-send-count').textContent = answered+'/'+total;
+}
+
+// ═══════════════════════════════════════════
+// SUBMIT → EXPORT
+// ═══════════════════════════════════════════
+function submitForm(){
+  GOBS = document.getElementById('obs-geral')?.value||'';
+  var result = buildResult();
+  downloadJSON(result);
+  showScreen('done');
+  document.getElementById('btn-send').style.display='none';
+  document.getElementById('done-sub').textContent =
+    'Resposta exportada com '+(INS.items||[]).length+' itens. '
+    + 'Envie o arquivo ao responsável pela inspeção.';
+}
+
+function exportResposta(){
+  GOBS = document.getElementById('obs-geral')?.value||'';
+  downloadJSON(buildResult());
+  toast('📥 Resposta baixada!');
+}
+
+function buildResult(){
+  var respItems = (INS.items||[]).map(function(it, j){
+    var r = RESP[j]||{};
+    return Object.assign({}, it, {
+      result:   r.status || it.result,
+      resposta: r.resposta||'',
+      fotosResposta: r.fotos||[]
+    });
+  });
+  return {
+    _tipo:        'resposta_inspecao_jacaranda',
+    _respondidoEm: new Date().toISOString(),
+    _vessel:      INS._vessel||'LOG-IN JACARANDÁ',
+    // Original inspection fields
+    id:       INS.id,
+    semana:   INS.semana,
+    data:     INS.data,
+    hora:     INS.hora,
+    tipo:     INS.tipo,
+    area:     INS.area,
+    titulo:   INS.titulo,
+    result:   calcOverallResult(respItems),
+    respNm:   INS.respNm,
+    testNm:   INS.testNm,
+    desc:     INS.desc,
+    fotos:    INS.fotos||[],  // keep original general photos (no base64 duplication)
+    obsResposta: GOBS,
+    items:    respItems,
+    ts:       Date.now()
+  };
+}
+
+function calcOverallResult(items){
+  if(!items.length) return INS.result||'Pendente';
+  var counts = {Conforme:0, Executado:0, Parcial:0, Pendente:0, 'Não Conforme':0};
+  items.forEach(function(it){ counts[it.result] = (counts[it.result]||0)+1; });
+  if(counts['Não Conforme']>0) return 'Não Conforme';
+  if(counts['Pendente']>0)     return 'Parcial';
+  if(counts['Parcial']>0)      return 'Parcial';
+  return 'Conforme';
+}
+
+function downloadJSON(data){
+  var blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  var safe = (INS.titulo||'inspecao').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,30);
+  a.download = 'RESPOSTA_'+safe+'_'+(INS.data||new Date().toISOString().slice(0,10))+'.json';
+  a.click();
+}
+
+// ═══════════════════════════════════════════
+// WHATSAPP
+// ═══════════════════════════════════════════
+function sendWhatsApp(){
+  GOBS = document.getElementById('obs-geral')?.value||'';
+  var total  = (INS.items||[]).length;
+  var exec   = Object.values(RESP).filter(function(r){ return r.status==='Executado'||r.status==='Conforme'; }).length;
+  var pend   = total - exec;
+  var msg = '✅ *RESPOSTA DE INSPEÇÃO*\n'
+    + '⚓ ' + (INS.titulo||'—') + '\n'
+    + '📅 ' + (INS.data||'—') + '\n'
+    + '🔍 Itens: '+total+' total · '+exec+' executados · '+pend+' pendentes\n'
+    + (GOBS ? '\n📝 '+GOBS+'\n' : '')
+    + '\n_M/V LOG-IN JACARANDÁ · Linha Amazonas_\n'
+    + '\n📎 Arquivo de resposta em anexo.';
+  window.open('https://wa.me/?text='+encodeURIComponent(msg), '_blank');
+}
+
+// ═══════════════════════════════════════════
+// PHOTO VIEWER
+// ═══════════════════════════════════════════
+function viewPhoto(url){
+  document.getElementById('viewer-img').src = url;
+  document.getElementById('photo-viewer').classList.add('open');
+}
+function closeViewer(){
+  document.getElementById('photo-viewer').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════
+// COMPRESS IMAGE
+// ═══════════════════════════════════════════
+function compressImg(dataURL, cb){
+  var img = new Image();
+  img.onload = function(){
+    var MAX=1200; var w=img.width,h=img.height;
+    if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
+    var c=document.createElement('canvas');c.width=w;c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);
+    cb(c.toDataURL('image/jpeg',0.75));
+  };
+  img.src=dataURL;
+}
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  var el = document.getElementById('screen-'+id);
+  if(el) el.classList.add('active');
+}
+function esc(str){
+  return String(str||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function pad(n){ return String(n).padStart(2,'0'); }
+function toast(msg){
+  var el=document.createElement('div');
+  el.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);'
+    +'background:#07182e;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;'
+    +'font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.4);white-space:nowrap;';
+  el.textContent=msg;document.body.appendChild(el);
+  setTimeout(function(){el.remove();},2500);
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+checkURLParam();
+// Chevron fix after DOM is ready
+document.addEventListener('DOMContentLoaded', function(){
+  var chev0 = document.getElementById('chev-0');
+  if(chev0) chev0.classList.add('open');
+});
+</script>
+</body>
+</html>

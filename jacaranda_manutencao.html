@@ -1675,32 +1675,37 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
 
         <!-- Link compartilhável -->
         <div class="panel" style="margin-bottom:14px;" id="ie-share-panel">
-          <div class="panel-header" style="background:linear-gradient(90deg,#075E54,#128C7E);">🔗 Compartilhar Inspeção</div>
+          <div class="panel-header" style="background:linear-gradient(90deg,#075E54,#128C7E);">🔗 Compartilhar para Resposta</div>
           <div style="padding:14px;">
-            <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;line-height:1.6;">
-              O link abaixo contém <strong>somente esta inspeção</strong> codificada.
-              Quem receber pode abrir no app e importar automaticamente — sem precisar de login.
+            <div style="background:var(--login-blue-xlt);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--login-blue);line-height:1.7;">
+              <strong>Como funciona:</strong><br>
+              1. Clique em <strong>📤 Compartilhar</strong> — baixa o <code>.json</code> leve (sem fotos) e gera o link<br>
+              2. Envie o arquivo ou link via <strong>💬 WhatsApp</strong><br>
+              3. O destinatário abre no <strong>Formulário de Resposta</strong> (jacaranda_resposta.html)<br>
+              4. Responde cada item, tira fotos, marca executado<br>
+              5. Importa a resposta de volta no app ← <em>Importar Arquivos</em>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-              <button class="btn btn-primary btn-sm" onclick="shareInspLink(_editInspId)">📤 Gerar / Compartilhar Link</button>
+              <button class="btn btn-primary btn-sm" onclick="shareInspLink(_editInspId)">
+                📤 Compartilhar (gera .json + link)
+              </button>
               <a id="ie-whatsapp-btn" href="#" target="_blank" class="btn btn-sm"
-                style="background:#25D366;color:#fff;border:none;text-decoration:none;">
-                💬 Enviar por WhatsApp
+                style="background:#25D366;color:#fff;border:none;text-decoration:none;padding:5px 12px;">
+                💬 WhatsApp
               </a>
-              <button class="btn btn-ghost btn-sm" onclick="copyInspJSON(_editInspId)">📋 Copiar JSON</button>
-              <button class="btn btn-green btn-sm" onclick="exportSingleInsp(_editInspId)">📥 Baixar .json</button>
+              <button class="btn btn-ghost btn-sm" onclick="exportSingleInsp(_editInspId)">📥 Só o .json completo</button>
             </div>
             <div id="ie-share-url" style="display:none;">
               <div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">
-                🔗 Link da inspeção (só esta — não o app inteiro):
+                🔗 Link para o <strong>Formulário de Resposta</strong> (sem fotos — link curto):
               </div>
               <div style="display:flex;gap:6px;align-items:center;">
                 <input type="text" id="ie-share-url-input" class="form-control"
                   style="font-family:monospace;font-size:10px;" readonly>
-                <button class="btn btn-ghost btn-sm" onclick="copyShareURL()">📋 Copiar</button>
+                <button class="btn btn-ghost btn-sm" onclick="copyShareURL()">📋</button>
               </div>
-              <div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.5;">
-                ✅ Link funciona offline · 📱 Destinatário abre no app e importa com 1 clique
+              <div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.6;">
+                ✅ Sem fotos = link curto &nbsp;·&nbsp; 📱 Abre no formulário de resposta &nbsp;·&nbsp; 📎 Use o <strong>.json baixado</strong> para enviar por WhatsApp
               </div>
             </div>
           </div>
@@ -5378,54 +5383,74 @@ function shareInspLink(id){
   var ins = S.inspecoes.find(function(i){return i.id===id;});
   if(!ins){ toast('⚠️ Salve a inspeção primeiro','warn'); return; }
 
-  // Encode ONLY the inspection — not the full app URL
-  var data = JSON.stringify(
-    Object.assign({}, ins, {
-      _tipo:'inspecao_jacaranda',
-      _shared:true,
-      _sharedAt:new Date().toISOString(),
-      _vessel:(getCfg().vessel&&getCfg().vessel.vessel)||'LOG-IN JACARANDÁ'
-    })
-  );
-  var b64  = btoa(unescape(encodeURIComponent(data)));
+  // Build a LIGHTWEIGHT copy — strip all base64 photos to keep the link short
+  var lite = JSON.parse(JSON.stringify(ins));
+  lite.fotos = [];   // remove general photos
+  if(lite.items){ lite.items.forEach(function(it){ it.fotos=[]; }); } // remove item photos
+  lite._tipo      = 'inspecao_jacaranda';
+  lite._shared    = true;
+  lite._sharedAt  = new Date().toISOString();
+  lite._vessel    = (getCfg().vessel&&getCfg().vessel.vessel)||'LOG-IN JACARANDÁ';
 
-  // Link points only to the app file + ?insp= param
+  var dataStr = JSON.stringify(lite);
+  var b64     = btoa(unescape(encodeURIComponent(dataStr)));
+
+  // URL points to the RESPONSE FORM (jacaranda_resposta.html), not the main app
   var base = window.location.origin
     + window.location.pathname.replace(/\/[^\/]*$/, '/')
-    + 'jacaranda_manutencao.html';
-  var url  = base + '?insp=' + b64;
+    + 'jacaranda_resposta.html';
+  var url = base + '?insp=' + b64;
 
-  // Show link panel in edit page
-  var panel  = document.getElementById('ie-share-panel');
+  // WhatsApp message
+  var nItems = (ins.items||[]).length;
+  var waMsg = '📋 *INSPEÇÃO PARA RESPOSTA*\n'
+    + '⚓ '+(ins.titulo||'—')+'\n'
+    + '📅 '+(ins.data||'—')+(ins.hora?' · '+ins.hora:'')+'\n'
+    + '🔍 '+(ins.tipo||'—')+'\n'
+    + (ins.area&&ins.area!=='—'?'📍 '+ins.area+'\n':'')
+    + '📋 '+nItems+' item(ns) para verificar\n'
+    + '👷 Resp: '+(ins.respNm||'—')+'\n'
+    + '\nClique no link para abrir o formulário de resposta:\n'
+    + url;
+
+  // Update WhatsApp button href
+  var waBtn = document.getElementById('ie-whatsapp-btn');
+  if(waBtn) waBtn.href = 'https://wa.me/?text='+encodeURIComponent(waMsg);
+
+  // Show link box
   var urlBox = document.getElementById('ie-share-url');
   var input  = document.getElementById('ie-share-url-input');
-  if(panel)  panel.style.display = 'block';
-  if(urlBox) urlBox.style.display = 'block';
-  if(input){
-    input.value = url;
-    // Show WhatsApp button if present
-    var waBtn = document.getElementById('ie-whatsapp-btn');
-    if(waBtn){
-      var msg = '🔍 *Inspeção: '+ins.titulo+'*\n'
-        + '📅 '+(ins.data||'—')+'\n'
-        + (ins.result?'Status: '+ins.result+'\n':'')
-        + '\nAcesse o link para visualizar e importar no app:\n'+url;
-      waBtn.href = 'https://wa.me/?text='+encodeURIComponent(msg);
-    }
-  }
+  if(urlBox) urlBox.style.display='block';
+  if(input)  input.value = url;
+
+  // Also offer to download the lightweight JSON
+  var liteBlob = new Blob([dataStr],{type:'application/json'});
+  var liteA    = document.createElement('a');
+  liteA.href   = URL.createObjectURL(liteBlob);
+  var safe     = (ins.titulo||'inspecao').replace(/\s+/g,'_').slice(0,30);
+  liteA.download = 'INSPECAO_'+safe+'_'+(ins.data||'').replace(/-/g,'')+'.json';
+  // Auto-download the JSON file
+  liteA.click();
 
   // Mobile: native share sheet
   if(navigator.share){
     navigator.share({
-      title: 'Inspeção: '+ins.titulo,
-      text:  'M/V Jacarandá · '+ins.titulo+' · '+(ins.data||''),
+      title: 'Inspeção: '+(ins.titulo||''),
+      text:  waMsg,
       url:   url
     }).then(function(){ toast('✅ Compartilhado!','ok'); })
-      .catch(function(e){ if(e.name!=='AbortError') copyShareURL(); });
+      .catch(function(e){ if(e.name!=='AbortError') toast('🔗 Link gerado!','ok'); });
   } else {
     copyShareURL();
-    toast('🔗 Link da inspeção copiado!','ok');
+    toast('🔗 Link copiado! Arquivo .json baixado.','ok');
   }
+}
+
+// Helper: show size estimate before sharing
+function getInspSizeKB(id){
+  var ins = S.inspecoes.find(function(i){return i.id===id;});
+  if(!ins) return 0;
+  return Math.round(JSON.stringify(ins).length/1024);
 }
 
 
@@ -6082,13 +6107,14 @@ function detectAndImport(file){
       const tipo = data._tipo || detectJSONType(data);
       addImportLog(`📄 ${file.name} — detectado como: ${tipo}`,'info');
       switch(tipo){
-        case 'backup_jacaranda':     previewBackup(data, file.name); break;
-        case 'inspecao_jacaranda':   previewInspecao([data], file.name); break;
-        case 'inspecoes_jacaranda':  previewInspecao(data.inspecoes||[], file.name); break;
-        case 'condicoes_jacaranda':  previewCondicoes(data, file.name); break;
-        case 'diagramas_jacaranda':  previewDiagramas(data, file.name); break;
-        case 'modulo_dept':          previewModulo(data, file.name); break;
-        case 'mestre_consolidado':   previewBackup(data, file.name); break;
+        case 'backup_jacaranda':          previewBackup(data, file.name); break;
+        case 'inspecao_jacaranda':        previewInspecao([data], file.name); break;
+        case 'inspecoes_jacaranda':       previewInspecao(data.inspecoes||[], file.name); break;
+        case 'resposta_inspecao_jacaranda': previewRespostaInspecao(data, file.name); break;
+        case 'condicoes_jacaranda':       previewCondicoes(data, file.name); break;
+        case 'diagramas_jacaranda':       previewDiagramas(data, file.name); break;
+        case 'modulo_dept':               previewModulo(data, file.name); break;
+        case 'mestre_consolidado':        previewBackup(data, file.name); break;
         default:
           addImportLog(`⚠️ Tipo não reconhecido — tentando como backup...`,'warn');
           previewBackup(data, file.name);
@@ -6631,7 +6657,107 @@ function downloadCSVTemplate(){
   toast('📋 Modelo CSV baixado!','ok');
 }
 
-// ── CANCEL ──
+// ══════════════════════════════════════════════════
+// ── RESPOSTA DE INSPEÇÃO (do jacaranda_resposta.html) ──
+// ══════════════════════════════════════════════════
+function previewRespostaInspecao(data, fname){
+  _importPending = {type:'resposta', data, fname};
+
+  const items = data.items||[];
+  const exec  = items.filter(i=>i.result==='Executado'||i.result==='Conforme').length;
+  const pend  = items.filter(i=>i.result==='Pendente'||i.result==='Não Conforme').length;
+  const withResp = items.filter(i=>i.resposta&&i.resposta.trim()).length;
+  const withFoto = items.filter(i=>(i.fotosResposta||[]).length>0).length;
+
+  const body = document.getElementById('import-preview-body');
+  body.innerHTML = `
+    <div style="background:#e0f2fe;border:1px solid #0ea5e9;border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:15px;font-weight:700;color:#0c4a6e;">✅ Resposta de Inspeção recebida</div>
+      <div style="font-size:12px;color:#0369a1;margin-top:4px;">${esc(data.titulo||'—')} · ${data.data||'—'}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px;">
+      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:7px;padding:10px;text-align:center;">
+        <div style="font-family:'Barlow Condensed',monospace;font-size:28px;font-weight:800;color:#16a34a;">${exec}</div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;">Executados/Conformes</div>
+      </div>
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:7px;padding:10px;text-align:center;">
+        <div style="font-family:'Barlow Condensed',monospace;font-size:28px;font-weight:800;color:#d97706;">${pend}</div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;">Pendentes</div>
+      </div>
+      <div style="background:var(--login-blue-xlt);border:1px solid var(--border2);border-radius:7px;padding:10px;text-align:center;">
+        <div style="font-family:'Barlow Condensed',monospace;font-size:28px;font-weight:800;color:var(--login-blue);">${withResp}</div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;">Com resposta escrita</div>
+      </div>
+      <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:7px;padding:10px;text-align:center;">
+        <div style="font-family:'Barlow Condensed',monospace;font-size:28px;font-weight:800;color:#7c3aed;">${withFoto}</div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;">Com fotos</div>
+      </div>
+    </div>
+    ${data.obsResposta?`<div style="background:#f9fafb;border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;color:#374151;margin-bottom:10px;"><strong>📝 Obs. geral:</strong> ${esc(data.obsResposta)}</div>`:''}
+    <div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Amostra dos itens:</div>
+    ${items.slice(0,4).map((it,j)=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:6px;border-bottom:1px solid var(--border);">
+        <span style="font-family:monospace;font-size:10px;background:${it.result==='Conforme'||it.result==='Executado'?'#16a34a':it.result==='Pendente'?'#7c3aed':'#d97706'};color:#fff;padding:1px 7px;border-radius:4px;">${it.result}</span>
+        <div style="flex:1;font-size:12px;"><strong>${esc(it.area||'—')}</strong>${it.resposta?'<div style="font-size:10px;color:var(--gray);">'+esc(it.resposta.slice(0,60))+'</div>':''}</div>
+        ${(it.fotosResposta||[]).length?`<span style="font-size:11px;color:var(--text-dim);">📷 ${it.fotosResposta.length}</span>`:''}
+      </div>`).join('')}
+    <div style="background:var(--login-blue-xlt);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--login-blue);margin-top:10px;">
+      ℹ️ As respostas e fotos serão mescladas na inspeção original (ID: <code>${data.id||'—'}</code>)
+    </div>
+  `;
+  document.getElementById('import-actions').innerHTML=`
+    <button class="btn btn-primary" onclick="applyRespostaInspecao()">✅ Mesclar resposta na inspeção</button>
+    <button class="btn btn-ghost" onclick="cancelImport()">✕ Cancelar</button>
+  `;
+  addImportLog(`✅ Resposta recebida: ${exec} executados, ${pend} pendentes, ${withFoto} com fotos`,'ok');
+  showImportPreview();
+}
+
+function applyRespostaInspecao(){
+  if(!_importPending||_importPending.type!=='resposta') return;
+  const data = _importPending.data;
+
+  // Find the original inspection by ID
+  let ins = S.inspecoes.find(i=>i.id===data.id);
+  if(!ins){
+    // Not found by ID — ask user
+    if(confirm(`Inspeção original não encontrada (ID: ${data.id}).\n\nCriar nova inspeção com os dados da resposta?`)){
+      S.inspecoes.push({...data, _tipo:undefined});
+      saveData(true); renderInspecao(); cancelImport();
+      toast('✅ Nova inspeção criada com respostas!','ok');
+    }
+    return;
+  }
+
+  // Merge responses into original items
+  const respItems = data.items||[];
+  respItems.forEach(function(respIt, j){
+    if(ins.items&&ins.items[j]){
+      if(respIt.result) ins.items[j].result = respIt.result;
+      if(respIt.resposta) ins.items[j].resposta = respIt.resposta;
+      // Merge response photos
+      const newFotos = respIt.fotosResposta||[];
+      if(newFotos.length){
+        ins.items[j].fotos = (ins.items[j].fotos||[]).concat(newFotos);
+      }
+    }
+  });
+
+  // Update overall result
+  if(data.result) ins.result = data.result;
+  if(data.obsResposta){
+    ins.desc = (ins.desc?ins.desc+'\n\n':'')+'[Resposta '+new Date().toLocaleDateString('pt-BR')+']: '+data.obsResposta;
+  }
+  ins.ts = Date.now();
+
+  saveData(true); cancelImport();
+  addImportLog(`✅ Resposta mesclada na inspeção "${ins.titulo}"`, 'ok');
+  toast('✅ Resposta importada e mesclada!','ok');
+}
+
+function esc(str){ return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+
 function cancelImport(){
   _importPending = null;
   const prev = document.getElementById('import-preview');

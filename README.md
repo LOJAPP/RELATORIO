@@ -1,34 +1,36 @@
 # ⚓ LOG-IN Jacarandá — Relatórios a Bordo
-**Build:** `20260423_0002`
+**Build:** `20260423_0024`
+
+## Arquivos desta versão
+
+| Arquivo | Descrição |
+|---------|-----------|
+| `jacaranda_manutencao.html` | App principal (367 KB) |
+| `jacaranda_resposta.html` | Formulário de Resposta de Inspeção (34 KB) ⭐ NOVO |
+| `index.html` | Página de entrada |
+| `manifest.json` | Config PWA |
+| `service-worker.js` | Cache offline |
+| `icon-192.png` / `icon-512.png` | Ícones |
 
 ## [🚀 Abrir App](https://SEU_USUARIO.github.io/jacaranda-app/)
+## [📋 Formulário de Resposta](https://SEU_USUARIO.github.io/jacaranda-app/jacaranda_resposta.html)
 
----
+## ✨ Novidades `20260423_0024`
 
-## ✨ Novidades `20260423_0002`
+### 📋 Formulário de Resposta de Inspeção (arquivo novo!)
+Arquivo standalone `jacaranda_resposta.html`:
+- Carregue um `.json` de inspeção ou receba via link
+- Responda cada item: texto de evidência + status
+- **📷 Câmera / 🖼 Galeria** por item — fotos antes/depois
+- Marque **✅ Executado** / ⚠️ Parcial / 🔄 Pendente
+- Baixe a resposta como `.json` e envie via **💬 WhatsApp**
 
-### 🖨 Relatório PDF melhorado
-- **4 fotos por linha** em tamanho ampliado (180px de altura cada)
-- **📤 Enviar** — compartilhamento nativo no celular
-- **💬 WhatsApp** — botão direto para enviar resumo + link
-- Barra de ações fixa no topo do relatório
-
-### 📝 Campo de Resposta por Item
-- Campo "Resposta / Evidência de Conformidade" em cada item
-- Se preenchido: aparece em verde no relatório PDF
-- Se vazio: linha em branco para preenchimento manual
-
-### 🔗 Link compartilhável (só a inspeção)
-- Link contém **somente a inspeção** — não o app inteiro
-- **💬 Botão WhatsApp** para enviar diretamente
-- Destinatário importa com 1 clique ao abrir o link
-
----
-
-## 📱 Instalar
-**iPhone** (Safari): □↑ → Adicionar à Tela de Início  
-**Android** (Chrome): ⋮ → Adicionar à tela inicial
+### 🔗 Link compartilhável corrigido
+- Link agora é **curto** — sem fotos (base64 removido)
+- Aponta para o **Formulário de Resposta**, não o app inteiro
+- Auto-baixa o `.json` para enviar por WhatsApp
+- Resposta importada de volta com **📥 Importar Arquivos**
 
 ## ⬆️ Atualizar GitHub
-1. Add file → Upload files → arrastar os 7 arquivos
-2. Commit: `build 20260423_0002 - PDF fotos ampliadas + WhatsApp + resposta por item`
+1. Add file → Upload files → arrastar os **8 arquivos**
+2. Commit: `build 20260423_0024 - formulário resposta + link curto`
