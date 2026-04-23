@@ -5162,7 +5162,7 @@ function renderInspEdit(){
   var crewBase = '<option value="">— Selecionar —</option>';
   S.crew.forEach(function(c){
     var abbr = c.abbr||(ROLE_ABBR[c.fn]||c.fn.slice(0,3).toUpperCase());
-    crewBase += '<option value="'+c.id+'">['+(abbr)+'] '+c.nm.split(' ').slice(0,2).join(' ')+'</option>';
+    crewBase += '<option value="'+c.id+'">['+(abbr)+'] '+c.nm+'</option>';
   });
   var respEl = document.getElementById('ie-resp');
   if(respEl){ respEl.innerHTML=crewBase; if(ins.respId) respEl.value=ins.respId; }
@@ -5175,7 +5175,7 @@ function renderInspEdit(){
     partAdd.innerHTML = '<option value="">+ Adicionar participante...</option>';
     S.crew.forEach(function(c){
       var abbr = c.abbr||(ROLE_ABBR[c.fn]||c.fn.slice(0,3).toUpperCase());
-      partAdd.innerHTML += '<option value="'+c.id+'">['+(abbr)+'] '+c.nm.split(' ').slice(0,2).join(' ')+'</option>';
+      partAdd.innerHTML += '<option value="'+c.id+'">['+(abbr)+'] '+c.nm+'</option>';
     });
   }
   // Render existing participants
@@ -5231,15 +5231,20 @@ function renderInspEdit(){
     var cOpts = '<option value="">— Oficial —</option>';
     S.crew.forEach(function(c){
       var abbr = c.abbr||(ROLE_ABBR[c.fn]||c.fn.slice(0,3).toUpperCase());
-      cOpts += '<option value="'+c.id+'"'+(it.respItemNm&&c.nm.includes(it.respItemNm.split(' ')[0])?' selected':'')+'>['+(abbr)+'] '+c.nm.split(' ').slice(0,2).join(' ')+'</option>';
+      cOpts += '<option value="'+c.id+'"'+((it.respItemId&&c.id===it.respItemId)||(it.respItemNm&&c.nm===it.respItemNm)?' selected':'')+'>['+(abbr)+'] '+c.nm+'</option>';
     });
 
     // Existing photos
     var existFotosHTML = '';
     (it.fotos||[]).forEach(function(u,fi){
-      existFotosHTML += '<div style="position:relative;display:inline-block;">'
-        +'<img src="'+u+'" onclick="viewP(\''+u+'\')" style="width:56px;height:56px;object-fit:cover;border-radius:5px;border:1px solid var(--border);cursor:pointer;">'
-        +'<button onclick="removeItemFoto('+j+','+fi+',false)" style="position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;line-height:1;">✕</button>'
+      var dv=(it.fotosDesc&&it.fotosDesc[fi])||'';
+      existFotosHTML += '<div style="display:inline-flex;flex-direction:column;gap:3px;align-items:center;margin:2px;">'
+        +'<div style="position:relative;">'
+        +'<img src="'+u+'" onclick="viewP(\''+u+'\')" style="width:68px;height:68px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer;display:block;">'
+        +'<button onclick="removeItemFoto('+j+','+fi+',false)" title="Remover" style="position:absolute;top:-5px;right:-5px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:1;z-index:2;">✕</button>'
+        +'<button onclick="rotateItemFoto(this,'+j+','+fi+')" title="Girar 90°" style="position:absolute;bottom:-5px;right:-5px;background:var(--login-blue);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:12px;cursor:pointer;z-index:2;font-weight:700;line-height:1;">↻</button>'
+        +'</div>'
+        +'<input type="text" value="'+escHtml(dv)+'" placeholder="Descrição..." oninput="savePhotoDesc('+j+','+fi+',this.value)" style="width:68px;font-size:9px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-family:inherit;">'
         +'</div>';
     });
 
@@ -5365,21 +5370,71 @@ function addInspEditPhoto(input, key){
   input.value='';
 }
 
-function makePhotoThumb(url, key, onRemove, isNew){
+function makePhotoThumb(url, key, onRemove, isNew, descVal, onDescChange){
   var wrap = document.createElement('div');
-  wrap.style.cssText = 'position:relative;display:inline-block;';
+  wrap.style.cssText = 'position:relative;display:inline-flex;flex-direction:column;gap:4px;';
+
+  // Photo container
+  var photoWrap = document.createElement('div');
+  photoWrap.style.cssText = 'position:relative;display:inline-block;';
+
   var img = document.createElement('img');
   img.src = url; img.onclick = function(){viewP(url);};
-  img.style.cssText = 'width:56px;height:56px;object-fit:cover;border-radius:5px;cursor:pointer;border:'+(isNew?'2px solid var(--login-green)':'1px solid var(--border)')+';';
+  img.style.cssText = 'width:72px;height:72px;object-fit:cover;border-radius:6px;cursor:pointer;display:block;border:'+(isNew?'2px solid var(--login-green)':'1px solid var(--border)')+';';
+
+  // Delete button
   var btn = document.createElement('button');
   btn.textContent='✕'; btn.onclick=onRemove;
-  btn.style.cssText='position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;line-height:1;';
+  btn.title='Remover foto';
+  btn.style.cssText='position:absolute;top:-5px;right:-5px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:1;z-index:2;';
+
+  // Rotate button
+  var rotBtn = document.createElement('button');
+  rotBtn.textContent='↻';
+  rotBtn.title='Girar 90°';
+  var _rotation = 0;
+  rotBtn.onclick = function(){
+    _rotation = (_rotation + 90) % 360;
+    img.style.transform = 'rotate('+_rotation+'deg)';
+    img.style.transition = 'transform .2s';
+    // Persist: re-draw rotated to canvas
+    setTimeout(function(){
+      var c=document.createElement('canvas');
+      var sz=72;
+      if(_rotation===90||_rotation===270){c.width=sz;c.height=sz;}else{c.width=sz;c.height=sz;}
+      var ctx=c.getContext('2d');
+      ctx.translate(sz/2,sz/2);
+      ctx.rotate(_rotation*Math.PI/180);
+      ctx.drawImage(img,-sz/2,-sz/2,sz,sz);
+      img.src=c.toDataURL('image/jpeg',0.9);
+      img.style.transform='';
+      _rotation=0;
+    },250);
+  };
+  rotBtn.style.cssText='position:absolute;bottom:-5px;right:-5px;background:var(--login-blue);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;z-index:2;font-weight:700;';
+
+  // NEW badge
   if(isNew){
     var badge=document.createElement('div');
-    badge.textContent='NOVA'; badge.style.cssText='position:absolute;bottom:0;left:0;right:0;background:var(--login-green);color:#fff;font-size:7px;font-weight:700;text-align:center;border-radius:0 0 4px 4px;';
-    wrap.appendChild(badge);
+    badge.textContent='NOVA';
+    badge.style.cssText='position:absolute;bottom:0;left:0;right:0;background:var(--login-green);color:#fff;font-size:7px;font-weight:700;text-align:center;border-radius:0 0 5px 5px;';
+    photoWrap.appendChild(badge);
   }
-  wrap.appendChild(img); wrap.appendChild(btn);
+
+  photoWrap.appendChild(img);
+  photoWrap.appendChild(btn);
+  photoWrap.appendChild(rotBtn);
+  wrap.appendChild(photoWrap);
+
+  // Description field (optional)
+  var descInput = document.createElement('input');
+  descInput.type='text';
+  descInput.placeholder='Descrição...';
+  descInput.value=descVal||'';
+  descInput.style.cssText='width:72px;font-size:9px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-family:inherit;';
+  if(onDescChange) descInput.oninput=function(){ onDescChange(descInput.value); };
+  wrap.appendChild(descInput);
+
   return wrap;
 }
 
@@ -5389,6 +5444,26 @@ function removeItemFoto(j, fi, staged){
   if(!staged) ins.items[j].fotos.splice(fi,1);
   renderInspEdit();
 }
+
+function rotateItemFoto(btn,j,fi){
+  var ins=S.inspecoes.find(function(i){return i.id===_editInspId;});
+  if(!ins||!ins.items||!ins.items[j]||!ins.items[j].fotos[fi]) return;
+  var img=btn.parentNode.querySelector('img'); if(!img) return;
+  var c=document.createElement('canvas');c.width=72;c.height=72;
+  var ctx=c.getContext('2d');var tmp=new Image();
+  tmp.onload=function(){ctx.translate(36,36);ctx.rotate(Math.PI/2);ctx.drawImage(tmp,-36,-36,72,72);var nu=c.toDataURL('image/jpeg',0.9);ins.items[j].fotos[fi]=nu;img.src=nu;saveData(true);};
+  tmp.src=ins.items[j].fotos[fi];
+}
+
+function savePhotoDesc(j,fi,desc){
+  var ins=S.inspecoes.find(function(i){return i.id===_editInspId;});
+  if(!ins||!ins.items||!ins.items[j]) return;
+  if(!ins.items[j].fotosDesc) ins.items[j].fotosDesc=[];
+  ins.items[j].fotosDesc[fi]=desc;
+  clearTimeout(savePhotoDesc._t);
+  savePhotoDesc._t=setTimeout(function(){saveData(true);},800);
+}
+
 
 function addIEItem(){
   var ins = S.inspecoes.find(function(i){return i.id===_editInspId;});
@@ -5464,7 +5539,7 @@ function saveEditInsp(){
     // Crew responsible for item
     var crewId=document.getElementById('ie-crew-'+j)?.value||'';
     var ic=S.crew.find(function(c){return c.id===crewId;});
-    it.respItemNm=ic?ic.nm.split(' ').slice(0,2).join(' '):'';
+    it.respItemNm=ic?ic.nm:''; it.respItemId=ic?ic.id:'';
     // Staged photos for this item
     var staged=_iePhotos['item-'+j]||[];
     it.fotos=(it.fotos||[]).concat(staged);
