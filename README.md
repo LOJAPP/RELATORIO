@@ -1,65 +1,34 @@
 # ⚓ LOG-IN Jacarandá — Relatórios a Bordo
-
-**Build:** `20260422_1936`
+**Build:** `20260423_0002`
 
 ## [🚀 Abrir App](https://SEU_USUARIO.github.io/jacaranda-app/)
 
 ---
 
-## 📱 Instalar no celular
+## ✨ Novidades `20260423_0002`
 
-**iPhone** (Safari):  
-□↑ Compartilhar → Adicionar à Tela de Início
+### 🖨 Relatório PDF melhorado
+- **4 fotos por linha** em tamanho ampliado (180px de altura cada)
+- **📤 Enviar** — compartilhamento nativo no celular
+- **💬 WhatsApp** — botão direto para enviar resumo + link
+- Barra de ações fixa no topo do relatório
 
-**Android** (Chrome):  
-⋮ → Adicionar à tela inicial
+### 📝 Campo de Resposta por Item
+- Campo "Resposta / Evidência de Conformidade" em cada item
+- Se preenchido: aparece em verde no relatório PDF
+- Se vazio: linha em branco para preenchimento manual
 
----
-
-## ✨ Novidades desta versão (`20260422_1936`)
-
-### ✏️ Editor de Inspeção — Página Dedicada
-- Edição completa de todos os campos (data, tipo, responsável, etc.)
-- Cada item de inspeção em card expansível individual
-- **📷 Câmera / 🖼 Galeria** por item — fotos de conformidade
-- Adicionar novos itens durante a edição
-- Fotos novas marcadas com badge verde
-
-### 🔗 Link Compartilhável
-- Gera link para enviar via WhatsApp / email
-- Destinatário abre o link no app e importa automaticamente
-- Funciona offline — dados codificados na URL
-
-### 📥 Importação Robusta
-- Importa inspeções de qualquer versão (sem erro de `_tipo`)
-- Detecta automaticamente: backup, inspeção, condições, diagramas, CSV
-- Preview antes de confirmar — mostra novos vs duplicados
-
-### 📊 Diagramas SVG Interativos
-- Vista lateral e superior do navio
-- 11 sistemas: porões, tampas, braçolas, iluminação, ventilação, etc.
-- Clique em qualquer célula para atualizar status
+### 🔗 Link compartilhável (só a inspeção)
+- Link contém **somente a inspeção** — não o app inteiro
+- **💬 Botão WhatsApp** para enviar diretamente
+- Destinatário importa com 1 clique ao abrir o link
 
 ---
 
-## ⬆️ Atualizar
+## 📱 Instalar
+**iPhone** (Safari): □↑ → Adicionar à Tela de Início  
+**Android** (Chrome): ⋮ → Adicionar à tela inicial
 
-1. GitHub → repositório `jacaranda-app`
-2. **Add file → Upload files**
-3. Arrastar os **7 arquivos**
-4. Escrever: `build 20260422_1936 - editor inspeção + link compartilhável`
-5. **Commit changes** → aguardar 2 min
-
----
-
-## 💾 Arquivos
-
-| Arquivo | Descrição |
-|---------|-----------|
-| `jacaranda_manutencao.html` | App principal (348 KB) |
-| `index.html` | Página de entrada + instalação PWA |
-| `manifest.json` | Configuração PWA |
-| `service-worker.js` | Cache offline |
-| `icon-192.png` | Ícone 192×192 |
-| `icon-512.png` | Ícone 512×512 |
-| `README.md` | Este arquivo |
+## ⬆️ Atualizar GitHub
+1. Add file → Upload files → arrastar os 7 arquivos
+2. Commit: `build 20260423_0002 - PDF fotos ampliadas + WhatsApp + resposta por item`

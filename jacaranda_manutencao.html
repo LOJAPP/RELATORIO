@@ -1674,24 +1674,34 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
         </div>
 
         <!-- Link compartilhável -->
-        <div class="panel" style="margin-bottom:14px;" id="ie-share-panel" style="display:none;">
-          <div class="panel-header">🔗 Compartilhar Inspeção</div>
+        <div class="panel" style="margin-bottom:14px;" id="ie-share-panel">
+          <div class="panel-header" style="background:linear-gradient(90deg,#075E54,#128C7E);">🔗 Compartilhar Inspeção</div>
           <div style="padding:14px;">
-            <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">
-              Gere um link para enviar esta inspeção. O destinatário pode visualizar e adicionar fotos de conformidade.
+            <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;line-height:1.6;">
+              O link abaixo contém <strong>somente esta inspeção</strong> codificada.
+              Quem receber pode abrir no app e importar automaticamente — sem precisar de login.
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn btn-primary btn-sm" onclick="shareInspLink(_editInspId)">🔗 Gerar Link</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+              <button class="btn btn-primary btn-sm" onclick="shareInspLink(_editInspId)">📤 Gerar / Compartilhar Link</button>
+              <a id="ie-whatsapp-btn" href="#" target="_blank" class="btn btn-sm"
+                style="background:#25D366;color:#fff;border:none;text-decoration:none;">
+                💬 Enviar por WhatsApp
+              </a>
               <button class="btn btn-ghost btn-sm" onclick="copyInspJSON(_editInspId)">📋 Copiar JSON</button>
-              <button class="btn btn-green btn-sm" onclick="exportSingleInsp(_editInspId)">📤 Exportar .json</button>
+              <button class="btn btn-green btn-sm" onclick="exportSingleInsp(_editInspId)">📥 Baixar .json</button>
             </div>
-            <div id="ie-share-url" style="margin-top:10px;display:none;">
-              <div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">Link gerado:</div>
-              <div style="display:flex;gap:6px;align-items:center;">
-                <input type="text" id="ie-share-url-input" class="form-control" style="font-family:monospace;font-size:11px;" readonly>
-                <button class="btn btn-ghost btn-sm" onclick="copyShareURL()">📋</button>
+            <div id="ie-share-url" style="display:none;">
+              <div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">
+                🔗 Link da inspeção (só esta — não o app inteiro):
               </div>
-              <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">⚠️ O link contém os dados da inspeção codificados. Funciona offline — não requer servidor.</div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input type="text" id="ie-share-url-input" class="form-control"
+                  style="font-family:monospace;font-size:10px;" readonly>
+                <button class="btn btn-ghost btn-sm" onclick="copyShareURL()">📋 Copiar</button>
+              </div>
+              <div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.5;">
+                ✅ Link funciona offline · 📱 Destinatário abre no app e importa com 1 clique
+              </div>
             </div>
           </div>
         </div>
@@ -5161,6 +5171,10 @@ function renderInspEdit(){
         +'</div>'
         +'<div class="form-group"><label>Descrição / Achado</label>'
           +'<textarea class="form-control" id="ie-desc-'+j+'" style="min-height:64px;">'+escHtml(it.desc||'')+'</textarea></div>'
+        +'<div class="form-group" style="margin-top:10px;">'
+          +'<label style="color:var(--login-green-dk);">📝 Resposta / Evidência de Conformidade</label>'
+          +'<textarea class="form-control" id="ie-resposta-'+j+'" style="min-height:56px;border-color:'+(it.resposta?'var(--login-green)':'var(--border)')+';background:'+(it.resposta?'var(--login-green-xlt)':'#fff')+';" placeholder="Descreva a ação corretiva tomada, conformidade verificada ou evidência de resolução...">'+escHtml(it.resposta||'')+'</textarea>'
+        +'</div>'
         // Photos section
         +'<div style="margin-top:8px;">'
           +'<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">📷 Fotos do Item <span style="font-weight:400;">(antes / depois / conformidade)</span></div>'
@@ -5341,6 +5355,7 @@ function saveEditInsp(){
     var res=document.getElementById('ie-result-'+j)?.value; if(res) it.result=res;
     var dept=document.getElementById('ie-dept-'+j)?.value; if(dept!==undefined) it.dept=dept;
     var desc=document.getElementById('ie-desc-'+j)?.value; if(desc!==undefined) it.desc=desc;
+    var rs=document.getElementById('ie-resposta-'+j)?.value; if(rs!==undefined) it.resposta=rs;
     // Crew responsible for item
     var crewId=document.getElementById('ie-crew-'+j)?.value||'';
     var ic=S.crew.find(function(c){return c.id===crewId;});
@@ -5358,34 +5373,61 @@ function saveEditInsp(){
 }
 
 // ── SHARE LINK ──
+// ── Fix shareInspLink: link to inspection only, not full app URL ──
 function shareInspLink(id){
   var ins = S.inspecoes.find(function(i){return i.id===id;});
-  if(!ins){toast('⚠️ Salve primeiro','warn');return;}
+  if(!ins){ toast('⚠️ Salve a inspeção primeiro','warn'); return; }
 
-  // Encode as data URI with the inspection JSON
-  var data = JSON.stringify({...ins, _tipo:'inspecao_jacaranda', _shared:true, _sharedAt:new Date().toISOString()});
+  // Encode ONLY the inspection — not the full app URL
+  var data = JSON.stringify(
+    Object.assign({}, ins, {
+      _tipo:'inspecao_jacaranda',
+      _shared:true,
+      _sharedAt:new Date().toISOString(),
+      _vessel:(getCfg().vessel&&getCfg().vessel.vessel)||'LOG-IN JACARANDÁ'
+    })
+  );
   var b64  = btoa(unescape(encodeURIComponent(data)));
-  var url  = window.location.href.split('?')[0]+'?insp='+b64;
 
-  var panel = document.getElementById('ie-share-panel');
-  var urlBox= document.getElementById('ie-share-url');
-  var input = document.getElementById('ie-share-url-input');
-  if(panel) panel.style.display='block';
-  if(urlBox) urlBox.style.display='block';
-  if(input) input.value=url;
+  // Link points only to the app file + ?insp= param
+  var base = window.location.origin
+    + window.location.pathname.replace(/\/[^\/]*$/, '/')
+    + 'jacaranda_manutencao.html';
+  var url  = base + '?insp=' + b64;
 
-  // Try navigator.share first (mobile)
+  // Show link panel in edit page
+  var panel  = document.getElementById('ie-share-panel');
+  var urlBox = document.getElementById('ie-share-url');
+  var input  = document.getElementById('ie-share-url-input');
+  if(panel)  panel.style.display = 'block';
+  if(urlBox) urlBox.style.display = 'block';
+  if(input){
+    input.value = url;
+    // Show WhatsApp button if present
+    var waBtn = document.getElementById('ie-whatsapp-btn');
+    if(waBtn){
+      var msg = '🔍 *Inspeção: '+ins.titulo+'*\n'
+        + '📅 '+(ins.data||'—')+'\n'
+        + (ins.result?'Status: '+ins.result+'\n':'')
+        + '\nAcesse o link para visualizar e importar no app:\n'+url;
+      waBtn.href = 'https://wa.me/?text='+encodeURIComponent(msg);
+    }
+  }
+
+  // Mobile: native share sheet
   if(navigator.share){
     navigator.share({
-      title:'Inspeção: '+ins.titulo,
-      text:'Inspeção M/V Jacarandá — '+ins.titulo+' ('+ins.data+')',
-      url: url
-    }).then(function(){toast('✅ Compartilhado!','ok');}).catch(function(){copyShareURL();});
+      title: 'Inspeção: '+ins.titulo,
+      text:  'M/V Jacarandá · '+ins.titulo+' · '+(ins.data||''),
+      url:   url
+    }).then(function(){ toast('✅ Compartilhado!','ok'); })
+      .catch(function(e){ if(e.name!=='AbortError') copyShareURL(); });
   } else {
     copyShareURL();
-    toast('🔗 Link copiado!','ok');
+    toast('🔗 Link da inspeção copiado!','ok');
   }
 }
+
 
 function copyShareURL(){
   var input=document.getElementById('ie-share-url-input');
@@ -5425,85 +5467,288 @@ function checkInspFromURL(){
 }
 
 
+// ── Generate full professional inspection report ──
 function printInspCard(id){
-  var ins=S.inspecoes.find(function(i){return i.id===id;});if(!ins)return;
-  var vcfg=getCfg().vessel||{};
-  var rCcolor={'Conforme':'#16a34a','Não Conforme':'#dc2626','Parcial':'#d97706','Pendente':'#7c3aed'};
-  var rIp={'Conforme':'✅','Não Conforme':'❌','Parcial':'⚠️','Pendente':'🔄'};
-  var color=rCcolor[ins.result]||'#6b7280';
+  var ins = S.inspecoes.find(function(i){return i.id===id;});
+  if(!ins){ toast('⚠️ Inspeção não encontrada','warn'); return; }
 
-  var itemsHtml='';
-  (ins.items||[]).forEach(function(it,j){
-    var icolor=rCcolor[it.result]||'#6b7280';
-    var itf='';
-    (it.fotos||[]).slice(0,4).forEach(function(u){ itf+='<img src="'+u+'" style="width:60px;height:60px;object-fit:cover;border-radius:4px;border:1px solid #e5e7eb;">'; });
-    itemsHtml+='<div style="border-left:3px solid '+icolor+';padding:6px 10px;margin-bottom:6px;background:#f9fafb;">';
-    itemsHtml+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">';
-    itemsHtml+='<span style="font-family:monospace;font-size:9px;background:'+icolor+';color:#fff;padding:1px 6px;border-radius:3px;">#'+String(j+1).padStart(2,'0')+'</span>';
-    itemsHtml+='<strong style="font-size:12px;">'+escHtml(it.area||'')+'</strong>';
-    itemsHtml+='<span style="font-size:10px;font-weight:700;padding:1px 8px;border-radius:8px;background:'+icolor+'22;color:'+icolor+'">'+(rIp[it.result]||'—')+' '+it.result+'</span>';
-    if(it.dept) itemsHtml+='<span style="font-size:10px;color:#6b7280;">🏢 '+it.dept+'</span>';
-    if(it.respItemNm) itemsHtml+='<span style="font-size:10px;color:#6b7280;">👷 '+it.respItemNm+'</span>';
-    itemsHtml+='</div>';
-    if(it.desc) itemsHtml+='<div style="font-size:11px;color:#4b5563;">'+escHtml(it.desc)+'</div>';
-    if(itf) itemsHtml+='<div style="display:flex;gap:4px;margin-top:4px;">'+itf+'</div>';
-    itemsHtml+='</div>';
-  });
+  var vcfg   = getCfg().vessel || {};
+  var vessel = vcfg.vessel || 'LOG-IN JACARANDÁ';
+  var route  = vcfg.route  || 'Linha Amazonas';
 
-  var fotosHtml='';
-  if((ins.fotos||[]).length){
-    fotosHtml='<div style="margin-top:12px;padding-top:8px;border-top:1px solid #e5e7eb;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">📷 Fotos</div><div style="display:flex;flex-wrap:wrap;gap:8px;">';
-    ins.fotos.forEach(function(u){ fotosHtml+='<img src="'+u+'" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;">'; });
-    fotosHtml+='</div></div>';
+  var COLORS = {
+    'Conforme':    { bg:'#16a34a', lt:'#f0fdf4', border:'#bbf7d0', text:'#14532d' },
+    'Não Conforme':{ bg:'#dc2626', lt:'#fff1f2', border:'#fecdd3', text:'#881337' },
+    'Parcial':     { bg:'#d97706', lt:'#fffbeb', border:'#fde68a', text:'#78350f' },
+    'Pendente':    { bg:'#7c3aed', lt:'#f5f3ff', border:'#ddd6fe', text:'#4c1d95' },
+  };
+  var ICONS = { 'Conforme':'✅', 'Não Conforme':'❌', 'Parcial':'⚠️', 'Pendente':'🔄' };
+
+  var C  = COLORS[ins.result] || COLORS['Pendente'];
+  var ic = ICONS[ins.result]  || '—';
+
+  // ── Helper: build a 4-per-row photo grid (larger images) ──
+  function photoGrid(fotos, label){
+    if(!fotos||!fotos.length) return '';
+    var imgs = fotos.map(function(u){
+      return '<div style="width:calc(25% - 6px);min-width:160px;flex-grow:1;max-width:220px;overflow:hidden;border-radius:10px;border:1px solid #e5e7eb;background:#f3f4f6;box-shadow:0 1px 4px rgba(0,0,0,.08);">'
+           + '<img src="'+u+'" style="width:100%;height:180px;object-fit:cover;display:block;">'
+           + '</div>';
+    }).join('');
+    return '<div style="margin-top:16px;">'
+         + (label?'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px;border-top:1px solid #e5e7eb;padding-top:10px;">'+label+'</div>':'')
+         + '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + imgs + '</div>'
+         + '</div>';
   }
 
-  var vessel=vcfg.vessel||'LOG-IN JACARANDÁ';
-  var html='\x3C!DOCTYPE html>\n\x3Chtml lang="pt-BR">\n\x3Chead>\n\x3Cmeta charset="UTF-8">\n';
-  html+='<title>Inspeção: '+escHtml(ins.titulo)+'<\/title>\n';
-  html+='<style>\n@page{margin:12mm 14mm}\n';
-  html+='body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#1f2937;margin:0;padding:0;}\n';
-  html+='.hdr{background:'+color+';color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;}\n';
-  html+='.logo{font-size:22px;font-weight:900;letter-spacing:-1px;}\n';
-  html+='.body{padding:16px;}\n';
-  html+='.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 14px;border-radius:20px;font-weight:700;font-size:13px;background:'+color+'22;color:'+color+';border:2px solid '+color+';margin-bottom:12px;}\n';
-  html+='.meta{display:flex;flex-wrap:wrap;gap:6px 20px;margin-bottom:12px;font-size:11px;}\n';
-  html+='.ml{font-weight:700;color:#6b7280;text-transform:uppercase;font-size:9px;letter-spacing:.5px;}\n';
-  html+='.titl{font-size:20px;font-weight:800;margin-bottom:6px;color:#07182e;}\n';
-  html+='.desc{font-size:12px;color:#4b5563;white-space:pre-wrap;padding:8px 10px;background:#f9fafb;border-radius:5px;margin-bottom:10px;}\n';
-  html+='.ftr{margin-top:20px;padding-top:10px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af;}\n';
-  html+='.sig{border:1px solid #e5e7eb;border-radius:5px;padding:8px 14px;min-width:160px;text-align:center;}\n';
-  html+='.sigl{border-bottom:1px solid #374151;height:40px;margin-bottom:4px;}\n';
-  html+='@media print{body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}\n';
-  html+='<\/style>\n\x3C\/head>\n\x3Cbody>\n';
-  html+='<div class="hdr"><div><div class="logo">log<span style="color:#6DB847">in<\/span><span style="color:#f59e0b">.<\/span><\/div>';
-  html+='<div style="font-size:11px;margin-top:2px;opacity:.8;">'+vessel+' · Linha Amazonas<\/div><\/div>';
-  html+='<div style="text-align:right;font-size:11px;opacity:.85;"><div style="font-size:16px;font-weight:800;">RELATÓRIO DE INSPEÇÃO<\/div>';
-  html+='<div>'+(ins.data||'—')+(ins.hora?' · '+ins.hora:'')+' · SEM '+(ins.semana||'—')+'<\/div><\/div><\/div>\n';
-  html+='<div class="body">\n';
-  html+='<div class="titl">'+escHtml(ins.titulo)+'<\/div>\n';
-  html+='<div class="badge">'+(rIp[ins.result]||'—')+' '+ins.result+'<\/div>\n';
-  html+='<div class="meta">';
-  html+='<div><span class="ml">Tipo<\/span> '+(ins.tipo||'—')+'<\/div>';
-  html+='<div><span class="ml">Área<\/span> '+escHtml(ins.area||'—')+'<\/div>';
-  html+='<div><span class="ml">Responsável<\/span> '+(ins.respNm||'—')+'<\/div>';
-  if(ins.testNm) html+='<div><span class="ml">Testemunha<\/span> '+ins.testNm+'<\/div>';
-  html+='<div><span class="ml">Data<\/span> '+(ins.data||'—')+(ins.hora?' '+ins.hora:'')+'<\/div>';
-  html+='<\/div>\n';
-  if(ins.desc) html+='<div class="desc">'+escHtml(ins.desc)+'<\/div>\n';
-  if((ins.items||[]).length) html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:8px;padding-top:8px;border-top:1px solid #e5e7eb;">📋 '+ins.items.length+' Item(ns) Inspecionado(s)<\/div>'+itemsHtml+'\n';
-  html+=fotosHtml+'\n';
-  html+='<div class="ftr">';
-  html+='<div><div style="margin-bottom:14px;">&nbsp;<\/div><div class="sig"><div class="sigl"><\/div><div>'+(ins.respNm||'Responsável')+'<\/div><\/div><\/div>';
-  if(ins.testNm) html+='<div><div style="margin-bottom:14px;">&nbsp;<\/div><div class="sig"><div class="sigl"><\/div><div>'+ins.testNm+'<\/div><\/div><\/div>';
-  html+='<div style="text-align:right;align-self:flex-end;"><div>Gerado: '+new Date().toLocaleString('pt-BR')+'<\/div><div>ID: '+ins.id+'<\/div><\/div>';
-  html+='<\/div>\n<\/div>\n\x3C\/body>\n\x3C\/html>';
+  // ── Items section ──
+  var itemsHtml = '';
+  (ins.items||[]).forEach(function(it, j){
+    var IC = COLORS[it.result] || COLORS['Pendente'];
+    var ii = ICONS[it.result]  || '—';
 
-  var w=window.open('','_blank','width=850,height=1000');
-  if(!w){toast('⚠️ Permita pop-ups para imprimir','warn');return;}
-  w.document.write(html);w.document.close();
-  w.onload=function(){w.focus();w.print();};
-  toast('🖨 Abrindo PDF...','ok');
+    // Item fotos grid
+    var itemFotos = photoGrid(it.fotos||[], '');
+
+    // Response field (editable when printed as form, filled if exists)
+    var resposta = it.resposta || '';
+
+    itemsHtml +=
+      '<div style="break-inside:avoid;border:1px solid '+IC.border+';border-left:5px solid '+IC.bg+';'
+      +'border-radius:8px;margin-bottom:12px;overflow:hidden;">'
+
+      // Item header
+      + '<div style="background:'+IC.lt+';padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+      + '<span style="background:'+IC.bg+';color:#fff;font-family:monospace;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;flex-shrink:0;">#'+String(j+1).padStart(2,'0')+'</span>'
+      + '<strong style="font-size:13px;flex:1;color:#111827;">'+escHtml(it.area||'—')+'</strong>'
+      + '<span style="background:'+IC.bg+';color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">'+ii+' '+it.result+'</span>'
+      + '</div>'
+
+      // Item body
+      + '<div style="padding:10px 14px;">'
+      + (it.dept||it.respItemNm ? '<div style="display:flex;gap:16px;margin-bottom:6px;font-size:11px;color:#6b7280;">'
+        +(it.dept?'<span>🏢 <strong>'+escHtml(it.dept)+'</strong></span>':'')
+        +(it.respItemNm?'<span>👷 <strong>'+escHtml(it.respItemNm)+'</strong></span>':'')
+        +'</div>' : '')
+      + (it.desc?'<div style="font-size:12px;color:#374151;background:#f9fafb;border-radius:5px;padding:8px 10px;margin-bottom:8px;white-space:pre-wrap;">'+escHtml(it.desc)+'</div>':'')
+      + itemFotos
+
+      // Response / evidence section
+      + '<div style="margin-top:10px;background:'+(resposta?'#f0fdf4':'#fafafa')+';border:1px dashed '+(resposta?'#86efac':'#d1d5db')+';border-radius:6px;padding:10px 12px;">'
+      + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+(resposta?'#16a34a':'#9ca3af')+';margin-bottom:6px;">📝 Resposta / Evidência de Conformidade</div>'
+      + (resposta
+          ? '<div style="font-size:12px;color:#111827;white-space:pre-wrap;">'+escHtml(resposta)+'</div>'
+          : '<div style="height:32px;border-bottom:1px solid #d1d5db;color:#9ca3af;font-size:11px;padding-top:8px;">_________________________________________________________________________________________</div>'
+        )
+      + '</div>'
+
+      + '</div>'
+      + '</div>';
+  });
+
+  // ── General fotos grid ──
+  var fotosGeralHtml = photoGrid(ins.fotos||[], '📷 Fotos Gerais da Inspeção');
+
+  // ── Full HTML document ──
+  var html = [
+    '\x3C!DOCTYPE html>',
+    '\x3Chtml lang="pt-BR">',
+    '\x3Chead>',
+    '\x3Cmeta charset="UTF-8">',
+    '\x3Cmeta name="viewport" content="width=device-width,initial-scale=1">',
+    '<title>Inspeção — '+escHtml(ins.titulo)+'<\/title>',
+    '<style>',
+    '@page { margin: 14mm 12mm; }',
+    'body { font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; color: #111827; margin: 0; padding: 0; background: #fff; }',
+    '.page-wrap { max-width: 860px; margin: 0 auto; padding: 0; }',
+
+    // Header
+    '.hdr { background: '+C.bg+'; color: #fff; padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; }',
+    '.hdr-logo { font-size: 26px; font-weight: 900; letter-spacing: -1.5px; line-height: 1; }',
+    '.hdr-logo .g { color: #6DB847; } .hdr-logo .d { color: #f59e0b; }',
+    '.hdr-vessel { font-size: 11px; opacity: .85; margin-top: 3px; letter-spacing: .5px; }',
+    '.hdr-right { text-align: right; }',
+    '.hdr-doc { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; }',
+    '.hdr-date { font-size: 11px; opacity: .8; margin-top: 3px; }',
+
+    // Title block
+    '.title-block { padding: 18px 22px 12px; border-bottom: 2px solid '+C.bg+'; }',
+    '.insp-title { font-size: 22px; font-weight: 900; color: #07182e; margin-bottom: 6px; line-height: 1.2; }',
+    '.result-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 16px; border-radius: 20px; font-weight: 700; font-size: 13px; background: '+C.lt+'; color: '+C.text+'; border: 2px solid '+C.bg+'; }',
+
+    // Meta grid
+    '.meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px 22px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }',
+    '.meta-cell { }',
+    '.meta-lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #9ca3af; margin-bottom: 2px; }',
+    '.meta-val { font-size: 12px; font-weight: 600; color: #111827; }',
+
+    // Body
+    '.body { padding: 16px 22px; }',
+    '.section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #6b7280; padding: 10px 0 8px; border-top: 1px solid #e5e7eb; margin-top: 16px; }',
+    '.desc-box { font-size: 12px; color: #374151; background: #f9fafb; border-radius: 6px; padding: 10px 12px; white-space: pre-wrap; border: 1px solid #e5e7eb; margin-bottom: 12px; }',
+
+    // Summary table
+    '.summary-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 11px; }',
+    '.summary-table th { background: #f3f4f6; padding: 6px 10px; text-align: left; font-weight: 700; color: #374151; border: 1px solid #e5e7eb; }',
+    '.summary-table td { padding: 6px 10px; border: 1px solid #e5e7eb; vertical-align: middle; }',
+    '.summary-table tr:nth-child(even) td { background: #f9fafb; }',
+
+    // Footer / signatures
+    '.ftr { padding: 14px 22px; border-top: 2px solid #e5e7eb; display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; page-break-inside: avoid; }',
+    '.sig-block { text-align: center; flex: 1; max-width: 200px; }',
+    '.sig-name { font-size: 11px; font-weight: 700; color: #374151; margin-top: 6px; }',
+    '.sig-role { font-size: 10px; color: #9ca3af; }',
+    '.sig-line { border-bottom: 1.5px solid #374151; height: 44px; margin-bottom: 4px; }',
+    '.generated { font-size: 10px; color: #9ca3af; text-align: right; }',
+
+    '@media print {',
+    '  body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }',
+    '  .no-print { display: none !important; }',
+    '  .page-wrap { max-width: 100%; }',
+    '}',
+    '<\/style>',
+    '\x3C\/head>',
+    '\x3Cbody>',
+    '<div class="page-wrap">',
+
+    // ── PRINT / SEND BUTTONS (hidden when printing) ──
+    '<div class="no-print" style="background:#07182e;padding:10px 20px;display:flex;gap:8px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;flex-wrap:wrap;">',
+    '<span style="color:#fff;font-size:13px;font-weight:700;flex:1;min-width:160px;">⚓ '+escHtml(ins.titulo)+'</span>',
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">',
+    '<button onclick="window.print()" style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Imprimir / Salvar PDF</button>',
+    '<button onclick="enviarRelatorio()" style="background:#1A5FA8;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;" id="btn-enviar">📤 Enviar</button>',
+    '<button onclick="whatsappRelatorio()" style="background:#25D366;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">💬 WhatsApp</button>',
+    '<button onclick="window.close()" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:8px 14px;font-size:13px;cursor:pointer;">✕</button>',
+    '</div>',
+    '</div>',
+
+    // ── HEADER ──
+    '<div class="hdr">',
+    '  <div>',
+    '    <div class="hdr-logo">log<span class="g">in<\/span><span class="d">.<\/span><\/div>',
+    '    <div class="hdr-vessel">'+vessel+' · '+route+'<\/div>',
+    '  <\/div>',
+    '  <div class="hdr-right">',
+    '    <div class="hdr-doc">Relatório de Inspeção<\/div>',
+    '    <div class="hdr-date">'+(ins.data||'—')+(ins.hora?' · '+ins.hora:'')+' · Semana '+(ins.semana||'—')+'<\/div>',
+    '  <\/div>',
+    '<\/div>',
+
+    // ── TITLE BLOCK ──
+    '<div class="title-block">',
+    '  <div class="insp-title">'+escHtml(ins.titulo)+'<\/div>',
+    '  <div class="result-badge">'+ic+' '+ins.result+'<\/div>',
+    '<\/div>',
+
+    // ── META GRID ──
+    '<div class="meta-grid">',
+    '  <div class="meta-cell"><div class="meta-lbl">Tipo de Inspeção<\/div><div class="meta-val">'+(ins.tipo||'—')+'<\/div><\/div>',
+    '  <div class="meta-cell"><div class="meta-lbl">Área / Local<\/div><div class="meta-val">'+escHtml(ins.area||'—')+'<\/div><\/div>',
+    '  <div class="meta-cell"><div class="meta-lbl">Data & Hora<\/div><div class="meta-val">'+(ins.data||'—')+(ins.hora?' · '+ins.hora:'')+'<\/div><\/div>',
+    '  <div class="meta-cell"><div class="meta-lbl">Responsável<\/div><div class="meta-val">'+(ins.respNm||'—')+'<\/div><\/div>',
+    '  <div class="meta-cell"><div class="meta-lbl">Testemunha<\/div><div class="meta-val">'+(ins.testNm||'—')+'<\/div><\/div>',
+    '  <div class="meta-cell"><div class="meta-lbl">Navio<\/div><div class="meta-val">'+vessel+'<\/div><\/div>',
+    '<\/div>',
+
+    '<div class="body">',
+
+    // Observations
+    (ins.desc ? '<div class="section-title">📝 Observações Gerais<\/div><div class="desc-box">'+escHtml(ins.desc)+'<\/div>' : ''),
+
+    // ── SUMMARY TABLE ──
+    ((ins.items||[]).length ? (
+      '<div class="section-title">📊 Resumo dos Itens ('+(ins.items||[]).length+')<\/div>'
+      + '<table class="summary-table">'
+      + '<thead><tr><th>#<\/th><th>Área \/ Componente<\/th><th>Departamento<\/th><th>Responsável<\/th><th>Resultado<\/th><\/tr><\/thead>'
+      + '<tbody>'
+      + (ins.items||[]).map(function(it,j){
+          var IC = COLORS[it.result]||COLORS['Pendente'];
+          return '<tr>'
+            + '<td style="font-family:monospace;font-weight:700;color:'+IC.bg+';">#'+String(j+1).padStart(2,'0')+'<\/td>'
+            + '<td style="font-weight:600;">'+escHtml(it.area||'—')+'<\/td>'
+            + '<td>'+escHtml(it.dept||'—')+'<\/td>'
+            + '<td>'+escHtml(it.respItemNm||'—')+'<\/td>'
+            + '<td><span style="background:'+IC.bg+';color:#fff;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;">'+(ICONS[it.result]||'—')+' '+it.result+'<\/span><\/td>'
+            + '<\/tr>';
+        }).join('')
+      + '<\/tbody><\/table>'
+    ) : ''),
+
+    // ── DETAILED ITEMS ──
+    ((ins.items||[]).length ? '<div class="section-title">📋 Itens Detalhados — Achados e Evidências<\/div>' : ''),
+    itemsHtml,
+
+    // ── GENERAL PHOTOS ──
+    fotosGeralHtml,
+
+    // ── SIGNATURES ──
+    '<div style="page-break-inside:avoid;margin-top:24px;">',
+    '<div class="section-title">✍️ Assinaturas<\/div>',
+    '<div class="ftr">',
+    '<div class="sig-block">',
+    '  <div class="sig-line"><\/div>',
+    '  <div class="sig-name">'+(ins.respNm||'Responsável pela Inspeção')+'<\/div>',
+    '  <div class="sig-role">Responsável<\/div>',
+    '<\/div>',
+    (ins.testNm ? '<div class="sig-block"><div class="sig-line"><\/div><div class="sig-name">'+ins.testNm+'<\/div><div class="sig-role">Testemunha<\/div><\/div>' : '<div class="sig-block"><div class="sig-line"><\/div><div class="sig-name" style="color:#9ca3af;">___________________________<\/div><div class="sig-role">Testemunha<\/div><\/div>'),
+    '<div class="generated">',
+    '  <div>Gerado em: '+new Date().toLocaleString('pt-BR')+'<\/div>',
+    '  <div>ID: <code>'+ins.id+'<\/code><\/div>',
+    '  <div style="margin-top:4px;font-size:9px;">'+vessel+' · '+route+'<\/div>',
+    '<\/div>',
+    '<\/div>',
+    '<\/div>',
+
+    '<\/div>', // .body
+    '<\/div>', // .page-wrap
+
+    // Script for "Enviar Relatório" button
+    '\x3Cscript>',
+    '\x3Cscript>',
+    'function enviarRelatorio(){',
+    '  var btn=document.getElementById("btn-enviar");',
+    '  var title=document.querySelector(".insp-title");',
+    '  var txt="Relatório de Inspeção\\n"+(title?title.textContent:"")+"\\n"+window.location.href;',
+    '  if(navigator.share){',
+    '    navigator.share({title:"Relatório de Inspeção — "+(title?title.textContent:""),text:txt,url:window.location.href})',
+    '      .then(function(){if(btn)btn.textContent="✅ Enviado!";})',
+    '      .catch(function(e){if(e.name!=="AbortError"){window.print();}});',
+    '  } else {',
+    '    if(btn)btn.textContent="🖨 Salve como PDF e envie";',
+    '    setTimeout(function(){window.print();},200);',
+    '    setTimeout(function(){if(btn)btn.textContent="📤 Enviar";},4000);',
+    '  }',
+    '}',
+    'function whatsappRelatorio(){',
+    '  var title=document.querySelector(".insp-title");',
+    '  var result=document.querySelector(".result-badge");',
+    '  var metas=document.querySelectorAll(".meta-val");',
+    '  var data=metas[2]?metas[2].textContent:"";',
+    '  var resp=metas[3]?metas[3].textContent:"";',
+    '  var msg=\"🔍 *RELATÓRIO DE INSPEÇÃO*\\\\n\"',
+    '    +\"⚓ \"+(title?title.textContent:\"\")+\"\\\\n\"',
+    '    +(result?result.textContent.trim()+\"\\\\n\":\"\")',
+    '    +(data?\"📅 \"+data+\"\\\\n\":\"\")',
+    '    +(resp?\"👷 \"+resp+\"\\\\n\":\"\")',
+    '    +\"\\\\n_M\\/V LOG-IN JACARANDÁ · Linha Amazonas_\";',
+    '  var waUrl="https://wa.me/?text="+encodeURIComponent(msg);',
+    '  window.open(waUrl,"_blank");',
+    '}',
+    '\\x3C\/script>',
+
+    '\x3C\/body>',
+    '\x3C\/html>',
+  ].join('\n');
+
+  var w = window.open('', '_blank', 'width=920,height=1050');
+  if(!w){ toast('⚠️ Permita pop-ups para abrir o relatório','warn'); return; }
+  w.document.write(html);
+  w.document.close();
+  w.onload = function(){ w.focus(); };
+  toast('🖨 Relatório aberto!','ok');
 }
+
+
 
 
 function renderInspecao(){

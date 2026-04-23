@@ -1,34 +1,19 @@
-// Jacarandá SW — build 20260422_1936
-const CACHE = 'jac-20260422_1936';
+// Jacarandá SW — build 20260423_0002
+const CACHE = 'jac-20260423_0002';
 const ASSETS = ['./', './index.html', './jacaranda_manutencao.html', './manifest.json'];
-
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE)
-      .then(c => c.addAll(ASSETS))
-      .then(() => self.skipWaiting())
-  );
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
-
 self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys()
-      .then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))
-      .then(() => self.clients.claim())
-  );
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k!==CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
-
 self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      const net = fetch(e.request)
-        .then(r => {
-          if (r.ok) caches.open(CACHE).then(c => c.put(e.request, r.clone()));
-          return r;
-        })
-        .catch(() => cached);
-      return cached || net;
-    })
-  );
+  if(e.request.method!=='GET') return;
+  e.respondWith(caches.match(e.request).then(cached => {
+    const net = fetch(e.request).then(r => {
+      if(r.ok) caches.open(CACHE).then(c => c.put(e.request, r.clone()));
+      return r;
+    }).catch(() => cached);
+    return cached || net;
+  }));
 });
