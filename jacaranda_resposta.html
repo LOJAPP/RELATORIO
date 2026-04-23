@@ -415,35 +415,30 @@ function expandMinimal(m){
 // Also check URL params on load
 function checkURLParam(){
   var params = new URLSearchParams(window.location.search);
-
-  // New compressed format ?z=...
-  var z = params.get('z');
-  if(z){
-    loadPakoAndDecode(z, function(err, data){
-      if(err){
-        // Fallback: try plain base64 in case pako failed
-        tryPlainB64(z);
-        return;
+  // From main app via sessionStorage
+  if(params.get('from')==='app'){
+    try{
+      var st=sessionStorage.getItem('jac_shared_insp');
+      if(st){
+        INS=JSON.parse(st);
+        sessionStorage.removeItem('jac_shared_insp');
+        window.history.replaceState({},'',window.location.pathname);
+        initForm(); return;
       }
-      INS = expandMinimal(data);
-      window.history.replaceState({}, '', window.location.pathname);
+    }catch(e){}
+  }
+  var z=params.get('z');
+  if(z){
+    loadPakoAndDecode(z,function(err,data){
+      if(err){tryPlainB64(z);return;}
+      INS=expandMinimal(data);
+      window.history.replaceState({},'',window.location.pathname);
       initForm();
     });
     return;
   }
-
-  // Legacy format ?i=... (plain base64 minimal) or ?insp=... (full JSON)
-  var raw = params.get('i') || params.get('insp');
-  if(raw){
-    tryPlainB64(raw);
-    return;
-  }
-
-  // ?json=id shortlink — not a full inspection but an ID fragment (placeholder)
-  var jsonId = params.get('json');
-  if(jsonId){
-    alert('Este link requer o arquivo .json da inspeção.\nCarregue o arquivo usando o botão abaixo.');
-  }
+  var raw=params.get('i')||params.get('insp');
+  if(raw){tryPlainB64(raw);return;}
 }
 
 function tryPlainB64(raw){

@@ -9,7 +9,7 @@
   <a href="jacaranda_manutencao.html" class="cta">🚀 Abrir App Principal</a>
   <a href="jacaranda_resposta.html" class="cta2">📋 Formulário de Resposta</a>
   <div class="hint" id="hint"></div>
-  <div class="build">build 20260423_0045</div>
+  <div class="build">build 20260423_0142</div>
 </div>
 <script>
 const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -18,7 +18,7 @@ const sa=window.matchMedia('(display-mode:standalone)').matches||navigator.stand
 const h=document.getElementById('hint');
 const s=(n,t)=>'<div class="step"><div class="n">'+n+'</div><div>'+t+'</div></div>';
 if(sa){location.replace('jacaranda_manutencao.html');}
-else if(ios){h.innerHTML=s(1,'Abra no <strong>Safari</strong>')+s(2,'<strong>□↑ Compartilhar</strong>')+s(3,'<strong>Adicionar à Tela de Início</strong>')+s(4,'Toque <strong>Adicionar</strong> → ⚓');}
+else if(ios){h.innerHTML=s(1,'Abra no <strong>Safari</strong>')+s(2,'<strong>□↑ Compartilhar</strong>')+s(3,'<strong>Adicionar à Tela de Início</strong>')+s(4,'Toque <strong>Adicionar</strong>');}
 else if(mob){h.innerHTML=s(1,'Abra no <strong>Chrome</strong>')+s(2,'<strong>⋮ → Adicionar à tela inicial</strong>');}
 else{h.innerHTML=s('💻','Chrome/Edge: <strong>⋮ → Instalar app</strong>');setTimeout(()=>location.replace('jacaranda_manutencao.html'),2000);}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./service-worker.js').catch(()=>{});

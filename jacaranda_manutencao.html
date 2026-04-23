@@ -1673,42 +1673,62 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
           <div id="ie-items-list" style="padding:10px;"></div>
         </div>
 
-        <!-- Link compartilhável -->
+        <!-- Compartilhar inspeção -->
         <div class="panel" style="margin-bottom:14px;" id="ie-share-panel">
-          <div class="panel-header" style="background:linear-gradient(90deg,#075E54,#128C7E);">🔗 Compartilhar para Resposta</div>
+          <div class="panel-header" style="background:linear-gradient(90deg,#075E54,#128C7E);">
+            📤 Compartilhar para Resposta
+          </div>
           <div style="padding:14px;">
-            <div style="background:var(--login-blue-xlt);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--login-blue);line-height:1.7;">
-              <strong>Como funciona:</strong><br>
-              1. Clique em <strong>📤 Compartilhar</strong> — baixa o <code>.json</code> leve (sem fotos) e gera o link<br>
-              2. Envie o arquivo ou link via <strong>💬 WhatsApp</strong><br>
-              3. O destinatário abre no <strong>Formulário de Resposta</strong> (jacaranda_resposta.html)<br>
-              4. Responde cada item, tira fotos, marca executado<br>
-              5. Importa a resposta de volta no app ← <em>Importar Arquivos</em>
+
+            <!-- Modo principal: arquivo JSON -->
+            <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#14532d;line-height:1.7;">
+              <strong>✅ Método recomendado — Arquivo JSON:</strong><br>
+              1. Clique <strong>📥 Baixar .json</strong> → salva um arquivo pequeno no celular<br>
+              2. Abra o WhatsApp → Anexar → Arquivo → selecione o <code>.json</code><br>
+              3. Destinatário salva o arquivo e abre no <strong>Formulário de Resposta</strong><br>
+              4. Responde, tira fotos, exporta resposta → você importa de volta
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-              <button class="btn btn-primary btn-sm" onclick="shareInspLink(_editInspId)">
-                📤 Compartilhar (gera .json + link)
+
+            <!-- Botões principais -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+              <button class="btn btn-green" onclick="downloadInspJSON(_editInspId)" style="flex-direction:column;padding:12px;gap:4px;justify-content:center;">
+                <span style="font-size:22px;">📥</span>
+                <span style="font-size:12px;">Baixar .json</span>
+                <span style="font-size:10px;opacity:.8;">Envie pelo WhatsApp</span>
               </button>
-              <a id="ie-whatsapp-btn" href="#" target="_blank" class="btn btn-sm"
-                style="background:#25D366;color:#fff;border:none;text-decoration:none;padding:5px 12px;">
-                💬 WhatsApp
-              </a>
-              <button class="btn btn-ghost btn-sm" onclick="exportSingleInsp(_editInspId)">📥 Só o .json completo</button>
+              <button class="btn btn-primary" onclick="openRespForm(_editInspId)" style="flex-direction:column;padding:12px;gap:4px;justify-content:center;">
+                <span style="font-size:22px;">📋</span>
+                <span style="font-size:12px;">Abrir Formulário</span>
+                <span style="font-size:10px;opacity:.8;">Responder agora</span>
+              </button>
             </div>
-            <div id="ie-share-url" style="display:none;">
-              <div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">
-                🔗 Link para o <strong>Formulário de Resposta</strong> (sem fotos — link curto):
-              </div>
-              <div style="display:flex;gap:6px;align-items:center;">
-                <input type="text" id="ie-share-url-input" class="form-control"
-                  style="font-family:monospace;font-size:10px;" readonly>
-                <button class="btn btn-ghost btn-sm" onclick="copyShareURL()">📋</button>
-              </div>
-              <div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.6;">
-                🗜 Comprimido com deflate · <strong id="ie-share-size">—</strong> &nbsp;·&nbsp;
-                ✅ Sem fotos · 📱 Abre no formulário de resposta
-              </div>
+
+            <!-- WhatsApp texto simples -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+              <button class="btn btn-sm" style="background:#25D366;color:#fff;border:none;" onclick="whatsappInspText(_editInspId)">
+                💬 Enviar aviso por WhatsApp
+              </button>
+              <button class="btn btn-ghost btn-sm" onclick="printInspCard(_editInspId)">
+                🖨 PDF com QR Code
+              </button>
             </div>
+
+            <!-- Link simples (opcional) -->
+            <details style="margin-top:8px;">
+              <summary style="font-size:11px;font-weight:600;color:var(--text-dim);cursor:pointer;padding:4px 0;">
+                🔗 Ver link do formulário (opcional)
+              </summary>
+              <div style="margin-top:8px;">
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <input type="text" id="ie-share-url-input" class="form-control"
+                    style="font-family:monospace;font-size:10px;" readonly
+                    value="Clique em 📥 Baixar .json primeiro">
+                  <button class="btn btn-ghost btn-sm" onclick="copyShareURL()">📋</button>
+                </div>
+                <div id="ie-share-size" style="font-size:10px;color:var(--text-dim);margin-top:4px;"></div>
+              </div>
+            </details>
+
           </div>
         </div>
 
@@ -5380,152 +5400,103 @@ function saveEditInsp(){
   renderInspEdit();
 }
 
-// ── SHARE LINK ──
-// ── Fix shareInspLink: link to inspection only, not full app URL ──
-// ── PAKO (deflate) loader — loaded once on demand ──
-var _pakoLoaded = false;
-var _pakoCallbacks = [];
-function loadPako(cb){
-  if(window.pako){ cb(); return; }
-  if(_pakoLoaded){ _pakoCallbacks.push(cb); return; }
-  _pakoLoaded = true;
-  var s = document.createElement('script');
-  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
-  s.onload = function(){
-    _pakoCallbacks.forEach(function(f){ f(); });
-    _pakoCallbacks = [];
-    cb();
-  };
-  s.onerror = function(){
-    // Fallback: use plain base64 without compression
-    window.pako = null;
-    cb();
-  };
-  document.head.appendChild(s);
+// ══════════════════════════════════════════════
+// ── SHARE SYSTEM — FILE + SHORT FORM LINK ──
+// ══════════════════════════════════════════════
+
+function buildFormURL(){
+  return window.location.origin
+    + window.location.pathname.replace(/\/[^\/]*$/, '/')
+    + 'jacaranda_resposta.html';
 }
 
-// Build minimal inspection data (no photos, trimmed strings)
-function buildLiteInsp(ins){
-  var vcfg = getCfg().vessel||{};
-  return {
-    id: ins.id,
-    t:  (ins.titulo||'').slice(0,80),
-    d:  ins.data||'',
-    hr: ins.hora||'',
-    tp: (ins.tipo||'').slice(0,40),
-    r:  ins.result||'Pendente',
-    rn: (ins.respNm||'').slice(0,30),
-    tn: (ins.testNm||'').slice(0,30),
-    ar: (ins.area||'').slice(0,60),
-    v:  (vcfg.vessel||'LOG-IN JACARANDÁ').slice(0,30),
-    sm: ins.semana||'',
-    i:  (ins.items||[]).map(function(it){
-      return {
-        a:  (it.area||'').slice(0,60),
-        r:  (it.result||'Pendente').slice(0,20),
-        dp: (it.dept||'').slice(0,25),
-        rn: (it.respItemNm||'').slice(0,25),
-        dc: (it.desc||'').slice(0,120)
-      };
-    })
-  };
+function buildLiteJSON(ins){
+  return JSON.stringify(Object.assign({}, ins, {
+    _tipo:'inspecao_jacaranda',_shared:true,
+    _sharedAt:new Date().toISOString(),
+    _vessel:(getCfg().vessel&&getCfg().vessel.vessel)||'LOG-IN JACARANDA',
+    fotos:[],
+    items:(ins.items||[]).map(function(it){return Object.assign({},it,{fotos:[]});})
+  }));
 }
 
-// Encode: deflate → base64url
-function encodeCompact(obj){
-  var json = JSON.stringify(obj, null, 0);
-  if(window.pako){
-    try{
-      var compressed = pako.deflate(json);
-      var b64 = btoa(String.fromCharCode.apply(null, compressed))
-        .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-      return {str:b64, param:'z', size:b64.length};
-    }catch(e){}
-  }
-  // Fallback: plain base64 (no pako)
-  var b64 = btoa(unescape(encodeURIComponent(json)));
-  return {str:b64, param:'i', size:b64.length};
+function downloadInspJSON(id){
+  var ins=S.inspecoes.find(function(i){return i.id===id;});
+  if(!ins){toast('Nao encontrada','warn');return;}
+  var blob=new Blob([buildLiteJSON(ins)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  var safe=(ins.titulo||'insp').replace(/\s+/g,'_').replace(/[^\w-]/g,'').slice(0,28);
+  a.download='INSP_'+safe+'_'+(ins.data||'').replace(/-/g,'')+'.json';
+  a.click();
+  toast('Arquivo baixado — envie pelo WhatsApp!','ok');
 }
 
 function shareInspLink(id){
-  var ins = S.inspecoes.find(function(i){return i.id===id;});
-  if(!ins){ toast('⚠️ Salve a inspeção primeiro','warn'); return; }
-
-  loadPako(function(){
-    var lite    = buildLiteInsp(ins);
-    var encoded = encodeCompact(lite);
-    var nItems  = (ins.items||[]).length;
-
-    var base = window.location.origin
-      + window.location.pathname.replace(/\/[^\/]*$/, '/')
-      + 'jacaranda_resposta.html';
-    var url = base + '?' + encoded.param + '=' + encoded.str;
-
-    // Show link info
-    var urlBox = document.getElementById('ie-share-url');
-    var input  = document.getElementById('ie-share-url-input');
-    var sizeEl = document.getElementById('ie-share-size');
-    if(urlBox) urlBox.style.display = 'block';
-    if(input)  input.value = url;
-    if(sizeEl) sizeEl.textContent = encoded.size + ' chars · ' + nItems + ' itens';
-
-    // WhatsApp: just short text + URL (no URL in the message text — WA adds preview)
-    var waMsg = '📋 *Inspeção para resposta*\n'
-      + '⚓ ' + (ins.titulo||'').slice(0,60) + '\n'
-      + '📅 ' + (ins.data||'—') + ' · ' + (ins.tipo||'—') + '\n'
-      + '📋 ' + nItems + ' item(ns) · Resp: ' + (ins.respNm||'—') + '\n\n'
-      + url;
-
-    var waBtn = document.getElementById('ie-whatsapp-btn');
-    if(waBtn) waBtn.href = 'https://wa.me/?text=' + encodeURIComponent(waMsg);
-
-    // Also auto-download lightweight JSON (without photos)
-    var liteJSON = JSON.stringify(Object.assign({}, ins, {
-      _tipo:'inspecao_jacaranda',
-      _shared:true,
-      _sharedAt:new Date().toISOString(),
-      fotos:[],
-      items:(ins.items||[]).map(function(it){
-        return Object.assign({},it,{fotos:[]});
-      })
-    }));
-    var blob = new Blob([liteJSON],{type:'application/json'});
-    var a    = document.createElement('a');
-    a.href   = URL.createObjectURL(blob);
-    var safe = (ins.titulo||'inspecao').replace(/\s+/g,'_').replace(/[^\w-]/g,'').slice(0,30);
-    a.download = 'INSP_' + safe + '_' + (ins.data||'').replace(/-/g,'') + '.json';
-    a.click();
-
-    if(navigator.share){
-      navigator.share({
-        title: 'Inspeção: ' + (ins.titulo||''),
-        text:  waMsg,
-        url:   url
-      }).then(function(){ toast('✅ Compartilhado!','ok'); })
-        .catch(function(e){ if(e.name!=='AbortError'){ copyShareURL(); }});
-    } else {
-      copyShareURL();
-      toast('🔗 Link copiado! (' + encoded.size + ' chars)','ok');
-    }
-  });
+  var ins=S.inspecoes.find(function(i){return i.id===id;});
+  if(!ins){toast('Salve a inspecao primeiro','warn');return;}
+  downloadInspJSON(id);
+  var formURL=buildFormURL();
+  var urlBox=document.getElementById('ie-share-url');
+  var input=document.getElementById('ie-share-url-input');
+  var sizeEl=document.getElementById('ie-share-size');
+  if(urlBox)urlBox.style.display='block';
+  if(input) input.value=formURL;
+  if(sizeEl)sizeEl.textContent='Link curto do formulario (sem dados)';
+  var nItems=(ins.items||[]).length;
+  var ruim=(ins.items||[]).filter(function(it){return it.result==='Nao Conforme'||it.result==='Pendente'||it.result==='Parcial';}).length;
+  var waMsg='INSPECAO PENDENCIAS PARA RESPOSTA\n'
+    +(ins.titulo||'').slice(0,50)+'\n'
+    +(ins.data||'')+(ins.hora?' '+ins.hora:'')+'\n'
+    +nItems+' itens - '+ruim+' pendente(s)\n'
+    +'Resp: '+(ins.respNm||'')+'\n\n'
+    +'Como responder:\n'
+    +'1. Salve o arquivo .json que recebers\n'
+    +'2. Abra: '+formURL+'\n'
+    +'3. Carregue o arquivo e responda\n'
+    +'4. Envie a resposta de volta\n\n'
+    +'M/V LOG-IN JACARANDA';
+  var waBtn=document.getElementById('ie-whatsapp-btn');
+  if(waBtn)waBtn.href='https://wa.me/?text='+encodeURIComponent(waMsg);
+  if(navigator.share){
+    navigator.share({title:'Inspecao '+(ins.titulo||''),text:waMsg,url:formURL})
+      .then(function(){toast('Compartilhado!','ok');})
+      .catch(function(e){if(e.name!=='AbortError')toast('Link pronto!','ok');});
+  } else {
+    toast('Arquivo baixado + link do formulario pronto','ok');
+  }
 }
-
 
 function copyShareURL(){
   var input=document.getElementById('ie-share-url-input');
-  if(!input) return;
-  input.select();
-  try{ navigator.clipboard.writeText(input.value).then(function(){toast('📋 Link copiado!','ok');}); }
-  catch(e){ document.execCommand('copy'); toast('📋 Link copiado!','ok'); }
+  if(!input)return;
+  var val=input.value||buildFormURL();
+  navigator.clipboard.writeText(val)
+    .then(function(){toast('Link copiado!','ok');})
+    .catch(function(){input.select();document.execCommand('copy');toast('Copiado!','ok');});
 }
 
 function copyInspJSON(id){
   var ins=S.inspecoes.find(function(i){return i.id===id;});if(!ins)return;
-  var json=JSON.stringify({...ins,_tipo:'inspecao_jacaranda'},null,2);
-  navigator.clipboard.writeText(json).then(function(){toast('📋 JSON copiado!','ok');}).catch(function(){toast('⚠️ Não foi possível copiar','warn');});
+  navigator.clipboard.writeText(buildLiteJSON(ins))
+    .then(function(){toast('JSON copiado!','ok');})
+    .catch(function(){toast('Nao copiou','warn');});
 }
 
-// ── Auto-import from URL param on load ──
+// ── Aliases for HTML button calls ──
+function whatsappInspText(id){ shareInspLink(id); }
+function openRespForm(id){
+  var base = buildFormURL();
+  // Store lite JSON in sessionStorage for same-origin access
+  var ins=S.inspecoes.find(function(i){return i.id===id;});
+  if(ins){
+    try{ sessionStorage.setItem('jac_shared_insp', buildLiteJSON(ins)); }catch(e){}
+  }
+  window.open(base,'_blank');
+}
+
+
+
 function checkInspFromURL(){
   var params=new URLSearchParams(window.location.search);
   var insp=params.get('insp');
@@ -5632,6 +5603,7 @@ function printInspCard(id){
   var fotosGeralHtml = photoGrid(ins.fotos||[], '📷 Fotos Gerais da Inspeção');
 
   // ── Full HTML document ──
+  var respFormUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/') + 'jacaranda_resposta.html';
   var html = [
     '\x3C!DOCTYPE html>',
     '\x3Chtml lang="pt-BR">',
@@ -5730,12 +5702,15 @@ function printInspCard(id){
     '  <div class="meta-cell"><div class="meta-lbl">Responsável<\/div><div class="meta-val">'+(ins.respNm||'—')+'<\/div><\/div>',
     '  <div class="meta-cell"><div class="meta-lbl">Testemunha<\/div><div class="meta-val">'+(ins.testNm||'—')+'<\/div><\/div>',
     '  <div class="meta-cell"><div class="meta-lbl">Navio<\/div><div class="meta-val">'+vessel+'<\/div><\/div>',
-    '<\/div>',
-    '<div class="no-print" style="background:#e0f2fe;padding:10px 22px;display:flex;align-items:center;gap:12px;border-bottom:2px solid #0ea5e9;flex-wrap:wrap;">',
-    '  <span style="font-size:12px;font-weight:700;color:#0c4a6e;">📱 Responder esta inspeção online:</span>',
-    '  <a href="'+respFormUrl+'" style="color:#0ea5e9;font-weight:700;font-size:11px;word-break:break-all;font-family:monospace;">'+respFormUrl+'<\/a>',
-    '  <span style="font-size:10px;color:#0369a1;margin-left:auto;">Abra o link · Responda os itens · Envie de volta<\/span>',
-    '<\/div>',
+    '<div class="no-print" style="background:#e0f2fe;padding:12px 22px;display:flex;align-items:center;gap:14px;border-bottom:2px solid #0ea5e9;">',
+    '  <div style="flex:1;">',
+    '    <div style="font-size:11px;font-weight:700;color:#0c4a6e;margin-bottom:4px;">📋 Responder esta inspeção:</div>',
+    '    <a href="'+respFormUrl+'" target="_blank" style="display:inline-block;background:#0ea5e9;color:#fff;font-weight:700;font-size:12px;padding:7px 16px;border-radius:7px;text-decoration:none;margin-bottom:4px;">📱 Abrir Formulário de Resposta</a>',
+    '    <div style="font-size:10px;color:#0369a1;margin-top:3px;word-break:break-all;">'+respFormUrl+'</div>',
+    '    <div style="font-size:10px;color:#0369a1;margin-top:2px;">💡 Clique no botão acima ou carregue o arquivo .json no formulário</div>',
+    '  </div>',
+    '  <img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data='+encodeURIComponent(respFormUrl)+'" alt="QR" style="width:90px;height:90px;border-radius:8px;border:2px solid #0ea5e9;flex-shrink:0;" onerror="this.style.display=none">',
+    '</div>',
 
 
     '<div class="body">',
