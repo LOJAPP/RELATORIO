@@ -1,6 +1,6 @@
 {
-  "name": "LOG-IN Jacarandá — Relatórios a Bordo",
-  "short_name": "Jacarandá",
+  "name": "LOG-IN Jacarand\u00e1 \u2014 Relat\u00f3rios a Bordo",
+  "short_name": "Jacarand\u00e1",
   "start_url": "./",
   "id": "./",
   "display": "standalone",
@@ -21,9 +21,5 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "categories": [
-    "productivity",
-    "business"
   ]
 }

@@ -3,908 +3,669 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0d2a52">
+<meta name="theme-color" content="#07182e">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Formulário de Resposta — Inspeção</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<title>Resposta de Inspeção</title>
 <style>
 :root{
-  --navy:#07182e;--navy2:#0e2540;--blue:#1A5FA8;--blue-lt:#2478c8;--blue-xlt:#e8f4ff;
-  --green:#16a34a;--green-lt:#f0fdf4;--green-dk:#14532d;
-  --warn:#d97706;--warn-lt:#fffbeb;
-  --danger:#dc2626;--danger-lt:#fff1f2;
+  --navy:#07182e; --blue:#1A5FA8; --blue-lt:#e8f4ff;
+  --green:#16a34a; --green-lt:#f0fdf4; --green-dk:#14532d;
+  --warn:#d97706;  --warn-lt:#fffbeb;
+  --red:#dc2626;   --red-lt:#fff1f2;
+  --exec:#0ea5e9;  --exec-lt:#e0f2fe;
   --purple:#7c3aed;--purple-lt:#f5f3ff;
-  --gold:#f59e0b;--gray:#6b7280;
-  --border:#e5e7eb;--bg:#f4f6fb;--white:#fff;--radius:10px;
-  --shadow:0 2px 14px rgba(7,24,46,.10);
+  --gold:#f59e0b;  --gray:#6b7280;
+  --border:#e5e7eb;--bg:#f4f6fb;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Barlow',sans-serif;background:var(--bg);color:#1a2236;min-height:100vh;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+     background:var(--bg);color:#1a2236;min-height:100vh;}
 
-/* TOPBAR */
-#topbar{background:linear-gradient(135deg,var(--navy),var(--navy2));
-  padding:0 16px;height:56px;display:flex;align-items:center;gap:12px;
-  position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.4);}
-.logo{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;letter-spacing:-1px;}
-.logo .lo{color:#fff;}.logo .gi{color:#6DB847;}.logo .dot{color:var(--gold);}
-.tb-title{font-size:14px;font-weight:700;color:rgba(255,255,255,.9);
-  border-left:2px solid rgba(255,255,255,.2);padding-left:12px;}
-.tb-sub{font-size:10px;color:rgba(255,255,255,.45);margin-top:1px;letter-spacing:.5px;}
-.tb-right{margin-left:auto;display:flex;gap:8px;}
-.tb-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
-  color:#fff;font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;
-  padding:6px 14px;border-radius:6px;cursor:pointer;transition:all .15s;}
-.tb-btn:hover{background:rgba(255,255,255,.2);}
-.tb-btn.green{background:#16a34a;border-color:#16a34a;}
-.tb-btn.blue{background:var(--blue);border-color:var(--blue);}
-.tb-btn.wa{background:#25D366;border-color:#25D366;}
+/* ── TOPBAR ── */
+#topbar{background:var(--navy);height:56px;padding:0 14px;
+  display:flex;align-items:center;gap:10px;
+  position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.4);}
+.logo{font-size:22px;font-weight:900;letter-spacing:-1px;flex-shrink:0;}
+.logo .g{color:#6DB847;}.logo .d{color:var(--gold);}
+#tb-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.9);flex:1;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  padding-left:10px;border-left:2px solid rgba(255,255,255,.2);}
+.tbtn{padding:7px 14px;border-radius:7px;font-size:12px;font-weight:700;
+  border:none;cursor:pointer;color:#fff;white-space:nowrap;}
+.tbtn.wa{background:#25D366;}
+.tbtn.blue{background:var(--blue);}
 
-/* MAIN */
-#main{max-width:680px;margin:0 auto;padding:20px 16px 80px;}
-
-/* SCREEN STATES */
+/* ── SCREENS ── */
 .screen{display:none;}
-.screen.active{display:block;animation:fadeIn .25s ease;}
-@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.screen.active{display:block;animation:fi .2s ease;}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 
-/* LOAD SCREEN */
-.load-card{background:var(--white);border-radius:14px;padding:28px 24px;
-  box-shadow:var(--shadow);text-align:center;margin-bottom:16px;}
-.load-title{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;
-  color:var(--navy);margin-bottom:6px;}
-.load-sub{font-size:13px;color:var(--gray);margin-bottom:20px;}
-.drop-zone{border:2px dashed var(--border);border-radius:var(--radius);
-  padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;
-  background:var(--bg);margin-bottom:14px;}
-.drop-zone:hover,.drop-zone.drag{border-color:var(--blue);background:var(--blue-xlt);}
-.drop-zone .dz-icon{font-size:40px;margin-bottom:8px;}
-.drop-zone .dz-title{font-weight:700;color:var(--blue);font-size:15px;margin-bottom:4px;}
-.drop-zone .dz-sub{font-size:12px;color:var(--gray);}
+/* ── LOAD ── */
+#screen-load{max-width:460px;margin:0 auto;padding:24px 14px 40px;}
+.lcard{background:#fff;border-radius:14px;padding:28px 22px;
+  box-shadow:0 2px 20px rgba(0,0,0,.08);text-align:center;margin-bottom:14px;}
+.lcard-icon{font-size:52px;margin-bottom:10px;}
+.lcard-title{font-size:20px;font-weight:800;color:var(--navy);margin-bottom:6px;}
+.lcard-sub{font-size:13px;color:var(--gray);line-height:1.6;margin-bottom:18px;}
+.dropzone{border:2px dashed var(--border);border-radius:10px;
+  padding:26px 18px;cursor:pointer;transition:all .2s;background:var(--bg);
+  margin-bottom:10px;}
+.dropzone:hover,.dropzone.drag{border-color:var(--blue);background:var(--blue-lt);}
+.dz-ic{font-size:34px;margin-bottom:6px;}
+.dz-t{font-weight:700;color:var(--blue);font-size:14px;}
+.dz-s{font-size:11px;color:var(--gray);margin-top:3px;}
+.howto{background:#fff;border-radius:10px;padding:14px 16px;
+  box-shadow:0 1px 8px rgba(0,0,0,.06);font-size:12px;color:var(--gray);
+  line-height:1.9;}
+.howto strong{color:#1f2937;}
 
-/* INSP HEADER CARD */
-.insp-header{background:var(--white);border-radius:var(--radius);
-  overflow:hidden;box-shadow:var(--shadow);margin-bottom:16px;}
-.insp-hdr-band{padding:14px 18px;color:#fff;display:flex;align-items:center;
-  justify-content:space-between;flex-wrap:wrap;gap:8px;}
-.insp-hdr-title{font-family:'Barlow Condensed',sans-serif;font-size:20px;
-  font-weight:800;margin-bottom:2px;}
-.insp-hdr-meta{font-size:11px;opacity:.85;letter-spacing:.3px;}
-.insp-badge{padding:3px 12px;border-radius:12px;font-size:11px;font-weight:700;
-  background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);}
-.insp-meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
-  gap:0;border-top:1px solid var(--border);}
-.insp-meta-cell{padding:10px 16px;border-right:1px solid var(--border);}
-.insp-meta-cell:last-child{border-right:none;}
-.insp-meta-lbl{font-size:9px;font-weight:700;text-transform:uppercase;
-  letter-spacing:.5px;color:var(--gray);margin-bottom:2px;}
-.insp-meta-val{font-size:12px;font-weight:600;color:#1f2937;}
+/* ── FORM ── */
+#screen-form{padding-bottom:90px;}
+#form-wrap{max-width:660px;margin:0 auto;padding:14px;}
 
-/* PROGRESS BAR */
-.progress-wrap{background:var(--white);border-radius:var(--radius);padding:14px 18px;
-  margin-bottom:16px;box-shadow:var(--shadow);}
-.prog-label{display:flex;justify-content:space-between;font-size:12px;
-  font-weight:600;margin-bottom:6px;}
-.prog-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;}
-.prog-fill{height:100%;border-radius:4px;background:var(--green);
-  transition:width .4s ease;}
+/* Inspection header */
+.insp-hdr{border-radius:12px;overflow:hidden;
+  box-shadow:0 2px 14px rgba(0,0,0,.10);margin-bottom:14px;}
+.insp-band{padding:14px 18px;color:#fff;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.insp-name{font-size:17px;font-weight:800;flex:1;}
+.insp-date{font-size:10px;opacity:.8;margin-top:2px;}
+.result-pill{padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;
+  background:rgba(255,255,255,.25);white-space:nowrap;}
+.insp-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  background:#fff;border-top:1px solid var(--border);}
+.imc{padding:8px 14px;border-right:1px solid var(--border);}
+.imc:last-child{border-right:none;}
+.imc-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--gray);margin-bottom:2px;}
+.imc-v{font-size:12px;font-weight:600;color:#1f2937;}
 
-/* ITEM CARD */
-.item-card{background:var(--white);border-radius:var(--radius);
-  margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow);
-  border-left:4px solid var(--border);transition:border-color .2s;}
-.item-card.status-conforme   {border-left-color:var(--green);}
-.item-card.status-nao-conforme{border-left-color:var(--danger);}
-.item-card.status-parcial    {border-left-color:var(--warn);}
-.item-card.status-pendente   {border-left-color:var(--purple);}
-.item-card.status-executado  {border-left-color:var(--green);}
+/* Progress */
+.prog{background:#fff;border-radius:10px;padding:11px 14px;margin-bottom:12px;
+  box-shadow:0 1px 6px rgba(0,0,0,.06);}
+.prog-row{display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:5px;}
+.prog-bar{height:7px;background:var(--border);border-radius:4px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--green);border-radius:4px;transition:width .4s;}
 
-.item-head{display:flex;align-items:center;gap:10px;padding:12px 14px;
-  cursor:pointer;user-select:none;background:var(--bg);flex-wrap:wrap;}
-.item-num{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;
+/* Item card */
+.item{background:#fff;border-radius:12px;margin-bottom:12px;
+  border-left:5px solid var(--border);
+  box-shadow:0 2px 10px rgba(0,0,0,.07);overflow:hidden;}
+.item[data-s="Conforme"]  {border-left-color:var(--green);}
+.item[data-s="Executado"] {border-left-color:var(--exec);}
+.item[data-s="Parcial"]   {border-left-color:var(--warn);}
+.item[data-s="Pendente"]  {border-left-color:var(--purple);}
+.item[data-s="Nao Conforme"]{border-left-color:var(--red);}
+
+/* Item top */
+.item-top{padding:11px 14px;background:#f9fafb;
+  border-bottom:1px solid var(--border);display:flex;align-items:center;
+  gap:10px;flex-wrap:wrap;}
+.inum{font-family:monospace;font-size:10px;font-weight:700;
   padding:2px 8px;border-radius:4px;color:#fff;flex-shrink:0;}
-.item-area{font-size:14px;font-weight:700;flex:1;min-width:100px;color:#111827;}
-.item-status-badge{font-size:10px;font-weight:700;padding:2px 10px;border-radius:10px;
-  white-space:nowrap;flex-shrink:0;}
-.item-photo-count{font-size:11px;color:var(--gray);flex-shrink:0;}
-.item-chevron{font-size:12px;color:var(--gray);flex-shrink:0;transition:transform .2s;}
-.item-chevron.open{transform:rotate(180deg);}
+.iarea{font-size:14px;font-weight:700;color:#111827;flex:1;}
+.idept{font-size:10px;color:var(--gray);display:flex;gap:10px;
+  flex-wrap:wrap;margin-top:4px;width:100%;}
 
-.item-body{padding:14px;border-top:1px solid var(--border);display:none;}
-.item-body.open{display:block;}
+/* STATUS SELECTOR — the most important element, always visible */
+.status-sel{padding:12px 14px;background:#f8fafc;border-bottom:1px solid var(--border);}
+.sel-label{font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.5px;color:var(--gray);margin-bottom:8px;}
+.sel-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+@media(min-width:400px){.sel-grid{grid-template-columns:repeat(4,1fr);}}
+.sel-opt{border:2px solid var(--border);border-radius:10px;
+  padding:10px 6px;text-align:center;cursor:pointer;
+  font-size:11px;font-weight:700;color:var(--gray);
+  background:#fff;transition:all .15s;user-select:none;}
+.sel-opt:active{transform:scale(.95);}
+.sel-opt .ic{font-size:22px;display:block;margin-bottom:4px;}
+.sel-opt.on-c{background:var(--green-lt);border-color:var(--green);color:var(--green-dk);}
+.sel-opt.on-e{background:var(--exec-lt);border-color:var(--exec);color:#0c4a6e;}
+.sel-opt.on-p{background:var(--warn-lt);border-color:var(--warn);color:#78350f;}
+.sel-opt.on-n{background:var(--purple-lt);border-color:var(--purple);color:#4c1d95;}
 
-/* ORIGINAL ACHADO */
-.achado-box{background:#f9fafb;border:1px solid var(--border);border-radius:7px;
-  padding:10px 12px;margin-bottom:12px;font-size:12px;color:#374151;
-  white-space:pre-wrap;line-height:1.6;}
-.achado-label{font-size:9px;font-weight:700;text-transform:uppercase;
-  letter-spacing:.5px;color:var(--gray);margin-bottom:4px;}
+/* Item body */
+.item-body{padding:12px 14px;}
+.fl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--gray);margin-bottom:5px;display:block;margin-top:12px;}
+.fl:first-child{margin-top:0;}
+.achado{background:#f9fafb;border:1px solid var(--border);border-radius:7px;
+  padding:9px 11px;font-size:12px;color:#374151;line-height:1.6;
+  white-space:pre-wrap;margin-bottom:4px;}
+textarea.ri{width:100%;border:1.5px solid var(--border);border-radius:8px;
+  padding:10px 12px;font-size:13px;font-family:inherit;min-height:76px;
+  resize:vertical;transition:border-color .15s;}
+textarea.ri:focus{outline:none;border-color:var(--blue);}
+textarea.ri.ok{border-color:var(--green);background:var(--green-lt);}
 
-/* RESPOSTA FIELD */
-.resp-section{margin-bottom:14px;}
-.resp-section label{display:block;font-size:11px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.5px;color:var(--gray);margin-bottom:6px;}
-.resp-section textarea{width:100%;border:1px solid var(--border);border-radius:7px;
-  padding:10px 12px;font-size:13px;font-family:'Barlow',sans-serif;
-  min-height:80px;resize:vertical;transition:border-color .15s;}
-.resp-section textarea:focus{outline:none;border-color:var(--blue);}
-.resp-section textarea.filled{border-color:var(--green);background:#f0fdf4;}
-
-/* STATUS SELECTOR */
-.status-selector{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;
-  margin-bottom:14px;}
-@media(min-width:400px){.status-selector{grid-template-columns:repeat(4,1fr);}}
-.status-opt{border:2px solid var(--border);border-radius:8px;padding:10px 6px;
-  text-align:center;cursor:pointer;transition:all .15s;font-size:11px;
-  font-weight:700;color:var(--gray);}
-.status-opt:hover{transform:translateY(-1px);}
-.status-opt.sel-conforme{background:var(--green-lt);border-color:var(--green);color:var(--green-dk);}
-.status-opt.sel-parcial{background:var(--warn-lt);border-color:var(--warn);color:#78350f;}
-.status-opt.sel-pendente{background:var(--purple-lt);border-color:var(--purple);color:#4c1d95;}
-.status-opt.sel-executado{background:#e0f2fe;border-color:#0ea5e9;color:#0c4a6e;}
-.status-opt .so-icon{font-size:20px;margin-bottom:4px;display:block;}
-
-/* PHOTO SECTION */
-.photo-section{margin-bottom:12px;}
-.photo-section-label{font-size:11px;font-weight:700;text-transform:uppercase;
-  letter-spacing:.5px;color:var(--gray);margin-bottom:8px;display:flex;
-  align-items:center;gap:6px;}
-.photo-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
-.photo-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;
-  border-radius:7px;font-size:12px;font-weight:700;border:none;cursor:pointer;
-  transition:all .15s;}
-.photo-btn.cam{background:var(--blue);color:#fff;}
-.photo-btn.gal{background:var(--bg);border:1px solid var(--border);color:#374151;}
-.photo-btn:hover{opacity:.9;}
-.photo-grid{display:flex;flex-wrap:wrap;gap:8px;}
-.photo-thumb{position:relative;width:80px;height:80px;border-radius:8px;
-  overflow:hidden;border:1px solid var(--border);}
-.photo-thumb img{width:100%;height:100%;object-fit:cover;cursor:pointer;}
-.photo-thumb .rm-btn{position:absolute;top:3px;right:3px;background:var(--danger);
-  color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-weight:700;line-height:1;}
-.photo-new-badge{position:absolute;bottom:0;left:0;right:0;background:var(--green);
+/* Photo */
+.pbrow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+.pbtn{display:flex;align-items:center;gap:5px;padding:9px 16px;
+  border-radius:8px;font-size:13px;font-weight:700;border:none;cursor:pointer;}
+.pbtn.cam{background:var(--blue);color:#fff;}
+.pbtn.gal{background:var(--bg);border:1.5px solid var(--border);color:#374151;}
+.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+@media(max-width:360px){.pgrid{grid-template-columns:repeat(3,1fr);}}
+.pcell{position:relative;border-radius:7px;overflow:hidden;
+  border:1.5px solid var(--border);aspect-ratio:1;}
+.pcell img{width:100%;height:100%;object-fit:cover;cursor:pointer;display:block;}
+.pcell .rx{position:absolute;top:3px;right:3px;background:var(--red);
+  color:#fff;border:none;border-radius:50%;width:20px;height:20px;
+  font-size:10px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-weight:700;}
+.pcell .nb{position:absolute;bottom:0;left:0;right:0;background:var(--green);
   color:#fff;font-size:7px;font-weight:700;text-align:center;padding:1px 0;
-  letter-spacing:.5px;text-transform:uppercase;}
+  text-transform:uppercase;}
+/* Existing photos (from original inspection) */
+.orig-photos{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:5px;}
+.orig-ph{border-radius:6px;overflow:hidden;border:1px solid var(--border);aspect-ratio:1;}
+.orig-ph img{width:100%;height:100%;object-fit:cover;cursor:pointer;display:block;}
 
-/* EXISTING PHOTOS (from original inspection) */
-.existing-photos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
-.existing-photo{width:72px;height:72px;border-radius:7px;overflow:hidden;
-  border:1px solid var(--border);cursor:pointer;}
-.existing-photo img{width:100%;height:100%;object-fit:cover;}
+/* Obs card */
+.obs-card{background:#fff;border-radius:12px;margin-bottom:12px;
+  overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.07);}
+.obs-hdr{background:var(--navy);color:#fff;padding:10px 14px;
+  font-size:12px;font-weight:700;}
 
-/* SEND BUTTON */
-#btn-send{position:fixed;bottom:0;left:0;right:0;background:var(--green);
-  color:#fff;font-family:'Barlow',sans-serif;font-size:16px;font-weight:700;
-  border:none;cursor:pointer;padding:16px 20px;display:flex;align-items:center;
-  justify-content:center;gap:10px;box-shadow:0 -2px 16px rgba(0,0,0,.15);
-  transition:all .2s;}
-#btn-send:hover{background:var(--green-dk);}
-#btn-send .prog-label{font-size:12px;opacity:.8;margin-left:8px;}
+/* SEND BUTTON — fixed bottom */
+#sendbtn{position:fixed;bottom:0;left:0;right:0;
+  background:var(--green);color:#fff;font-size:16px;font-weight:800;
+  border:none;cursor:pointer;padding:16px 20px;
+  display:none;align-items:center;justify-content:center;gap:10px;
+  box-shadow:0 -3px 16px rgba(0,0,0,.18);z-index:90;}
+#sendbtn:active{background:var(--green-dk);}
+#sprog{font-size:12px;opacity:.8;}
 
-/* DONE SCREEN */
-.done-card{background:var(--white);border-radius:14px;padding:36px 24px;
-  text-align:center;box-shadow:var(--shadow);}
-.done-icon{font-size:64px;margin-bottom:16px;}
-.done-title{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;
-  color:var(--green-dk);margin-bottom:8px;}
-.done-sub{font-size:14px;color:var(--gray);margin-bottom:24px;line-height:1.6;}
-.done-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+/* DONE */
+#screen-done{max-width:460px;margin:0 auto;padding:32px 14px;}
+.done-c{background:#fff;border-radius:14px;padding:32px 22px;
+  text-align:center;box-shadow:0 2px 20px rgba(0,0,0,.08);}
+.done-ic{font-size:60px;margin-bottom:12px;}
+.done-t{font-size:22px;font-weight:900;color:var(--green-dk);margin-bottom:8px;}
+.done-s{font-size:13px;color:var(--gray);line-height:1.6;margin-bottom:22px;}
+.done-acts{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
+.dbt{padding:11px 20px;border-radius:9px;font-size:14px;font-weight:700;
+  border:none;cursor:pointer;}
+.dbt.green{background:var(--green);color:#fff;}
+.dbt.wa{background:#25D366;color:#fff;}
+.dbt.ghost{background:var(--bg);border:1.5px solid var(--border);color:#374151;}
 
-/* VIEWER */
-#photo-viewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);
+/* Viewer */
+#viewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.93);
   z-index:500;align-items:center;justify-content:center;}
-#photo-viewer.open{display:flex;}
-#photo-viewer img{max-width:95vw;max-height:90vh;border-radius:8px;object-fit:contain;}
-#photo-viewer-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.2);
+#viewer.open{display:flex;}
+#viewer img{max-width:95vw;max-height:90vh;border-radius:8px;object-fit:contain;}
+#vcls{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.2);
   color:#fff;border:none;border-radius:50%;width:36px;height:36px;font-size:18px;
-  cursor:pointer;}
+  cursor:pointer;display:flex;align-items:center;justify-content:center;}
 </style>
 </head>
 <body>
 
 <div id="topbar">
-  <div class="logo"><span class="lo">log</span><span class="gi">in</span><span class="dot">.</span></div>
-  <div>
-    <div class="tb-title" id="tb-title">Formulário de Resposta</div>
-    <div class="tb-sub">M/V LOG-IN JACARANDÁ</div>
-  </div>
-  <div class="tb-right">
-    <button class="tb-btn green" id="tb-save" onclick="exportResposta()" style="display:none;">📥 Baixar Resposta</button>
-    <button class="tb-btn wa" id="tb-wa" style="display:none;" onclick="sendWhatsApp()">💬 WhatsApp</button>
+  <div class="logo">log<span class="g">in</span><span class="d">.</span></div>
+  <div id="tb-title">Formulário de Resposta</div>
+  <button class="tbtn wa" id="tb-send" onclick="submitForm()" style="display:none;">📤 Enviar</button>
+</div>
+
+<!-- LOAD SCREEN -->
+<div class="screen active" id="screen-load">
+  <div id="screen-load-inner" style="max-width:460px;margin:0 auto;padding:24px 14px 40px;">
+    <div class="lcard">
+      <div class="lcard-icon">📋</div>
+      <div class="lcard-title">Resposta de Inspeção</div>
+      <div class="lcard-sub">Carregue o arquivo da inspeção para responder cada item com evidências e fotos. Tudo será enviado junto.</div>
+      <div class="dropzone" id="dz"
+        onclick="document.getElementById('fi').click()"
+        ondragover="event.preventDefault();this.classList.add('drag')"
+        ondragleave="this.classList.remove('drag')"
+        ondrop="handleDrop(event)">
+        <div class="dz-ic">📂</div>
+        <div class="dz-t">Carregar arquivo .json</div>
+        <div class="dz-s">Clique ou arraste o arquivo INSP_*.json</div>
+        <input type="file" id="fi" accept=".json" style="display:none" onchange="loadFile(this)">
+      </div>
+    </div>
+    <div class="howto">
+      <strong>Como funciona:</strong><br>
+      1. Receba o arquivo <strong>.json</strong> via WhatsApp → salve no celular<br>
+      2. Carregue aqui → os itens aparecem direto<br>
+      3. Escolha o status de cada item · escreva evidência · tire fotos<br>
+      4. Toque <strong>📤 Enviar Resposta</strong> → vai com as fotos todas juntas
+    </div>
   </div>
 </div>
 
-<div id="main">
-
-  <!-- SCREEN: LOAD -->
-  <div class="screen active" id="screen-load">
-    <div class="load-card">
-      <div style="font-size:52px;margin-bottom:12px;">📋</div>
-      <div class="load-title">Formulário de Resposta de Inspeção</div>
-      <div class="load-sub">Carregue o arquivo de inspeção para responder cada item com evidências, fotos e status.</div>
-    </div>
-
-    <div class="drop-zone" id="dz"
-      onclick="document.getElementById('file-input').click()"
-      ondragover="event.preventDefault();this.classList.add('drag')"
-      ondragleave="this.classList.remove('drag')"
-      ondrop="handleDrop(event)">
-      <div class="dz-icon">📂</div>
-      <div class="dz-title">Clique ou arraste o arquivo aqui</div>
-      <div class="dz-sub">Aceita: <strong>INSPECAO_*.json</strong> exportado pelo app Jacarandá</div>
-      <input type="file" id="file-input" accept=".json" style="display:none" onchange="loadFile(this)">
-    </div>
-
-    <div style="background:var(--white);border-radius:var(--radius);padding:16px 18px;
-      box-shadow:var(--shadow);font-size:12px;color:var(--gray);line-height:1.7;">
-      <strong style="color:#1f2937;font-size:13px;">Como funciona:</strong><br>
-      1. Receba o arquivo <code>.json</code> da inspeção via WhatsApp ou email<br>
-      2. Abra este formulário e carregue o arquivo<br>
-      3. Responda cada item: escreva evidência, tire fotos antes/depois<br>
-      4. Marque se a pendência foi executada ✅<br>
-      5. Baixe a resposta e envie de volta ao responsável
-    </div>
-  </div>
-
-  <!-- SCREEN: FORM -->
-  <div class="screen" id="screen-form">
-
-    <!-- Inspection header -->
-    <div class="insp-header" id="insp-header"></div>
-
-    <!-- Progress -->
-    <div class="progress-wrap">
-      <div class="prog-label">
-        <span>Progresso de resposta</span>
-        <span id="prog-text">0 / 0 itens respondidos</span>
+<!-- FORM SCREEN -->
+<div class="screen" id="screen-form">
+  <div id="form-wrap">
+    <div id="insp-hdr-el"></div>
+    <div class="prog">
+      <div class="prog-row">
+        <span>Progresso</span>
+        <span id="prog-txt">0 / 0</span>
       </div>
       <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
     </div>
-
-    <!-- Items -->
     <div id="items-list"></div>
-
-    <!-- Observations / general note -->
-    <div class="item-card" style="border-left-color:var(--blue);">
-      <div class="item-head" style="cursor:default;">
-        <span class="item-num" style="background:var(--blue);">OBS</span>
-        <span class="item-area">Observações Gerais do Responsável</span>
-      </div>
-      <div class="item-body open">
-        <div class="resp-section">
-          <label>Notas, referências, data de execução...</label>
-          <textarea id="obs-geral" placeholder="Adicione observações gerais sobre as ações tomadas, datas, recursos utilizados..."
-            oninput="updateProgress()"></textarea>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- /screen-form -->
-
-  <!-- SCREEN: DONE -->
-  <div class="screen" id="screen-done">
-    <div class="done-card">
-      <div class="done-icon">✅</div>
-      <div class="done-title">Resposta Enviada!</div>
-      <div class="done-sub" id="done-sub">Sua resposta foi baixada. Envie o arquivo ao responsável pela inspeção.</div>
-      <div class="done-actions">
-        <button class="tb-btn green" onclick="exportResposta()" style="font-size:14px;padding:10px 20px;">📥 Baixar novamente</button>
-        <button class="tb-btn wa" onclick="sendWhatsApp()" style="font-size:14px;padding:10px 20px;">💬 Enviar WhatsApp</button>
-        <button class="tb-btn blue" onclick="location.reload()" style="font-size:14px;padding:10px 20px;">🔄 Nova inspeção</button>
+    <!-- General obs -->
+    <div class="obs-card">
+      <div class="obs-hdr">📝 Observações Gerais do Responsável</div>
+      <div style="padding:12px;">
+        <textarea class="ri" id="obs-geral"
+          placeholder="Notas gerais, data de execução, recursos utilizados..."
+          oninput="updateProg()"></textarea>
       </div>
     </div>
   </div>
+</div>
 
-</div><!-- /main -->
+<!-- DONE SCREEN -->
+<div class="screen" id="screen-done">
+  <div class="done-c">
+    <div class="done-ic">✅</div>
+    <div class="done-t">Resposta Enviada!</div>
+    <div class="done-s" id="done-s">Sua resposta foi preparada para envio com todas as fotos.</div>
+    <div class="done-acts">
+      <button class="dbt green" onclick="submitForm()">📤 Enviar de novo</button>
+      <button class="dbt wa" onclick="sendWA()">💬 WhatsApp</button>
+      <button class="dbt ghost" onclick="location.reload()">🔄 Nova inspeção</button>
+    </div>
+  </div>
+</div>
 
-<!-- Fixed send button (shown on form screen) -->
-<button id="btn-send" style="display:none;" onclick="submitForm()">
-  💾 Salvar Resposta &nbsp;
-  <span class="prog-label" id="btn-send-count"></span>
+<!-- Fixed send button -->
+<button id="sendbtn" onclick="submitForm()">
+  📤 Enviar Resposta Completa (com fotos)
+  <span id="sprog"></span>
 </button>
 
 <!-- Photo viewer -->
-<div id="photo-viewer" onclick="closeViewer()">
-  <img id="viewer-img" src="" alt="">
-  <button id="photo-viewer-close" onclick="closeViewer()">✕</button>
+<div id="viewer" onclick="closeV()">
+  <img id="vimg" src="" alt="">
+  <button id="vcls" onclick="closeV()">✕</button>
 </div>
 
 <script>
-// ═══════════════════════════════════════════
+// ════════════════════════════════════════
 // STATE
-// ═══════════════════════════════════════════
-var INS   = null;   // loaded inspection
-var RESP  = {};     // {itemIndex: {resposta, status, fotos:[dataURL]}}
-var GOBS  = '';     // general observations
+// ════════════════════════════════════════
+var INS  = null;
+var RESP = {};   // j → {status, resposta, fotos:[dataURL]}
+var GOBS = '';
 
-// Status configs
-var ST_CFG = {
-  'Conforme':    {icon:'✅', label:'Conforme',     cls:'sel-conforme',  color:'#16a34a', ltbg:'#f0fdf4'},
-  'Parcial':     {icon:'⚠️', label:'Parcial',      cls:'sel-parcial',   color:'#d97706', ltbg:'#fffbeb'},
-  'Pendente':    {icon:'🔄', label:'Pendente',     cls:'sel-pendente',  color:'#7c3aed', ltbg:'#f5f3ff'},
-  'Executado':   {icon:'✅', label:'Executado ✓',  cls:'sel-executado', color:'#0ea5e9', ltbg:'#e0f2fe'},
+var ST = {
+  'Conforme':  {ic:'✅', lb:'Conforme',    cl:'on-c', col:'#16a34a'},
+  'Executado': {ic:'✅', lb:'Executado ✓', cl:'on-e', col:'#0ea5e9'},
+  'Parcial':   {ic:'⚠️', lb:'Parcial',     cl:'on-p', col:'#d97706'},
+  'Pendente':  {ic:'🔄', lb:'Pendente',    cl:'on-n', col:'#7c3aed'},
 };
 
-// ═══════════════════════════════════════════
-// FILE LOAD
-// ═══════════════════════════════════════════
+// ════════════════════════════════════════
+// LOAD FILE
+// ════════════════════════════════════════
 function handleDrop(e){
   e.preventDefault();
   document.getElementById('dz').classList.remove('drag');
-  var f = e.dataTransfer.files[0];
-  if(f) readFile(f);
+  var f=e.dataTransfer.files[0]; if(f) readFile(f);
 }
-function loadFile(input){
-  var f = input.files[0];
-  if(f) readFile(f);
-  input.value='';
-}
+function loadFile(el){ var f=el.files[0]; if(f) readFile(f); el.value=''; }
 function readFile(file){
-  var r = new FileReader();
-  r.onload = function(e){
-    try{
-      var data = JSON.parse(e.target.result);
-      // Accept any inspection-like JSON
-      if(!data.titulo && !data.area && !data.items){
-        alert('Arquivo não parece ser uma inspeção válida. Verifique se é o arquivo correto.');
-        return;
-      }
-      INS = data;
-      initForm();
-    }catch(err){
-      alert('Erro ao ler arquivo: ' + err.message);
-    }
+  var r=new FileReader();
+  r.onload=function(e){
+    try{ var d=JSON.parse(e.target.result); processData(d); }
+    catch(err){ alert('Arquivo inválido: '+err.message); }
   };
-  r.readAsText(file, 'UTF-8');
+  r.readAsText(file,'UTF-8');
 }
-
-// ═══════════════════════════════════════════
-// PAKO loader for decompression
-// ═══════════════════════════════════════════
-function loadPakoAndDecode(b64url, cb){
-  var script = document.createElement('script');
-  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
-  script.onload = function(){
-    try{
-      // Add padding back
-      var b64 = b64url.replace(/-/g,'+').replace(/_/g,'/');
-      while(b64.length % 4) b64 += '=';
-      var binary = atob(b64);
-      var bytes  = new Uint8Array(binary.length);
-      for(var i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
-      var inflated = pako.inflate(bytes, {to:'string'});
-      cb(null, JSON.parse(inflated));
-    }catch(e){ cb(e, null); }
-  };
-  script.onerror = function(){ cb(new Error('pako load failed'), null); };
-  document.head.appendChild(script);
+function processData(d){
+  if(!d.titulo&&!d.items&&!d.t){ alert('Não parece ser uma inspeção válida.'); return; }
+  if(d.i&&!d.items) d=expand(d);
+  INS=d; initForm();
 }
-
-// ═══════════════════════════════════════════
-// Convert minimal format to full inspection
-// ═══════════════════════════════════════════
-function expandMinimal(m){
+function expand(m){
   return {
-    id:      m.id||('resp_'+Date.now()),
-    titulo:  m.t||'Inspeção',
-    data:    m.d||'',
-    hora:    m.hr||'',
-    tipo:    m.tp||'Inspeção',
-    result:  m.r||'Pendente',
-    respNm:  m.rn||'—',
-    testNm:  m.tn||'',
-    area:    m.ar||'—',
-    _vessel: m.v||'LOG-IN JACARANDÁ',
-    semana:  m.sm||'',
-    fotos:   [],
-    items:   (m.i||[]).map(function(it){
-      return {
-        area:        it.a||'',
-        result:      it.r||'Pendente',
-        dept:        it.dp||'',
-        respItemNm:  it.rn||'',
-        desc:        it.dc||'',
-        fotos:       [],
-        resposta:    ''
-      };
+    id:m.id||('r'+Date.now()), titulo:m.t||'Inspeção', data:m.d||'', hora:m.hr||'',
+    tipo:m.tp||'', result:m.r||'Pendente', respNm:m.rn||'', testNm:m.tn||'',
+    area:m.ar||'', _vessel:m.v||'LOG-IN JACARANDÁ', semana:m.sm||'', fotos:[],
+    items:(m.i||[]).map(function(it){
+      return {area:it.a||'',result:it.r||'Pendente',dept:it.dp||'',
+              respItemNm:it.rn||'',desc:it.dc||'',fotos:[],resposta:''};
     })
   };
 }
 
-// Also check URL params on load
-function checkURLParam(){
-  var params = new URLSearchParams(window.location.search);
-  // From main app via sessionStorage
-  if(params.get('from')==='app'){
+// Check for data from main app (sessionStorage) or URL
+function checkInit(){
+  var p=new URLSearchParams(window.location.search);
+  if(p.get('from')==='app'){
     try{
       var st=sessionStorage.getItem('jac_shared_insp');
-      if(st){
-        INS=JSON.parse(st);
-        sessionStorage.removeItem('jac_shared_insp');
+      if(st){ INS=JSON.parse(st); sessionStorage.removeItem('jac_shared_insp');
         window.history.replaceState({},'',window.location.pathname);
-        initForm(); return;
-      }
+        initForm(); return; }
     }catch(e){}
   }
-  var z=params.get('z');
-  if(z){
-    loadPakoAndDecode(z,function(err,data){
-      if(err){tryPlainB64(z);return;}
-      INS=expandMinimal(data);
-      window.history.replaceState({},'',window.location.pathname);
-      initForm();
-    });
-    return;
-  }
-  var raw=params.get('i')||params.get('insp');
-  if(raw){tryPlainB64(raw);return;}
+  var z=p.get('z');
+  if(z){ loadPako(z,function(err,d){ if(err) tryB64(z); else { INS=expand(d); initForm(); } }); return; }
+  var raw=p.get('i')||p.get('insp');
+  if(raw) tryB64(raw);
 }
-
-function tryPlainB64(raw){
+function tryB64(raw){
   try{
-    var json = decodeURIComponent(escape(atob(raw)));
-    var data = JSON.parse(json);
-    // Check if it's minimal format (has 'i' array) or full format
-    if(data.i && !data.items){
-      INS = expandMinimal(data);
-    } else if(data.titulo || data.items){
-      INS = data;
-    } else {
-      alert('Formato de link não reconhecido.');
-      return;
-    }
-    window.history.replaceState({}, '', window.location.pathname);
-    initForm();
-  }catch(e){
-    alert('Erro ao ler link: '+e.message);
-  }
+    var d=JSON.parse(decodeURIComponent(escape(atob(raw))));
+    if(d.i&&!d.items) d=expand(d);
+    INS=d; window.history.replaceState({},'',window.location.pathname); initForm();
+  }catch(e){ console.warn('b64 parse error',e); }
+}
+function loadPako(b64,cb){
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
+  s.onload=function(){
+    try{
+      var b=b64.replace(/-/g,'+').replace(/_/g,'/');
+      while(b.length%4)b+='=';
+      var bin=atob(b); var by=new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++)by[i]=bin.charCodeAt(i);
+      cb(null,JSON.parse(pako.inflate(by,{to:'string'})));
+    }catch(e){cb(e,null);}
+  };
+  s.onerror=function(){cb(new Error('pako failed'),null);};
+  document.head.appendChild(s);
 }
 
-// ═══════════════════════════════════════════
+// ════════════════════════════════════════
 // INIT FORM
-// ═══════════════════════════════════════════
+// ════════════════════════════════════════
 function initForm(){
   if(!INS) return;
-
-  // Initialize RESP for all items
-  RESP = {};
-  (INS.items||[]).forEach(function(it, j){
-    RESP[j] = {
-      resposta: it.resposta||'',
-      status: it.result||'Pendente',
-      fotos: []
-    };
+  RESP={};
+  (INS.items||[]).forEach(function(it,j){
+    RESP[j]={status:it.result||'Pendente', resposta:it.resposta||'', fotos:[]};
   });
-
-  // Update topbar
-  document.getElementById('tb-title').textContent = INS.titulo || 'Inspeção';
-  document.getElementById('tb-save').style.display = 'block';
-  document.getElementById('tb-wa').style.display = 'block';
-  document.getElementById('btn-send').style.display = 'flex';
-
-  // Render header
-  renderInspHeader();
-
-  // Render items
+  document.getElementById('tb-title').textContent=INS.titulo||'Inspeção';
+  document.getElementById('tb-send').style.display='block';
+  document.getElementById('sendbtn').style.display='flex';
+  renderHdr();
   renderItems();
-
-  // Switch screen
-  showScreen('form');
+  goScreen('form');
 }
 
-// ═══════════════════════════════════════════
+// ════════════════════════════════════════
 // RENDER HEADER
-// ═══════════════════════════════════════════
-function renderInspHeader(){
-  var COLORS = {
-    'Conforme':    '#16a34a',
-    'Não Conforme':'#dc2626',
-    'Parcial':     '#d97706',
-    'Pendente':    '#7c3aed',
-  };
-  var color = COLORS[INS.result] || '#1A5FA8';
-  var el = document.getElementById('insp-header');
-  el.innerHTML =
-    '<div class="insp-hdr-band" style="background:'+color+';">'
-    + '<div>'
-    + '  <div class="insp-hdr-title">' + esc(INS.titulo||'—') + '</div>'
-    + '  <div class="insp-hdr-meta">📅 '+(INS.data||'—')+(INS.hora?' · '+INS.hora:'')+'</div>'
-    + '</div>'
-    + '<div class="insp-badge">' + (INS.result||'—') + '</div>'
-    + '</div>'
-    + '<div class="insp-meta-grid">'
-    + metaCell('Tipo', INS.tipo||'—')
-    + metaCell('Responsável', INS.respNm||'—')
-    + metaCell('Navio', INS._vessel||'LOG-IN JACARANDÁ')
-    + metaCell('Semana', 'SEM '+(INS.semana||'—'))
-    + '</div>';
+// ════════════════════════════════════════
+function renderHdr(){
+  var C={'Conforme':'#16a34a','Não Conforme':'#dc2626','Parcial':'#d97706','Pendente':'#7c3aed'};
+  var col=C[INS.result]||'#1A5FA8';
+  document.getElementById('insp-hdr-el').innerHTML=
+    '<div class="insp-hdr">'
+    +'<div class="insp-band" style="background:'+col+';">'
+    +'<div><div class="insp-name">'+esc(INS.titulo||'—')+'</div>'
+    +'<div class="insp-date">📅 '+(INS.data||'—')+(INS.hora?' · '+INS.hora:'')+'</div></div>'
+    +'<div class="result-pill">'+(INS.result||'—')+'</div></div>'
+    +'<div class="insp-meta">'
+    +imc('Tipo',INS.tipo||'—')+imc('Responsável',INS.respNm||'—')
+    +imc('Navio',INS._vessel||'LOG-IN JACARANDÁ')+imc('Sem','SEM '+(INS.semana||'—'))
+    +'</div></div>';
 }
-function metaCell(lbl, val){
-  return '<div class="insp-meta-cell">'
-    + '<div class="insp-meta-lbl">'+esc(lbl)+'</div>'
-    + '<div class="insp-meta-val">'+esc(val)+'</div>'
-    + '</div>';
-}
+function imc(l,v){return '<div class="imc"><div class="imc-l">'+l+'</div><div class="imc-v">'+esc(v)+'</div></div>';}
 
-// ═══════════════════════════════════════════
-// RENDER ITEMS
-// ═══════════════════════════════════════════
+// ════════════════════════════════════════
+// RENDER ITEMS — ALL EXPANDED, STATUS FIRST
+// ════════════════════════════════════════
 function renderItems(){
-  var list = document.getElementById('items-list');
-  list.innerHTML = '';
-  (INS.items||[]).forEach(function(it, j){
-    list.appendChild(buildItemCard(it, j));
-  });
-  updateProgress();
+  var list=document.getElementById('items-list');
+  list.innerHTML='';
+  (INS.items||[]).forEach(function(it,j){ list.appendChild(buildCard(it,j)); });
+  updateProg();
 }
 
-function buildItemCard(it, j){
-  var r    = RESP[j]||{};
-  var st   = r.status || it.result || 'Pendente';
-  var cfg  = ST_CFG[st] || ST_CFG['Pendente'];
-  var fotos= r.fotos||[];
-  var existFotos = it.fotos||[];
+function buildCard(it,j){
+  var r=RESP[j]||{}; var st=r.status||'Pendente';
+  var cfg=ST[st]||ST['Pendente'];
+  var card=document.createElement('div');
+  card.className='item'; card.id='card-'+j; card.setAttribute('data-s',st);
 
-  var card = document.createElement('div');
-  card.className = 'item-card status-' + st.toLowerCase().replace(/\s/g,'-');
-  card.id = 'item-card-' + j;
+  // Status buttons
+  var btns=['Conforme','Executado','Parcial','Pendente'].map(function(s){
+    var sc=ST[s]; var on=(st===s)?' '+sc.cl:'';
+    return '<div class="sel-opt'+on+'" id="sb-'+j+'-'+s+'" onclick="selSt('+j+',\''+s+'\')">'
+      +'<span class="ic">'+sc.ic+'</span>'+sc.lb+'</div>';
+  }).join('');
 
-  // Head
-  var headDiv = document.createElement('div');
-  headDiv.className = 'item-head';
-  headDiv.innerHTML =
-    '<span class="item-num" style="background:'+cfg.color+';">#'+pad(j+1)+'</span>'
-    + '<span class="item-area">' + esc(it.area||'Item '+(j+1)) + '</span>'
-    + '<span class="item-status-badge" style="background:'+cfg.color+'22;color:'+cfg.color+';border:1px solid '+cfg.color+'66;">'
-      + cfg.icon + ' ' + cfg.label
-    + '</span>'
-    + (fotos.length ? '<span class="item-photo-count">📷 '+fotos.length+'</span>' : '')
-    + '<span class="item-chevron" id="chev-'+j+'">▼</span>';
-  headDiv.onclick = function(){ toggleItem(j); };
-  card.appendChild(headDiv);
-
-  // Body
-  var body = document.createElement('div');
-  body.className = 'item-body' + (j===0?' open':'');
-  body.id = 'item-body-' + j;
-  if(j===0) document.getElementById('chev-0') && (document.getElementById('chev-0').classList.add('open'));
-
-  // Original achado
-  var achadoHTML = '';
-  if(it.desc){
-    achadoHTML = '<div class="achado-box"><div class="achado-label">📋 Achado Original</div>' + esc(it.desc) + '</div>';
-  }
-  if(it.dept || it.respItemNm){
-    achadoHTML += '<div style="display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap;font-size:11px;color:var(--gray);">'
-      + (it.dept?'<span>🏢 <strong>'+esc(it.dept)+'</strong></span>':'')
-      + (it.respItemNm?'<span>👷 <strong>'+esc(it.respItemNm)+'</strong></span>':'')
-      + '</div>';
+  // Original photos (from inspection)
+  var origPh='';
+  if((it.fotos||[]).length){
+    origPh='<span class="fl">📷 Fotos da Inspeção Original</span>'
+      +'<div class="orig-photos">'
+      +(it.fotos||[]).map(function(u){
+        return '<div class="orig-ph"><img src="'+u+'" onclick="viewP(\''+u+'\')" alt=""></div>';
+      }).join('')+'</div>';
   }
 
-  // Existing photos
-  var existHTML = '';
-  if(existFotos.length){
-    existHTML = '<div style="margin-bottom:12px;">'
-      + '<div class="achado-label">📷 Fotos da Inspeção Original</div>'
-      + '<div class="existing-photos">'
-      + existFotos.map(function(u){
-          return '<div class="existing-photo" onclick="viewPhoto(\''+u+'\')">'
-            + '<img src="'+u+'" loading="lazy" alt="foto"></div>';
-        }).join('')
-      + '</div></div>';
-  }
+  card.innerHTML=
+    // TOP: number + area + dept
+    '<div class="item-top">'
+    +'<span class="inum" style="background:'+cfg.col+';">#'+pad2(j+1)+'</span>'
+    +'<span class="iarea">'+esc(it.area||'Item '+(j+1))+'</span>'
+    +(it.dept||it.respItemNm?
+      '<div class="idept">'
+      +(it.dept?'<span>🏢 <strong>'+esc(it.dept)+'</strong></span>':'')
+      +(it.respItemNm?'<span>👷 <strong>'+esc(it.respItemNm)+'</strong></span>':'')
+      +'</div>' : '')
+    +'</div>'
 
-  // Status selector
-  var statusHTML = '<div style="margin-bottom:14px;">'
-    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray);margin-bottom:8px;">Status da Pendência</div>'
-    + '<div class="status-selector">';
-  ['Conforme','Parcial','Pendente','Executado'].forEach(function(s){
-    var sc = ST_CFG[s];
-    var sel = st===s ? sc.cls : '';
-    statusHTML += '<div class="status-opt '+sel+'" id="st-opt-'+j+'-'+s.replace(/\s/g,'')+'" '
-      + 'onclick="selectStatus('+j+',\''+s+'\')">'
-      + '<span class="so-icon">'+sc.icon+'</span>'
-      + sc.label
-      + '</div>';
-  });
-  statusHTML += '</div></div>';
+    // STATUS SELECTOR — always visible, at top
+    +'<div class="status-sel">'
+    +'<div class="sel-label">Status da Pendência</div>'
+    +'<div class="sel-grid">'+btns+'</div>'
+    +'</div>'
 
-  // Response textarea
-  var respHTML = '<div class="resp-section">'
-    + '<label>📝 Resposta / Evidência de Conformidade</label>'
-    + '<textarea id="resp-'+j+'" placeholder="Descreva a ação tomada, data de execução, material utilizado..."'
-    + ' oninput="onRespInput('+j+')">'
-    + esc(r.resposta||'')
-    + '</textarea></div>';
+    // BODY: achado + orig photos + response + new photos
+    +'<div class="item-body">'
+    +(it.desc?'<span class="fl">📋 Achado</span><div class="achado">'+esc(it.desc)+'</div>':'')
+    +origPh
+    +'<span class="fl">📝 Resposta / Evidência</span>'
+    +'<textarea class="ri'+(r.resposta?' ok':'')+'" id="ri-'+j+'" '
+    +'placeholder="Descreva a ação tomada, data, material..." '
+    +'oninput="onRI('+j+')">'+esc(r.resposta||'')+'</textarea>'
+    +'<span class="fl">📷 Fotos Antes / Depois / Evidência</span>'
+    +'<div class="pbrow">'
+    +'<label class="pbtn cam">📷 Câmera'
+    +'<input type="file" accept="image/*" capture="environment" style="display:none" onchange="addPh('+j+',this)"></label>'
+    +'<label class="pbtn gal">🖼 Galeria'
+    +'<input type="file" accept="image/*" multiple style="display:none" onchange="addPh('+j+',this)"></label>'
+    +'</div>'
+    +'<div class="pgrid" id="pg-'+j+'">'+pgHTML(j)+'</div>'
+    +'</div>';
 
-  // Photo section
-  var photoHTML = '<div class="photo-section">'
-    + '<div class="photo-section-label">📷 Fotos Antes / Depois / Evidência'
-    + (fotos.length ? ' <span style="color:var(--green);font-size:11px;">('+fotos.length+')</span>' : '')
-    + '</div>'
-    + '<div class="photo-btns">'
-    + '<label class="photo-btn cam" style="cursor:pointer;">'
-    + '  📷 Câmera'
-    + '  <input type="file" accept="image/*" capture="environment" style="display:none" onchange="addItemPhoto('+j+',this)">'
-    + '</label>'
-    + '<label class="photo-btn gal" style="cursor:pointer;">'
-    + '  🖼 Galeria'
-    + '  <input type="file" accept="image/*" multiple style="display:none" onchange="addItemPhoto('+j+',this)">'
-    + '</label>'
-    + '</div>'
-    + '<div class="photo-grid" id="photo-grid-'+j+'">'
-    + renderPhotoGrid(j)
-    + '</div>'
-    + '</div>';
-
-  body.innerHTML = achadoHTML + existHTML + statusHTML + respHTML + photoHTML;
-  card.appendChild(body);
   return card;
 }
 
-function renderPhotoGrid(j){
-  return (RESP[j].fotos||[]).map(function(u, i){
-    return '<div class="photo-thumb">'
-      + '<img src="'+u+'" onclick="viewPhoto(\''+u+'\')" alt="foto '+(i+1)+'">'
-      + '<button class="rm-btn" onclick="removePhoto('+j+','+i+')">✕</button>'
-      + '<div class="photo-new-badge">NOVA</div>'
-      + '</div>';
+function pgHTML(j){
+  return (RESP[j]&&RESP[j].fotos||[]).map(function(u,i){
+    return '<div class="pcell"><img src="'+u+'" onclick="viewP(\''+u+'\')"><button class="rx" onclick="rmPh('+j+','+i+')">✕</button><div class="nb">Nova</div></div>';
   }).join('');
 }
 
-// ═══════════════════════════════════════════
+// ════════════════════════════════════════
 // INTERACTIONS
-// ═══════════════════════════════════════════
-function toggleItem(j){
-  var body = document.getElementById('item-body-'+j);
-  var chev = document.getElementById('chev-'+j);
-  if(!body) return;
-  var open = body.classList.contains('open');
-  body.classList.toggle('open', !open);
-  if(chev) chev.classList.toggle('open', !open);
-}
-
-function selectStatus(j, st){
-  RESP[j].status = st;
-  var cfg = ST_CFG[st]||ST_CFG['Pendente'];
-
-  // Update button visuals
-  ['Conforme','Parcial','Pendente','Executado'].forEach(function(s){
-    var el = document.getElementById('st-opt-'+j+'-'+s.replace(/\s/g,''));
-    if(!el) return;
-    el.className = 'status-opt' + (s===st ? ' '+ST_CFG[s].cls : '');
+// ════════════════════════════════════════
+function selSt(j,st){
+  RESP[j].status=st;
+  var cfg=ST[st]||ST['Pendente'];
+  var card=document.getElementById('card-'+j);
+  if(card){ card.setAttribute('data-s',st);
+    var num=card.querySelector('.inum'); if(num) num.style.background=cfg.col; }
+  ['Conforme','Executado','Parcial','Pendente'].forEach(function(s){
+    var el=document.getElementById('sb-'+j+'-'+s); if(!el) return;
+    el.className='sel-opt'+(s===st?' '+(ST[s]||{cl:''}).cl:'');
   });
-
-  // Update card border + badge
-  var card = document.getElementById('item-card-'+j);
-  if(card){
-    card.className = 'item-card status-' + st.toLowerCase().replace(/\s/g,'-');
-    var badge = card.querySelector('.item-status-badge');
-    if(badge){
-      badge.style.background = cfg.color+'22';
-      badge.style.color = cfg.color;
-      badge.style.borderColor = cfg.color+'66';
-      badge.textContent = cfg.icon + ' ' + cfg.label;
-    }
-  }
-  updateProgress();
+  updateProg();
 }
 
-function onRespInput(j){
-  var el = document.getElementById('resp-'+j);
-  if(!el) return;
-  RESP[j].resposta = el.value;
-  el.classList.toggle('filled', el.value.length > 0);
-  updateProgress();
+function onRI(j){
+  var el=document.getElementById('ri-'+j); if(!el) return;
+  RESP[j].resposta=el.value;
+  el.classList.toggle('ok',el.value.length>0);
+  updateProg();
 }
 
-function addItemPhoto(j, input){
-  var files = Array.from(input.files);
-  if(!files.length) return;
-  files.forEach(function(f){
-    var r = new FileReader();
-    r.onload = function(e){
-      compressImg(e.target.result, function(url){
-        RESP[j].fotos.push(url);
-        var grid = document.getElementById('photo-grid-'+j);
-        if(grid) grid.innerHTML = renderPhotoGrid(j);
-        // Update count badge in head
-        var card = document.getElementById('item-card-'+j);
-        if(card){
-          var cnt = card.querySelector('.item-photo-count');
-          var total = RESP[j].fotos.length;
-          if(total > 0){
-            if(!cnt){
-              cnt = document.createElement('span');
-              cnt.className = 'item-photo-count';
-              card.querySelector('.item-head').insertBefore(cnt, card.querySelector('.item-chevron'));
-            }
-            cnt.textContent = '📷 ' + total;
-          }
-        }
-        updateProgress();
+function addPh(j,input){
+  Array.from(input.files).forEach(function(f){
+    var r=new FileReader();
+    r.onload=function(e){
+      compress(e.target.result,function(u){
+        RESP[j].fotos.push(u);
+        var g=document.getElementById('pg-'+j); if(g) g.innerHTML=pgHTML(j);
+        updateProg();
       });
     };
     r.readAsDataURL(f);
   });
-  input.value = '';
+  input.value='';
 }
 
-function removePhoto(j, i){
-  RESP[j].fotos.splice(i, 1);
-  var grid = document.getElementById('photo-grid-'+j);
-  if(grid) grid.innerHTML = renderPhotoGrid(j);
-  updateProgress();
+function rmPh(j,i){
+  RESP[j].fotos.splice(i,1);
+  var g=document.getElementById('pg-'+j); if(g) g.innerHTML=pgHTML(j);
+  updateProg();
 }
 
-// ═══════════════════════════════════════════
-// PROGRESS
-// ═══════════════════════════════════════════
-function updateProgress(){
-  var total = (INS.items||[]).length;
-  if(!total){ document.getElementById('prog-fill').style.width='100%'; return; }
-
-  var answered = 0;
-  (INS.items||[]).forEach(function(_, j){
-    var r = RESP[j]||{};
-    if(r.resposta||(r.fotos&&r.fotos.length)||(r.status&&r.status!=='Pendente'&&r.status!==((INS.items[j]||{}).result||'Pendente'))){
-      answered++;
-    }
-  });
-
-  var pct = Math.round(answered/total*100);
-  document.getElementById('prog-fill').style.width = pct+'%';
-  document.getElementById('prog-text').textContent = answered+' / '+total+' itens respondidos';
-  document.getElementById('btn-send-count').textContent = answered+'/'+total;
-}
-
-// ═══════════════════════════════════════════
-// SUBMIT → EXPORT
-// ═══════════════════════════════════════════
-function submitForm(){
-  GOBS = document.getElementById('obs-geral')?.value||'';
-  var result = buildResult();
-  downloadJSON(result);
-  showScreen('done');
-  document.getElementById('btn-send').style.display='none';
-  document.getElementById('done-sub').textContent =
-    'Resposta exportada com '+(INS.items||[]).length+' itens. '
-    + 'Envie o arquivo ao responsável pela inspeção.';
-}
-
-function exportResposta(){
-  GOBS = document.getElementById('obs-geral')?.value||'';
-  downloadJSON(buildResult());
-  toast('📥 Resposta baixada!');
-}
-
-function buildResult(){
-  var respItems = (INS.items||[]).map(function(it, j){
-    var r = RESP[j]||{};
-    return Object.assign({}, it, {
-      result:   r.status || it.result,
-      resposta: r.resposta||'',
-      fotosResposta: r.fotos||[]
-    });
-  });
-  return {
-    _tipo:        'resposta_inspecao_jacaranda',
-    _respondidoEm: new Date().toISOString(),
-    _vessel:      INS._vessel||'LOG-IN JACARANDÁ',
-    // Original inspection fields
-    id:       INS.id,
-    semana:   INS.semana,
-    data:     INS.data,
-    hora:     INS.hora,
-    tipo:     INS.tipo,
-    area:     INS.area,
-    titulo:   INS.titulo,
-    result:   calcOverallResult(respItems),
-    respNm:   INS.respNm,
-    testNm:   INS.testNm,
-    desc:     INS.desc,
-    fotos:    INS.fotos||[],  // keep original general photos (no base64 duplication)
-    obsResposta: GOBS,
-    items:    respItems,
-    ts:       Date.now()
-  };
-}
-
-function calcOverallResult(items){
-  if(!items.length) return INS.result||'Pendente';
-  var counts = {Conforme:0, Executado:0, Parcial:0, Pendente:0, 'Não Conforme':0};
-  items.forEach(function(it){ counts[it.result] = (counts[it.result]||0)+1; });
-  if(counts['Não Conforme']>0) return 'Não Conforme';
-  if(counts['Pendente']>0)     return 'Parcial';
-  if(counts['Parcial']>0)      return 'Parcial';
-  return 'Conforme';
-}
-
-function downloadJSON(data){
-  var blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  var safe = (INS.titulo||'inspecao').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,30);
-  a.download = 'RESPOSTA_'+safe+'_'+(INS.data||new Date().toISOString().slice(0,10))+'.json';
-  a.click();
-}
-
-// ═══════════════════════════════════════════
-// WHATSAPP
-// ═══════════════════════════════════════════
-function sendWhatsApp(){
-  GOBS = document.getElementById('obs-geral')?.value||'';
-  var total  = (INS.items||[]).length;
-  var exec   = Object.values(RESP).filter(function(r){ return r.status==='Executado'||r.status==='Conforme'; }).length;
-  var pend   = total - exec;
-  var msg = '✅ *RESPOSTA DE INSPEÇÃO*\n'
-    + '⚓ ' + (INS.titulo||'—') + '\n'
-    + '📅 ' + (INS.data||'—') + '\n'
-    + '🔍 Itens: '+total+' total · '+exec+' executados · '+pend+' pendentes\n'
-    + (GOBS ? '\n📝 '+GOBS+'\n' : '')
-    + '\n_M/V LOG-IN JACARANDÁ · Linha Amazonas_\n'
-    + '\n📎 Arquivo de resposta em anexo.';
-  window.open('https://wa.me/?text='+encodeURIComponent(msg), '_blank');
-}
-
-// ═══════════════════════════════════════════
-// PHOTO VIEWER
-// ═══════════════════════════════════════════
-function viewPhoto(url){
-  document.getElementById('viewer-img').src = url;
-  document.getElementById('photo-viewer').classList.add('open');
-}
-function closeViewer(){
-  document.getElementById('photo-viewer').classList.remove('open');
-}
-
-// ═══════════════════════════════════════════
-// COMPRESS IMAGE
-// ═══════════════════════════════════════════
-function compressImg(dataURL, cb){
-  var img = new Image();
-  img.onload = function(){
-    var MAX=1200; var w=img.width,h=img.height;
-    if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
-    var c=document.createElement('canvas');c.width=w;c.height=h;
+function compress(dataURL,cb){
+  var img=new Image();
+  img.onload=function(){
+    var MAX=1100,w=img.width,h=img.height;
+    if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+    var c=document.createElement('canvas'); c.width=w; c.height=h;
     c.getContext('2d').drawImage(img,0,0,w,h);
-    cb(c.toDataURL('image/jpeg',0.75));
+    cb(c.toDataURL('image/jpeg',0.72));
   };
   img.src=dataURL;
 }
 
-// ═══════════════════════════════════════════
-// HELPERS
-// ═══════════════════════════════════════════
-function showScreen(id){
-  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
-  var el = document.getElementById('screen-'+id);
-  if(el) el.classList.add('active');
-}
-function esc(str){
-  return String(str||'')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function pad(n){ return String(n).padStart(2,'0'); }
-function toast(msg){
-  var el=document.createElement('div');
-  el.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);'
-    +'background:#07182e;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;'
-    +'font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.4);white-space:nowrap;';
-  el.textContent=msg;document.body.appendChild(el);
-  setTimeout(function(){el.remove();},2500);
+// ════════════════════════════════════════
+// PROGRESS
+// ════════════════════════════════════════
+function updateProg(){
+  var total=(INS&&INS.items||[]).length; if(!total) return;
+  var done=0;
+  (INS.items||[]).forEach(function(it,j){
+    var r=RESP[j]||{};
+    var changed=(r.status&&r.status!==(it.result||'Pendente'));
+    if(r.resposta||r.fotos.length||changed) done++;
+  });
+  var pct=Math.round(done/total*100);
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-txt').textContent=done+'/'+total+' respondidos';
+  document.getElementById('sprog').textContent=done+'/'+total;
 }
 
-// ═══════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════
-checkURLParam();
-// Chevron fix after DOM is ready
-document.addEventListener('DOMContentLoaded', function(){
-  var chev0 = document.getElementById('chev-0');
-  if(chev0) chev0.classList.add('open');
-});
+// ════════════════════════════════════════
+// BUILD RESULT — fotos INCLUÍDAS
+// ════════════════════════════════════════
+function buildResult(){
+  GOBS=document.getElementById('obs-geral')?.value||'';
+  var respItems=(INS.items||[]).map(function(it,j){
+    var r=RESP[j]||{};
+    return Object.assign({},it,{
+      result:   r.status||it.result,
+      resposta: r.resposta||'',
+      fotosResposta: r.fotos||[]   // ← fotos base64 incluídas
+    });
+  });
+  var exec=respItems.filter(function(i){return i.result==='Executado'||i.result==='Conforme';}).length;
+  var pend=respItems.length-exec;
+  var allConf=pend===0;
+  return {
+    _tipo:'resposta_inspecao_jacaranda',
+    _respondidoEm:new Date().toISOString(),
+    _vessel:INS._vessel||'LOG-IN JACARANDÁ',
+    _resumo:{total:respItems.length, executados:exec, pendentes:pend},
+    id:INS.id, semana:INS.semana, data:INS.data, hora:INS.hora,
+    tipo:INS.tipo, area:INS.area, titulo:INS.titulo,
+    result:allConf?'Conforme':'Parcial',
+    respNm:INS.respNm, testNm:INS.testNm, desc:INS.desc,
+    fotos:INS.fotos||[], obsResposta:GOBS, items:respItems, ts:Date.now()
+  };
+}
+
+// ════════════════════════════════════════
+// SUBMIT — COMPARTILHA COM FOTOS JUNTAS
+// ════════════════════════════════════════
+function submitForm(){
+  var result=buildResult();
+  var json=JSON.stringify(result);
+  var safe=(INS.titulo||'insp').replace(/\s+/g,'_').replace(/[^\w-]/g,'').slice(0,28);
+  var fname='RESPOSTA_'+safe+'_'+(INS.data||'').replace(/-/g,'')+'.json';
+  var blob=new Blob([json],{type:'application/json'});
+  var file=new File([blob],fname,{type:'application/json'});
+
+  var exec=result._resumo.executados; var pend=result._resumo.pendentes;
+  var totalFotos=Object.values(RESP).reduce(function(acc,r){return acc+r.fotos.length;},0);
+
+  var waText='✅ *RESPOSTA DE INSPEÇÃO*\n'
+    +'⚓ '+(INS.titulo||'').slice(0,55)+'\n'
+    +'📅 '+(INS.data||'—')+'\n'
+    +'📊 '+result._resumo.total+' itens · '+exec+' executados · '+pend+' pendentes\n'
+    +(totalFotos?'📷 '+totalFotos+' fotos em anexo\n':'')
+    +(GOBS?'\n📝 '+GOBS+'\n':'')
+    +'\n_M/V LOG-IN JACARANDÁ · Linha Amazonas_';
+
+  // Try Web Share API com arquivo (nativo no celular)
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({title:'Resposta: '+(INS.titulo||''), text:waText, files:[file]})
+      .then(function(){ showDone(exec,pend,totalFotos); })
+      .catch(function(e){ if(e.name!=='AbortError') fallback(blob,fname,waText,exec,pend,totalFotos); });
+  } else {
+    fallback(blob,fname,waText,exec,pend,totalFotos);
+  }
+}
+
+function fallback(blob,fname,waText,exec,pend,totalFotos){
+  // Download arquivo
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=fname; a.click();
+  // Abre WhatsApp com texto
+  setTimeout(function(){
+    window.open('https://wa.me/?text='+encodeURIComponent(waText),'_blank');
+  },500);
+  showDone(exec,pend,totalFotos);
+}
+
+function showDone(exec,pend,fotos){
+  document.getElementById('sendbtn').style.display='none';
+  document.getElementById('done-s').textContent=
+    (INS.items||[]).length+' itens respondidos · '+exec+' executados · '+pend+' pendentes\n'
+    +(fotos?fotos+' fotos incluídas no arquivo.':'Sem fotos adicionadas.');
+  goScreen('done');
+}
+
+function sendWA(){
+  var result=buildResult();
+  var exec=result._resumo.executados; var pend=result._resumo.pendentes;
+  var msg='✅ *RESPOSTA DE INSPEÇÃO*\n'
+    +'⚓ '+(INS.titulo||'')+'\n'
+    +'📅 '+(INS.data||'—')+'\n'
+    +'📊 '+result._resumo.total+' itens · '+exec+' exec · '+pend+' pendentes\n'
+    +(GOBS?'\n'+GOBS+'\n':'')+'\n_M/V LOG-IN JACARANDÁ_';
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+
+// ════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════
+function viewP(url){ document.getElementById('vimg').src=url; document.getElementById('viewer').classList.add('open'); }
+function closeV(){ document.getElementById('viewer').classList.remove('open'); }
+function goScreen(id){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+  var el=document.getElementById('screen-'+id); if(el) el.classList.add('active');
+}
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function pad2(n){ return n<10?'0'+n:String(n); }
+
+// START
+checkInit();
 </script>
 </body>
 </html>

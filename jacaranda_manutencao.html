@@ -5487,12 +5487,22 @@ function copyInspJSON(id){
 function whatsappInspText(id){ shareInspLink(id); }
 function openRespForm(id){
   var base = buildFormURL();
-  // Store lite JSON in sessionStorage for same-origin access
   var ins=S.inspecoes.find(function(i){return i.id===id;});
   if(ins){
-    try{ sessionStorage.setItem('jac_shared_insp', buildLiteJSON(ins)); }catch(e){}
+    // Store FULL JSON with photos so form opens instantly with all data
+    try{
+      var full = JSON.stringify(Object.assign({},ins,{
+        _tipo:'inspecao_jacaranda', _shared:true,
+        _sharedAt:new Date().toISOString(),
+        _vessel:(getCfg().vessel&&getCfg().vessel.vessel)||'LOG-IN JACARANDÁ'
+      }));
+      sessionStorage.setItem('jac_shared_insp', full);
+    }catch(e){
+      // If too large (photos), strip photos as fallback
+      try{ sessionStorage.setItem('jac_shared_insp', buildLiteJSON(ins)); }catch(e2){}
+    }
   }
-  window.open(base,'_blank');
+  window.open(base+'?from=app','_blank');
 }
 
 
