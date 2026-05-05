@@ -1,2 +1,2 @@
-# ⚓ Jacarandá — build 20260505_1826
-Commit: `build 20260505_1826 - relatorio unificado trabalhos+inspecoes+desvios`
+# ⚓ Jacarandá — build 20260505_1857
+Commit: `build 20260505_1857 - consolidar inspecoes + PDF fotos amplas + adicionar semana`
