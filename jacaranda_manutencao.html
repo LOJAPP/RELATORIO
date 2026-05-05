@@ -3757,38 +3757,50 @@ function buildConsolidadoHTML(insps, opts){
           var hasA = (it.fotosAntes||[]).length>0;
           var hasD = (it.fotosDepois||[]).length>0;
           var hasL = (it.fotos||[]).length>0;
-          if(hasA || hasD){
-            var okSt = it.statusOk?'<span style="background:#16a34a;color:#fff;font-size:8px;font-weight:700;padding:1px 8px;border-radius:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"> ✅ OK</span>':'';
-            h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 10px 10px;">';
-            // ANTES
-            h += '<div style="background:#fff8f8;border:1px solid #fecdd3;border-radius:7px;padding:8px;">'
-               + '<div style="font-size:8px;font-weight:700;color:#991b1b;text-transform:uppercase;margin-bottom:6px;">📷 ANTES</div>';
-            if(hasA){
-              h += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px;">';
-              (it.fotosAntes||[]).slice(0,4).forEach(function(u,fi){
-                var dc=(it.fotosAntesDesc&&it.fotosAntesDesc[fi])||'';
-                h += '<div><img src="'+u+'" style="width:100%;height:85px;object-fit:cover;border-radius:4px;border:1px solid #fca5a5;display:block;">'+(dc?'<div style="font-size:7px;color:#991b1b;text-align:center;margin-top:2px;">'+escHtml(dc)+'</div>':'')+'</div>';
+          var aAll  = hasA ? (it.fotosAntes||[]) : (it.fotos||[]);
+          var aDesc = hasA ? (it.fotosAntesDesc||[]) : (it.fotosDesc||[]);
+          if(aAll.length>0 || hasD){
+            var okSt = it.statusOk ? ' <span style="background:#16a34a;color:#fff;font-size:8px;font-weight:700;padding:1px 8px;border-radius:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">✅ OK</span>' : '';
+            // ANTES — full width, 4 per row
+            h += '<div style="margin-top:10px;border-radius:8px;overflow:hidden;border:2px solid #fca5a5;">';
+            h += '<div style="background:#7f1d1d;color:#fff;padding:7px 12px;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+               + '<span style="font-size:10px;font-weight:800;text-transform:uppercase;">📷 ANTES — Problema Identificado</span>'
+               + '<span style="font-size:8px;opacity:.7;margin-left:auto;">'+aAll.length+' foto'+(aAll.length!==1?'s':'')+' · inspeção original</span>'
+               + '</div>';
+            if(aAll.length>0){
+              h += '<div style="background:#fff8f8;padding:8px;"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">';
+              aAll.forEach(function(u,fi){
+                var dc=aDesc[fi]||'';
+                h += '<div style="border-radius:6px;overflow:hidden;border:1px solid #fca5a5;">'
+                   + '<img src="'+u+'" style="width:100%;height:110px;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+                   + (dc?'<div style="font-size:7px;color:#991b1b;text-align:center;padding:2px 4px;background:#fff8f8;border-top:1px solid #fecdd3;font-weight:600;">'+escHtml(dc)+'</div>':'')
+                   + '</div>';
               });
-              h += '</div>';
-            } else h += '<div style="font-size:10px;color:#d1d5db;font-style:italic;text-align:center;padding:8px;">Sem fotos de antes</div>';
+              h += '</div></div>';
+            } else h += '<div style="background:#fff8f8;padding:10px;text-align:center;font-size:10px;color:#9ca3af;font-style:italic;">Sem fotos de antes</div>';
             h += '</div>';
-            // DEPOIS
-            h += '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:7px;padding:8px;">'
-               + '<div style="font-size:8px;font-weight:700;color:#14532d;text-transform:uppercase;margin-bottom:6px;">✅ DEPOIS'+okSt+'</div>';
-            if(it.dataExecucao) h += '<div style="font-size:8px;color:#16a34a;margin-bottom:5px;">📅 '+it.dataExecucao+'</div>';
+            // DEPOIS — full width below, 4 per row
+            h += '<div style="margin-top:6px;border-radius:8px;overflow:hidden;border:2px solid #86efac;">';
+            h += '<div style="background:#14532d;color:#fff;padding:7px 12px;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+               + '<span style="font-size:10px;font-weight:800;text-transform:uppercase;">✅ DEPOIS — Resolução'+okSt+'</span>'
+               + (it.dataExecucao?'<span style="font-size:8px;opacity:.7;margin-left:auto;">📅 '+it.dataExecucao+'</span>':hasD?'<span style="font-size:8px;opacity:.7;margin-left:auto;">'+  (it.fotosDepois||[]).length+' foto(s)</span>':'')
+               + '</div>';
             if(hasD){
-              h += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px;">';
-              (it.fotosDepois||[]).slice(0,4).forEach(function(u,fi){
+              h += '<div style="background:#f0fdf4;padding:8px;"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">';
+              (it.fotosDepois||[]).forEach(function(u,fi){
                 var dc=(it.fotosDepoisDesc&&it.fotosDepoisDesc[fi])||'';
-                h += '<div><img src="'+u+'" style="width:100%;height:85px;object-fit:cover;border-radius:4px;border:1px solid #86efac;display:block;">'+(dc?'<div style="font-size:7px;color:#14532d;text-align:center;margin-top:2px;">'+escHtml(dc)+'</div>':'')+'</div>';
+                h += '<div style="border-radius:6px;overflow:hidden;border:1px solid #86efac;">'
+                   + '<img src="'+u+'" style="width:100%;height:110px;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+                   + (dc?'<div style="font-size:7px;color:#14532d;text-align:center;padding:2px 4px;background:#f0fdf4;border-top:1px solid #86efac;font-weight:600;">'+escHtml(dc)+'</div>':'')
+                   + '</div>';
               });
-              h += '</div>';
-            } else h += '<div style="font-size:10px;color:#d1d5db;font-style:italic;text-align:center;padding:8px;">Aguardando fotos de depois</div>';
-            h += '</div>';
+              if(it.resposta) h += '<div style="margin-top:6px;background:#dcfce7;border-radius:6px;padding:6px 10px;font-size:10px;color:#14532d;border:1px solid #86efac;"><span style="font-weight:700;">📝 </span>'+escHtml(it.resposta)+'</div>';
+              h += '</div></div>';
+            } else h += '<div style="background:#f0fdf4;padding:10px;text-align:center;font-size:10px;color:#9ca3af;font-style:italic;">⏳ Aguardando evidência</div>';
             h += '</div>';
           } else if(hasL){
             h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:6px 10px 10px;">';
-            (it.fotos||[]).slice(0,4).forEach(function(u){ h += '<div style="height:80px;border-radius:5px;overflow:hidden;border:1px solid #e5e7eb;"><img src="'+u+'" style="width:100%;height:100%;object-fit:cover;display:block;"></div>'; });
+            (it.fotos||[]).forEach(function(u){ h += '<div style="height:100px;border-radius:5px;overflow:hidden;border:1px solid #e5e7eb;"><img src="'+u+'" style="width:100%;height:100%;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'; });
             h += '</div>';
           }
         }
@@ -7271,41 +7283,67 @@ function printInspCard(id){
     var IC = COLORS[it.result] || COLORS['Pendente'];
     var ii = ICONS[it.result]  || '—';
     var itemFotos = '';
-    // Before / After comparison
-    var hasAntes  = (it.fotosAntes||[]).length > 0;
-    var hasDepois = (it.fotosDepois||[]).length > 0;
-    var hasLegacy = (it.fotos||[]).length > 0;
-    if(hasAntes || hasDepois){
-      // Show side-by-side before/after columns
-      itemFotos += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;">';
-      // ANTES
-      itemFotos += '<div style="background:#fff8f8;border:1px solid #fecdd3;border-radius:8px;padding:8px;">';
-      itemFotos += '<div style="font-size:9px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">📷 ANTES — Achado</div>';
-      if(hasAntes){
-        itemFotos += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:5px;">';
-        (it.fotosAntes||[]).forEach(function(u,fi){
-          var dc=(it.fotosAntesDesc&&it.fotosAntesDesc[fi])||'';
-          itemFotos += '<div><img src="'+u+'" style="width:100%;height:90px;object-fit:cover;border-radius:5px;border:1px solid #fca5a5;display:block;">'+(dc?'<div style="font-size:8px;color:#991b1b;text-align:center;margin-top:2px;">'+escHtml(dc)+'</div>':'')+'</div>';
-        });
-        itemFotos += '</div>';
-      } else { itemFotos += '<div style="font-size:10px;color:#d1d5db;font-style:italic;text-align:center;padding:10px;">Sem fotos de antes</div>'; }
+    // Before / After comparison — ANTES full width 4/row, DEPOIS full width 4/row
+    var hasAntes   = (it.fotosAntes||[]).length > 0;
+    var hasDepois  = (it.fotosDepois||[]).length > 0;
+    var hasLegacy  = (it.fotos||[]).length > 0;
+    var antesAll   = hasAntes ? (it.fotosAntes||[]) : (it.fotos||[]);
+    var antesDescs = hasAntes ? (it.fotosAntesDesc||[]) : (it.fotosDesc||[]);
+    var hasAntesAll = antesAll.length > 0;
+    if(hasAntesAll || hasDepois){
+      var okStamp = it.statusOk ? ' <span style="background:#16a34a;color:#fff;font-size:9px;font-weight:700;padding:1px 10px;border-radius:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">✅ OK</span>' : '';
+
+      // ── ANTES: full width, 4 photos per row ──
+      itemFotos += '<div style="margin-top:12px;border-radius:10px;overflow:hidden;border:2px solid #fca5a5;">';
+      itemFotos += '<div style="background:#7f1d1d;color:#fff;padding:8px 14px;display:flex;align-items:center;gap:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">';
+      itemFotos += '<span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;">📷 ANTES — Problema Identificado</span>';
+      itemFotos += '<span style="font-size:9px;opacity:.75;margin-left:auto;">'+antesAll.length+' foto'+(antesAll.length!==1?'s':'')+' · inspeção original</span>';
       itemFotos += '</div>';
-      // DEPOIS
-      var okStamp = it.statusOk
-        ? '<div style="background:#16a34a;color:#fff;font-size:9px;font-weight:700;padding:1px 8px;border-radius:8px;display:inline-block;margin-left:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">✅ OK</div>' : '';
-      itemFotos += '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px;">';
-      itemFotos += '<div style="font-size:9px;font-weight:700;color:#14532d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">✅ DEPOIS — Resolução'+okStamp+'</div>';
-      if(it.dataExecucao) itemFotos += '<div style="font-size:9px;color:#16a34a;margin-bottom:5px;">📅 Executado: '+it.dataExecucao+'</div>';
+      if(hasAntesAll){
+        itemFotos += '<div style="background:#fff8f8;padding:10px;">';
+        itemFotos += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">';
+        antesAll.forEach(function(u,fi){
+          var dc = antesDescs[fi]||'';
+          itemFotos += '<div style="border-radius:7px;overflow:hidden;border:1px solid #fca5a5;background:#fff;">';
+          itemFotos += '<img src="'+u+'" style="width:100%;height:130px;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;">';
+          if(dc) itemFotos += '<div style="font-size:8px;color:#991b1b;text-align:center;padding:3px 5px;background:#fff8f8;border-top:1px solid #fecdd3;font-weight:600;">'+escHtml(dc)+'</div>';
+          itemFotos += '</div>';
+        });
+        itemFotos += '</div></div>';
+      } else {
+        itemFotos += '<div style="background:#fff8f8;padding:14px;text-align:center;font-size:11px;color:#9ca3af;font-style:italic;">Sem fotos do antes</div>';
+      }
+      itemFotos += '</div>';
+
+      // ── DEPOIS: full width below ANTES, 4 photos per row ──
+      itemFotos += '<div style="margin-top:8px;border-radius:10px;overflow:hidden;border:2px solid #86efac;">';
+      itemFotos += '<div style="background:#14532d;color:#fff;padding:8px 14px;display:flex;align-items:center;gap:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">';
+      itemFotos += '<span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;">✅ DEPOIS — Resolução / Evidência'+okStamp+'</span>';
+      if(it.dataExecucao) itemFotos += '<span style="font-size:9px;opacity:.75;margin-left:auto;">📅 Executado: '+it.dataExecucao+'</span>';
+      else if(hasDepois) itemFotos += '<span style="font-size:9px;opacity:.75;margin-left:auto;">'+(it.fotosDepois||[]).length+' foto'+((it.fotosDepois||[]).length!==1?'s':'')+'</span>';
+      itemFotos += '</div>';
       if(hasDepois){
-        itemFotos += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:5px;">';
+        itemFotos += '<div style="background:#f0fdf4;padding:10px;">';
+        itemFotos += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">';
         (it.fotosDepois||[]).forEach(function(u,fi){
-          var dc=(it.fotosDepoisDesc&&it.fotosDepoisDesc[fi])||'';
-          itemFotos += '<div><img src="'+u+'" style="width:100%;height:90px;object-fit:cover;border-radius:5px;border:1px solid #86efac;display:block;">'+(dc?'<div style="font-size:8px;color:#14532d;text-align:center;margin-top:2px;">'+escHtml(dc)+'</div>':'')+'</div>';
+          var dc = (it.fotosDepoisDesc&&it.fotosDepoisDesc[fi])||'';
+          itemFotos += '<div style="border-radius:7px;overflow:hidden;border:1px solid #86efac;background:#fff;">';
+          itemFotos += '<img src="'+u+'" style="width:100%;height:130px;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;">';
+          if(dc) itemFotos += '<div style="font-size:8px;color:#14532d;text-align:center;padding:3px 5px;background:#f0fdf4;border-top:1px solid #86efac;font-weight:600;">'+escHtml(dc)+'</div>';
+          itemFotos += '</div>';
         });
         itemFotos += '</div>';
-      } else { itemFotos += '<div style="font-size:10px;color:#d1d5db;font-style:italic;text-align:center;padding:10px;">Sem fotos de depois</div>'; }
+        if(it.resposta){
+          itemFotos += '<div style="margin-top:8px;background:#dcfce7;border-radius:7px;padding:8px 12px;font-size:11px;color:#14532d;line-height:1.5;border:1px solid #86efac;">';
+          itemFotos += '<span style="font-weight:700;">📝 Resposta: </span>'+escHtml(it.resposta);
+          itemFotos += '</div>';
+        }
+        itemFotos += '</div>';
+      } else {
+        itemFotos += '<div style="background:#f0fdf4;padding:14px;text-align:center;font-size:11px;color:#9ca3af;font-style:italic;">⏳ Aguardando evidência</div>';
+      }
       itemFotos += '</div>';
-      itemFotos += '</div>'; // close grid
+
     } else if(hasLegacy){
       itemFotos = photoGrid(it.fotos||[], '');
     }
