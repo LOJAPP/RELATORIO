@@ -1,2 +1,2 @@
-# ⚓ Jacarandá — build 20260505_1857
-Commit: `build 20260505_1857 - consolidar inspecoes + PDF fotos amplas + adicionar semana`
+# ⚓ Jacarandá — build 20260505_1915
+Commit: `build 20260505_1915 - antes depois + dar OK rapido + mini preview no card`

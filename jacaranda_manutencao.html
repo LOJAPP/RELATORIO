@@ -3716,16 +3716,45 @@ function buildConsolidadoHTML(insps, opts){
            + '</div>';
         if(it.desc) h += '<div class="item-body-text">'+escHtml(it.desc)+'</div>';
         if(opts.incRespostas && it.resposta) h += '<div class="item-resp">✅ Evidência: '+escHtml(it.resposta)+'</div>';
-        // Item photos (4 per row)
-        if(opts.incFotos && (it.fotos||[]).length){
-          h += '<div class="photo-grid">';
-          it.fotos.forEach(function(u, fi){
-            var desc = (it.fotosDesc&&it.fotosDesc[fi])||'';
-            h += '<div class="photo-cell"><img src="'+u+'" alt="foto '+(fi+1)+'">'
-               + (desc?'<div class="photo-label">'+escHtml(desc)+'</div>':'')
-               + '</div>';
-          });
-          h += '</div>';
+        // Before / After photos
+        if(opts.incFotos){
+          var hasA = (it.fotosAntes||[]).length>0;
+          var hasD = (it.fotosDepois||[]).length>0;
+          var hasL = (it.fotos||[]).length>0;
+          if(hasA || hasD){
+            var okSt = it.statusOk?'<span style="background:#16a34a;color:#fff;font-size:8px;font-weight:700;padding:1px 8px;border-radius:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"> ✅ OK</span>':'';
+            h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 10px 10px;">';
+            // ANTES
+            h += '<div style="background:#fff8f8;border:1px solid #fecdd3;border-radius:7px;padding:8px;">'
+               + '<div style="font-size:8px;font-weight:700;color:#991b1b;text-transform:uppercase;margin-bottom:6px;">📷 ANTES</div>';
+            if(hasA){
+              h += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px;">';
+              (it.fotosAntes||[]).slice(0,4).forEach(function(u,fi){
+                var dc=(it.fotosAntesDesc&&it.fotosAntesDesc[fi])||'';
+                h += '<div><img src="'+u+'" style="width:100%;height:85px;object-fit:cover;border-radius:4px;border:1px solid #fca5a5;display:block;">'+(dc?'<div style="font-size:7px;color:#991b1b;text-align:center;margin-top:2px;">'+escHtml(dc)+'</div>':'')+'</div>';
+              });
+              h += '</div>';
+            } else h += '<div style="font-size:10px;color:#d1d5db;font-style:italic;text-align:center;padding:8px;">Sem fotos de antes</div>';
+            h += '</div>';
+            // DEPOIS
+            h += '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:7px;padding:8px;">'
+               + '<div style="font-size:8px;font-weight:700;color:#14532d;text-transform:uppercase;margin-bottom:6px;">✅ DEPOIS'+okSt+'</div>';
+            if(it.dataExecucao) h += '<div style="font-size:8px;color:#16a34a;margin-bottom:5px;">📅 '+it.dataExecucao+'</div>';
+            if(hasD){
+              h += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px;">';
+              (it.fotosDepois||[]).slice(0,4).forEach(function(u,fi){
+                var dc=(it.fotosDepoisDesc&&it.fotosDepoisDesc[fi])||'';
+                h += '<div><img src="'+u+'" style="width:100%;height:85px;object-fit:cover;border-radius:4px;border:1px solid #86efac;display:block;">'+(dc?'<div style="font-size:7px;color:#14532d;text-align:center;margin-top:2px;">'+escHtml(dc)+'</div>':'')+'</div>';
+              });
+              h += '</div>';
+            } else h += '<div style="font-size:10px;color:#d1d5db;font-style:italic;text-align:center;padding:8px;">Aguardando fotos de depois</div>';
+            h += '</div>';
+            h += '</div>';
+          } else if(hasL){
+            h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:6px 10px 10px;">';
+            (it.fotos||[]).slice(0,4).forEach(function(u){ h += '<div style="height:80px;border-radius:5px;overflow:hidden;border:1px solid #e5e7eb;"><img src="'+u+'" style="width:100%;height:100%;object-fit:cover;display:block;"></div>'; });
+            h += '</div>';
+          }
         }
         h += '</div>';
       });
@@ -6001,9 +6030,47 @@ function renderInspCard(ins, i, showEdit=true){
       itemsHtml+='<span style="'+ifc+';font-size:9px;font-weight:700;padding:1px 7px;border-radius:8px;">'+ifi+' '+it.result+'</span>';
       if(it.dept) itemsHtml+='<span style="font-size:10px;color:var(--text-dim);">🏢 '+it.dept+'</span>';
       if(it.respItemNm) itemsHtml+='<span style="font-size:10px;color:var(--text-dim);">👷 '+it.respItemNm+'</span>';
+      // Before/After photo counts
+      if((it.fotosAntes||[]).length) itemsHtml+='<span style="font-size:10px;background:#fef2f2;color:#991b1b;padding:1px 6px;border-radius:6px;border:1px solid #fca5a5;">📷 '+it.fotosAntes.length+' antes</span>';
+      if((it.fotosDepois||[]).length) itemsHtml+='<span style="font-size:10px;background:#f0fdf4;color:#14532d;padding:1px 6px;border-radius:6px;border:1px solid #86efac;">'+(it.statusOk?'✅':'📷')+' '+it.fotosDepois.length+' depois</span>';
+      if(it.statusOk) itemsHtml+='<span style="font-size:10px;background:#16a34a;color:#fff;padding:1px 7px;border-radius:8px;font-weight:700;">✅ OK</span>'+(it.dataExecucao?'<span style="font-size:10px;color:var(--text-dim);">'+it.dataExecucao+'</span>':'');
       itemsHtml+='</div>';
       if(it.desc) itemsHtml+='<div style="font-size:11px;color:var(--text-dim);white-space:pre-wrap;">'+escHtml(it.desc)+'</div>';
-      itemsHtml+=itFotos+'</div>';
+      // Resposta / evidência
+      if(it.resposta) itemsHtml+='<div style="font-size:11px;background:#f0fdf4;border-left:3px solid #16a34a;padding:4px 8px;margin-top:4px;color:#14532d;border-radius:0 4px 4px 0;">📝 '+escHtml(it.resposta)+'</div>';
+      // Mini antes/depois grid
+      var hasA=(it.fotosAntes||[]).length>0, hasD=(it.fotosDepois||[]).length>0;
+      if(hasA||hasD){
+        itemsHtml+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;">';
+        // ANTES
+        itemsHtml+='<div style="background:#fff8f8;border:1px solid #fecdd3;border-radius:6px;padding:6px;">';
+        itemsHtml+='<div style="font-size:9px;font-weight:700;color:#991b1b;margin-bottom:4px;text-transform:uppercase;">📷 Antes</div>';
+        if(hasA){
+          itemsHtml+='<div style="display:flex;flex-wrap:wrap;gap:3px;">';
+          (it.fotosAntes||[]).slice(0,4).forEach(function(u){ itemsHtml+='<img src="'+u+'" onclick="viewP(\''+u+'\')" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #fca5a5;cursor:pointer;">'; });
+          itemsHtml+='</div>';
+        } else { itemsHtml+='<div style="font-size:10px;color:#d1d5db;font-style:italic;">Sem fotos</div>'; }
+        itemsHtml+='</div>';
+        // DEPOIS
+        itemsHtml+='<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:6px;">';
+        itemsHtml+='<div style="font-size:9px;font-weight:700;color:#14532d;margin-bottom:4px;text-transform:uppercase;">'+(it.statusOk?'✅':'📷')+' Depois'+(it.dataExecucao?' · '+it.dataExecucao:'')+'</div>';
+        if(hasD){
+          itemsHtml+='<div style="display:flex;flex-wrap:wrap;gap:3px;">';
+          (it.fotosDepois||[]).slice(0,4).forEach(function(u){ itemsHtml+='<img src="'+u+'" onclick="viewP(\''+u+'\')" style="width:50px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #86efac;cursor:pointer;">'; });
+          itemsHtml+='</div>';
+        } else { itemsHtml+='<div style="font-size:10px;color:#d1d5db;font-style:italic;">Sem fotos</div>'; }
+        itemsHtml+='</div>';
+        itemsHtml+='</div>';
+      }
+      itemsHtml+=itFotos;
+      // Quick OK button (only if not yet OK)
+      if(!it.statusOk && it.result!=='Conforme' && showEdit){
+        itemsHtml+='<div style="margin-top:6px;">';
+        itemsHtml+='<button onclick="darOkItem(\''+ins.id+'\','+j+')" style="background:#f0fdf4;border:1px solid #86efac;color:#14532d;font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;cursor:pointer;">✅ Marcar como Executado</button>';
+        itemsHtml+='<button onclick="openEditInsp(\''+ins.id+'\')" style="background:none;border:none;color:var(--text-dim);font-size:11px;cursor:pointer;margin-left:8px;">📷 Adicionar fotos antes/depois</button>';
+        itemsHtml+='</div>';
+      }
+      itemsHtml+='</div>';
     });
     itemsHtml+='</div>';
   }
@@ -6024,6 +6091,7 @@ function renderInspCard(ins, i, showEdit=true){
     actionBar+='<button class="btn btn-primary btn-sm" onclick="openEditInsp(\''+ins.id+'\')">✏️ Editar</button>';
     if(isOpen){
       actionBar+='<button class="btn btn-green btn-sm" onclick="fecharInsp(\''+ins.id+'\')">✅ Marcar Conforme</button>';
+      actionBar+='<button class="btn btn-sm" onclick="darOkRapido(\''+ins.id+'\')" style="background:#f0fdf4;border:1px solid #86efac;color:#14532d;font-weight:700;">📷 Antes/Depois + OK</button>';
     } else {
       actionBar+='<button class="btn btn-ghost btn-sm" onclick="reabrirInsp(\''+ins.id+'\')">🔄 Reabrir</button>';
     }
@@ -6108,8 +6176,49 @@ function duplicarInsp(id){
   toast('📋 Duplicada — edite os detalhes','ok');
 }
 
-var _editInspId   = null;
-var _iePhotos     = {};
+// ── Quick Before/After + OK ──
+function darOkRapido(id){
+  _editInspId = id;
+  _iePhotos   = {};
+  _editParticipants = [];
+  showPage('insp-edit');
+  // Auto-expand all items that are not yet OK
+  setTimeout(function(){
+    var ins = S.inspecoes.find(function(i){return i.id===id;});
+    if(!ins) return;
+    (ins.items||[]).forEach(function(it,j){
+      if(!it.statusOk && it.result !== 'Conforme'){
+        var body = document.getElementById('ie-item-body-'+j);
+        var chev = document.getElementById('ie-item-toggle-'+j);
+        if(body) body.style.display='block';
+        if(chev) chev.textContent='▲';
+      }
+    });
+    // Scroll to first pending item
+    var firstPend = document.querySelector('[id^="ie-item-body-"]');
+    if(firstPend) firstPend.scrollIntoView({behavior:'smooth',block:'start'});
+    toast('📷 Adicione fotos ANTES e DEPOIS de cada pendência e marque ✅ OK','ok');
+  }, 400);
+}
+
+// ── Item-level quick OK from list view ──
+function darOkItem(insId, j){
+  var ins = S.inspecoes.find(function(i){return i.id===insId;});
+  if(!ins||!ins.items||!ins.items[j]) return;
+  var it = ins.items[j];
+  if(it.statusOk){ toast('ℹ️ Item já está OK','ok'); return; }
+  it.statusOk = true;
+  it.result   = 'Conforme';
+  it.dataExecucao = it.dataExecucao || new Date().toISOString().slice(0,10);
+  // Check if all items are now OK
+  var allOk = (ins.items||[]).every(function(i){return i.statusOk||i.result==='Conforme';});
+  if(allOk){ ins.result='Conforme'; ins.ts=Date.now(); }
+  saveData(true);
+  renderInspecao();
+  toast('✅ Item marcado OK'+(allOk?' · Inspeção Conforme!':''),'ok');
+}
+
+
 var _editParticipants = [];  // array of crew IDs
 
 function renderParticipants(ids){
@@ -6276,13 +6385,40 @@ function renderInspEdit(){
         +'<input type="text" value="'+escHtml(dv)+'" placeholder="Descrição..." oninput="savePhotoDesc('+j+','+fi+',this.value)" style="width:68px;font-size:9px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-family:inherit;">'
         +'</div>';
     });
+    var fa=(it.fotosAntes||[]);  var fd=(it.fotosDepois||[]);
+    var faD=it.fotosAntesDesc||[];  var fdD=it.fotosDepoisDesc||[];
+    var execDate=it.dataExecucao||'';  var isOk=it.statusOk?' checked':'';
+
+    function mkAntesFoto(u,fi){
+      var dv=faD[fi]||'';
+      return '<div style="display:inline-flex;flex-direction:column;gap:3px;align-items:center;margin:2px;">'
+        +'<div style="position:relative;"><img src="'+u+'" onclick="viewP(\''+u+'\')" style="width:68px;height:68px;object-fit:cover;border-radius:6px;border:1.5px solid #fca5a5;cursor:pointer;display:block;">'
+        +'<button onclick="removeFotoAntes('+j+','+fi+')" style="position:absolute;top:-5px;right:-5px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:1;z-index:2;">✕</button>'
+        +'</div>'
+        +'<input type="text" value="'+escHtml(dv)+'" placeholder="Desc..." oninput="saveFotoAntesDesc('+j+','+fi+',this.value)" style="width:68px;font-size:9px;border:1px solid #fca5a5;border-radius:4px;padding:2px 4px;">'
+        +'</div>';
+    }
+    function mkDepoisFoto(u,fi){
+      var dv=fdD[fi]||'';
+      return '<div style="display:inline-flex;flex-direction:column;gap:3px;align-items:center;margin:2px;">'
+        +'<div style="position:relative;"><img src="'+u+'" onclick="viewP(\''+u+'\')" style="width:68px;height:68px;object-fit:cover;border-radius:6px;border:1.5px solid #86efac;cursor:pointer;display:block;">'
+        +'<button onclick="removeFotoDepois('+j+','+fi+')" style="position:absolute;top:-5px;right:-5px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:1;z-index:2;">✕</button>'
+        +'</div>'
+        +'<input type="text" value="'+escHtml(dv)+'" placeholder="Desc..." oninput="saveFotoDepoisDesc('+j+','+fi+',this.value)" style="width:68px;font-size:9px;border:1px solid #86efac;border-radius:4px;padding:2px 4px;">'
+        +'</div>';
+    }
+    var fotosAntesHTML  = fa.map(mkAntesFoto).join('');
+    var fotosDepoisHTML = fd.map(mkDepoisFoto).join('');
+
 
     div.innerHTML =
       '<div style="background:var(--bg);padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;" onclick="toggleIEItem('+j+')">'
         +'<span style="background:'+icolor+';color:#fff;font-family:monospace;font-size:9px;padding:2px 7px;border-radius:4px;">#'+String(j+1).padStart(2,'0')+'</span>'
         +'<span style="font-size:13px;font-weight:700;flex:1;min-width:120px;">'+escHtml(it.area||'(sem área)')+'</span>'
         +'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:'+icolor+'22;color:'+icolor+';">'+it.result+'</span>'
-        +((it.fotos||[]).length?'<span style="font-size:10px;color:var(--text-dim);">📷 '+(it.fotos||[]).length+'</span>':'')
+        +((it.fotosAntes||[]).length?'<span style="font-size:10px;background:#fef2f2;color:#991b1b;padding:1px 6px;border-radius:6px;border:1px solid #fca5a5;">📷 '+(it.fotosAntes||[]).length+' antes</span>':'')
+        +((it.fotosDepois||[]).length?'<span style="font-size:10px;background:#f0fdf4;color:#14532d;padding:1px 6px;border-radius:6px;border:1px solid #86efac;">'+(it.statusOk?'✅':'📷')+' '+(it.fotosDepois||[]).length+' depois</span>':'')
+        +(it.statusOk?'<span style="font-size:10px;background:#16a34a;color:#fff;padding:1px 7px;border-radius:8px;font-weight:700;">✅ OK</span>':'')
         +'<span style="font-size:12px;color:var(--text-dim);" id="ie-item-toggle-'+j+'">▼</span>'
       +'</div>'
       +'<div id="ie-item-body-'+j+'" style="padding:12px;display:none;">'
@@ -6304,19 +6440,39 @@ function renderInspEdit(){
           +'<label style="color:var(--login-green-dk);">📝 Resposta / Evidência de Conformidade</label>'
           +'<textarea class="form-control" id="ie-resposta-'+j+'" style="min-height:56px;border-color:'+(it.resposta?'var(--login-green)':'var(--border)')+';background:'+(it.resposta?'var(--login-green-xlt)':'#fff')+';" placeholder="Descreva a ação corretiva tomada, conformidade verificada ou evidência de resolução...">'+escHtml(it.resposta||'')+'</textarea>'
         +'</div>'
-        // Photos section
-        +'<div style="margin-top:8px;">'
-          +'<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">📷 Fotos do Item <span style="font-weight:400;">(antes / depois / conformidade)</span></div>'
-          +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;" id="ie-fotos-item-'+j+'">'
-            +existFotosHTML
-          +'</div>'
-          +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'
-            +'<label class="btn btn-primary btn-sm" style="cursor:pointer;font-size:11px;">📷 Câmera'
-              +'<input type="file" accept="image/*" capture="environment" style="display:none" onchange="addInspEditPhoto(this,\'item-'+j+'\')"></label>'
-            +'<label class="btn btn-ghost btn-sm" style="cursor:pointer;font-size:11px;">🖼 Galeria'
-              +'<input type="file" accept="image/*" multiple style="display:none" onchange="addInspEditPhoto(this,\'item-'+j+'\')"></label>'
-          +'</div>'
-          +'<div id="ie-fotos-staged-'+j+'" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>'
+        // ── ANTES / DEPOIS ──
+        +'<div style="margin-top:10px;">'
+        // ANTES
+        +'<div style="background:#fff8f8;border:1px solid #fecdd3;border-radius:8px;padding:10px 12px;margin-bottom:8px;">'
+        +'<div style="font-size:11px;font-weight:800;color:#991b1b;margin-bottom:8px;display:flex;align-items:center;gap:6px;">📷 ANTES — Achado / Problema'
+        +(fa.length?'<span style="background:#dc2626;color:#fff;font-size:9px;padding:1px 8px;border-radius:8px;">'+fa.length+'</span>':'')+'</div>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;" id="ie-fotos-antes-'+j+'">'
+        +fotosAntesHTML+'</div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+          +'<label class="btn btn-sm" style="cursor:pointer;font-size:11px;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;">📷 Câmera (Antes)'
+            +'<input type="file" accept="image/*" capture="environment" style="display:none" onchange="addFotoAntes(this,'+j+')"></label>'
+          +'<label class="btn btn-sm" style="cursor:pointer;font-size:11px;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;">🖼 Galeria'
+            +'<input type="file" accept="image/*" multiple style="display:none" onchange="addFotoAntes(this,'+j+')"></label>'
+        +'</div></div>'
+        // DEPOIS
+        +'<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 12px;margin-bottom:6px;">'
+        +'<div style="font-size:11px;font-weight:800;color:#14532d;margin-bottom:8px;display:flex;align-items:center;gap:6px;">✅ DEPOIS — Evidência / Resolução'
+        +(fd.length?'<span style="background:#16a34a;color:#fff;font-size:9px;padding:1px 8px;border-radius:8px;">'+fd.length+'</span>':'')+'</div>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;" id="ie-fotos-depois-'+j+'">'
+        +fotosDepoisHTML+'</div>'
+        +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">'
+          +'<div><label style="font-size:10px;font-weight:700;color:#14532d;display:block;margin-bottom:3px;">📅 Data de Execução</label>'
+            +'<input type="date" class="form-control" id="ie-data-exec-'+j+'" value="'+execDate+'" style="border-color:#86efac;max-width:160px;"></div>'
+          +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:700;color:#14532d;">'
+            +'<input type="checkbox" id="ie-ok-'+j+'"'+isOk+'> ✅ Pendência Executada / OK</label>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+          +'<label class="btn btn-sm" style="cursor:pointer;font-size:11px;background:#16a34a;color:#fff;">📷 Câmera (Depois)'
+            +'<input type="file" accept="image/*" capture="environment" style="display:none" onchange="addFotoDepois(this,'+j+')"></label>'
+          +'<label class="btn btn-sm" style="cursor:pointer;font-size:11px;background:#f0fdf4;border:1px solid #86efac;color:#14532d;">🖼 Galeria'
+            +'<input type="file" accept="image/*" multiple style="display:none" onchange="addFotoDepois(this,'+j+')"></label>'
+        +'</div></div>'
+        +'</div>'
         +'</div>'
         +'<div style="margin-top:10px;display:flex;gap:6px;">'
           +'<button class="btn btn-ghost btn-sm" onclick="toggleIEItem('+j+')">▲ Recolher</button>'
@@ -6380,6 +6536,55 @@ function addInspEditPhoto(input, key){
             gfEl.innerHTML='';
             thumbs.forEach(function(t){gfEl.appendChild(t);});
           }
+function addFotoAntes(input,j){
+  Array.from(input.files).forEach(function(f){
+    var fr=new FileReader();
+    fr.onload=function(e){compress(f,function(u){
+      if(!_iePhotos['antes-'+j])_iePhotos['antes-'+j]=[];
+      _iePhotos['antes-'+j].push(u);
+      renderInspEdit();
+    });};
+    fr.readAsDataURL(f);
+  });
+  input.value='';
+}
+function addFotoDepois(input,j){
+  Array.from(input.files).forEach(function(f){
+    var fr=new FileReader();
+    fr.onload=function(e){compress(f,function(u){
+      if(!_iePhotos['depois-'+j])_iePhotos['depois-'+j]=[];
+      _iePhotos['depois-'+j].push(u);
+      renderInspEdit();
+    });};
+    fr.readAsDataURL(f);
+  });
+  input.value='';
+}
+function removeFotoAntes(j,fi){
+  var ins=S.inspecoes.find(function(i){return i.id===_editInspId;});
+  if(ins&&ins.items&&ins.items[j])ins.items[j].fotosAntes=(ins.items[j].fotosAntes||[]).filter(function(_,i){return i!==fi;});
+  renderInspEdit();
+}
+function removeFotoDepois(j,fi){
+  var ins=S.inspecoes.find(function(i){return i.id===_editInspId;});
+  if(ins&&ins.items&&ins.items[j])ins.items[j].fotosDepois=(ins.items[j].fotosDepois||[]).filter(function(_,i){return i!==fi;});
+  renderInspEdit();
+}
+function saveFotoAntesDesc(j,fi,d){
+  var ins=S.inspecoes.find(function(i){return i.id===_editInspId;});
+  if(!ins||!ins.items||!ins.items[j])return;
+  if(!ins.items[j].fotosAntesDesc)ins.items[j].fotosAntesDesc=[];
+  ins.items[j].fotosAntesDesc[fi]=d;
+  clearTimeout(saveFotoAntesDesc._t);saveFotoAntesDesc._t=setTimeout(function(){saveData(true);},800);
+}
+function saveFotoDepoisDesc(j,fi,d){
+  var ins=S.inspecoes.find(function(i){return i.id===_editInspId;});
+  if(!ins||!ins.items||!ins.items[j])return;
+  if(!ins.items[j].fotosDepoisDesc)ins.items[j].fotosDepoisDesc=[];
+  ins.items[j].fotosDepoisDesc[fi]=d;
+  clearTimeout(saveFotoDepoisDesc._t);saveFotoDepoisDesc._t=setTimeout(function(){saveData(true);},800);
+}
+
         } else {
           // item staged area
           var j = parseInt(key.replace('item-',''));
@@ -6572,6 +6777,10 @@ function saveEditInsp(){
     // Staged photos for this item
     var staged=_iePhotos['item-'+j]||[];
     it.fotos=(it.fotos||[]).concat(staged);
+    var sa=_iePhotos['antes-'+j]||[];  it.fotosAntes=(it.fotosAntes||[]).concat(sa);
+    var sd=_iePhotos['depois-'+j]||[]; it.fotosDepois=(it.fotosDepois||[]).concat(sd);
+    var de=document.getElementById('ie-data-exec-'+j); if(de) it.dataExecucao=de.value||'';
+    var ok=document.getElementById('ie-ok-'+j); if(ok){it.statusOk=ok.checked;if(it.statusOk&&it.result!=='Conforme')it.result='Conforme';}
   });
 
   _iePhotos={};
@@ -6784,7 +6993,45 @@ function printInspCard(id){
   (ins.items||[]).forEach(function(it, j){
     var IC = COLORS[it.result] || COLORS['Pendente'];
     var ii = ICONS[it.result]  || '—';
-    var itemFotos = photoGrid(it.fotos||[], '');
+    var itemFotos = '';
+    // Before / After comparison
+    var hasAntes  = (it.fotosAntes||[]).length > 0;
+    var hasDepois = (it.fotosDepois||[]).length > 0;
+    var hasLegacy = (it.fotos||[]).length > 0;
+    if(hasAntes || hasDepois){
+      // Show side-by-side before/after columns
+      itemFotos += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;">';
+      // ANTES
+      itemFotos += '<div style="background:#fff8f8;border:1px solid #fecdd3;border-radius:8px;padding:8px;">';
+      itemFotos += '<div style="font-size:9px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">📷 ANTES — Achado</div>';
+      if(hasAntes){
+        itemFotos += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:5px;">';
+        (it.fotosAntes||[]).forEach(function(u,fi){
+          var dc=(it.fotosAntesDesc&&it.fotosAntesDesc[fi])||'';
+          itemFotos += '<div><img src="'+u+'" style="width:100%;height:90px;object-fit:cover;border-radius:5px;border:1px solid #fca5a5;display:block;">'+(dc?'<div style="font-size:8px;color:#991b1b;text-align:center;margin-top:2px;">'+escHtml(dc)+'</div>':'')+'</div>';
+        });
+        itemFotos += '</div>';
+      } else { itemFotos += '<div style="font-size:10px;color:#d1d5db;font-style:italic;text-align:center;padding:10px;">Sem fotos de antes</div>'; }
+      itemFotos += '</div>';
+      // DEPOIS
+      var okStamp = it.statusOk
+        ? '<div style="background:#16a34a;color:#fff;font-size:9px;font-weight:700;padding:1px 8px;border-radius:8px;display:inline-block;margin-left:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">✅ OK</div>' : '';
+      itemFotos += '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px;">';
+      itemFotos += '<div style="font-size:9px;font-weight:700;color:#14532d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">✅ DEPOIS — Resolução'+okStamp+'</div>';
+      if(it.dataExecucao) itemFotos += '<div style="font-size:9px;color:#16a34a;margin-bottom:5px;">📅 Executado: '+it.dataExecucao+'</div>';
+      if(hasDepois){
+        itemFotos += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:5px;">';
+        (it.fotosDepois||[]).forEach(function(u,fi){
+          var dc=(it.fotosDepoisDesc&&it.fotosDepoisDesc[fi])||'';
+          itemFotos += '<div><img src="'+u+'" style="width:100%;height:90px;object-fit:cover;border-radius:5px;border:1px solid #86efac;display:block;">'+(dc?'<div style="font-size:8px;color:#14532d;text-align:center;margin-top:2px;">'+escHtml(dc)+'</div>':'')+'</div>';
+        });
+        itemFotos += '</div>';
+      } else { itemFotos += '<div style="font-size:10px;color:#d1d5db;font-style:italic;text-align:center;padding:10px;">Sem fotos de depois</div>'; }
+      itemFotos += '</div>';
+      itemFotos += '</div>'; // close grid
+    } else if(hasLegacy){
+      itemFotos = photoGrid(it.fotos||[], '');
+    }
     var resposta  = it.resposta || '';
 
     itemsHtml +=
