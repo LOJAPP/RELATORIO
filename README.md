@@ -1,2 +1,2 @@
-# ⚓ Jacarandá — build 20260505_2202
-Commit: `build 20260505_2202 - fotos inspecao protegidas + DEPOIS evidencia + adicionar semana`
+# ⚓ Jacarandá — build 20260505_2233
+Commit: `build 20260505_2233 - CORRIGE fotos depois/evidencia (double FileReader bug)`
