@@ -621,6 +621,7 @@
     <div class="topbar-right">
       <div class="clock" id="clock-el">--:--:--</div>
       <button class="btn btn-ghost btn-sm" onclick="exportPDF()">🖨 PDF</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportHTMLFile()" title="Exporta o app com todos os dados para compartilhar com outro celular">📦 Compartilhar App</button>
       <button class="btn btn-ghost btn-sm" onclick="exportJSON()">⬇ Backup</button>
       <button class="btn btn-primary btn-sm" onclick="saveData()">💾 Salvar</button>
     </div>
@@ -693,7 +694,7 @@
           <div class="section-title">📷 Fotos da Atividade</div>
           <div class="compress-info">⚡ Fotos comprimidas automaticamente (máx. 1024px / JPEG 70%). Reduz 3–5MB para ~150KB.</div>
           <label class="photo-drop-zone" for="foto-reg">📷 Clique para tirar foto ou selecionar arquivo<br><small>Múltiplos arquivos aceitos — câmera do dispositivo disponível</small></label>
-          <input type="file" id="foto-reg" accept="image/*" multiple capture="environment" style="display:none" onchange="addPhotos(this.files,'reg')">
+          <input type="file" id="foto-reg" accept="image/*" multiple style="display:none" onchange="addPhotos(this.files,'reg')">
           <div class="photo-grid" id="pg-reg"></div>
           <div class="sep"></div>
           <div style="display:flex;gap:10px;">
@@ -916,7 +917,7 @@
         <div class="panel-header">📤 Adicionar Fotos</div>
         <div style="padding:14px;">
           <label class="photo-drop-zone" for="foto-av">📷 Clique para selecionar ou tirar foto (câmera)<br><small>Múltiplos arquivos</small></label>
-          <input type="file" id="foto-av" accept="image/*" multiple capture="environment" style="display:none" onchange="addPhotos(this.files,'av')">
+          <input type="file" id="foto-av" accept="image/*" multiple style="display:none" onchange="addPhotos(this.files,'av')">
           <div class="photo-grid" id="pg-av"></div>
           <div class="form-row" style="margin-top:12px;">
             <div class="form-group"><label>Associar ao Registro</label><select class="form-control" id="foto-assoc"><option value="">— Foto avulsa —</option></select></div>
@@ -1747,7 +1748,7 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
                   📷 Câmera<input type="file" accept="image/*" capture="environment" style="display:none" onchange="addInspEditPhoto(this,'general')">
                 </label>
                 <label class="btn btn-ghost btn-sm" style="cursor:pointer;">
-                  🖼 Galeria<input type="file" accept="image/*" multiple style="display:none" onchange="addInspEditPhoto(this,'general')">
+                  🖼 Galeria<input type="file" accept="image/*" multiple="multiple" style="display:none" onchange="addInspEditPhoto(this,'general')">
                 </label>
               </div>
               <div id="ie-fotos-general" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
@@ -2250,6 +2251,26 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
 </div>
 
 <script>
+// ── Load embedded data if this HTML was shared from another device ──
+(function(){
+  if(!window.__JDATA__) return;
+  try{
+    var d = window.__JDATA__;
+    var existing = '';
+    try{ existing = localStorage.getItem('jac_v5')||''; }catch(e){}
+    if(!existing || existing==='{}' || existing==='null'){
+      localStorage.setItem('jac_v5', JSON.stringify(d));
+      console.log('[Jacarandá] Dados do dispositivo de origem carregados.');
+    } else {
+      // Show prompt after DOM ready
+      window.__JDATA_PENDING__ = d;
+    }
+  }catch(e){ console.warn('[Jacarandá] Seed error:', e); }
+  delete window.__JDATA__;
+})();
+
+
+
 // ── STATE ──
 let S={regs:[],crew:[],fotos:[],empresas:[],oficina:[],desvios:[],inspecoes:[],tp:{reg:[],av:[],of:[],insp:[]}};
 let activeDept='Todos', curWeek=null;
@@ -2292,7 +2313,7 @@ function saveData(silent=false){
 function storStatus(){
   const el=document.getElementById('stor-status');if(!el)return;
   try{const s=localStorage.getItem('jac_v5')||'';const kb=Math.round(s.length/1024);
-  el.innerHTML=`📦 ${kb} KB usados &nbsp;|&nbsp; 📋 ${S.regs.length} registros &nbsp;|&nbsp; 👥 ${S.crew.length} tripulantes &nbsp;|&nbsp; 📷 ${S.fotos.length} fotos avulsas &nbsp;|&nbsp; ⚠️ ${S.desvios.length} desvios`;}catch(e){}
+  el.innerHTML=`💾 Salvo no dispositivo &nbsp;·&nbsp; 📦 ${kb} KB &nbsp;·&nbsp; 📋 ${S.regs.length} registros &nbsp;·&nbsp; 🔍 ${S.inspecoes.length} inspeções &nbsp;|&nbsp; 📷 ${S.fotos.length} fotos avulsas &nbsp;|&nbsp; ⚠️ ${S.desvios.length} desvios`;}catch(e){}
   renderModulosStatus();
 }
 
@@ -4080,6 +4101,32 @@ function exportJSON(){
   recordBackupHistory(fileName,'Downloads','Download Manual');
   toast('Backup: '+fileName,'ok');
 }
+
+// ── Export full HTML + data for sharing to other devices ──
+function exportHTMLFile(){
+  var dataJSON = JSON.stringify({
+    regs:S.regs, crew:S.crew, fotos:S.fotos, empresas:S.empresas,
+    oficina:S.oficina, desvios:S.desvios, inspecoes:S.inspecoes,
+    _exportTs: Date.now(), _exportDev: getCfg()?.vessel?.vessel||'Jacarandá'
+  });
+  // Try to fetch the current HTML and embed data
+  fetch(window.location.href)
+  .then(function(r){ return r.text(); })
+  .then(function(html){
+    var seed = '<script>window.__JDATA__='+dataJSON+';<\/script>';
+    var out  = html.replace('<head>', '<head>'+seed);
+    var blob = new Blob([out], {type:'text/html'});
+    var fname = 'jacaranda_'+new Date().toISOString().slice(0,10)+'.html';
+    var a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click();
+    toast('📦 Arquivo com dados gerado! Envie pelo WhatsApp para outro dispositivo.','ok');
+  })
+  .catch(function(){
+    exportJSON();
+    toast('💾 Dados exportados como JSON — envie para outro dispositivo','ok');
+  });
+}
+
+
 function saveNetConfig(){
   const cfg=getCfg();
   cfg.netFilename=document.getElementById('cfg-net-filename')?.value.trim()||'jacaranda_backup';
@@ -4389,9 +4436,25 @@ function buildSnapshotHTML(data,vessel,cmte,exportDate){
 \x3Cscript>
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
+  if('serviceWorker' in navigator){
     navigator.serviceWorker.register('./service-worker.js')
-      .then(r => console.log('SW registered'))
-      .catch(e => console.log('SW error:', e));
+    .then(function(reg){
+      reg.addEventListener('updatefound', function(){
+        var newSW = reg.installing;
+        newSW.addEventListener('statechange', function(){
+          if(newSW.state==='installed' && navigator.serviceWorker.controller){
+            // New version available
+            var bar = document.createElement('div');
+            bar.id='update-bar';
+            bar.style.cssText='position:fixed;bottom:60px;left:0;right:0;background:#1A5FA8;color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;z-index:9999;box-shadow:0 -2px 12px rgba(0,0,0,.3);';
+            bar.innerHTML='<span style="font-size:13px;font-weight:600;">🔄 Nova versão disponível</span><button onclick="window.location.reload()" style="background:#6DB847;color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;">Atualizar agora</button>';
+            document.body.appendChild(bar);
+          }
+        });
+      });
+    })
+    .catch(function(e){ console.warn('SW error',e); });
+  }
   });
 }
 \x3C/script>
@@ -6222,6 +6285,169 @@ function duplicarInsp(id){
   toast('📋 Duplicada — edite os detalhes','ok');
 }
 
+// ── Quick Evidence Upload (from inspection card list) ──
+var _qeInspId = null;
+var _qeItemIdx = null;
+
+function openQuickEvidence(insId, j){
+  _qeInspId = insId;
+  _qeItemIdx = j;
+  var ins = S.inspecoes.find(function(i){return i.id===insId;});
+  if(!ins||!ins.items||!ins.items[j]){ toast('❌ Item não encontrado','err'); return; }
+  var it = ins.items[j];
+
+  var modal = document.getElementById('modal-quick-evidence');
+  if(!modal){ modal=document.createElement('div'); modal.id='modal-quick-evidence'; modal.className='modal-overlay'; document.body.appendChild(modal); }
+
+  modal.style.display='flex'; modal.style.alignItems='center'; modal.style.justifyContent='center';
+
+  var RCOL={'Conforme':'#16a34a','Não Conforme':'#dc2626','Parcial':'#d97706','Pendente':'#7c3aed'};
+  var rc=RCOL[it.result]||'#6b7280';
+  var hasFotosD=(it.fotosDepois||[]).length>0;
+
+  modal.innerHTML=
+    '<div style="background:#fff;border-radius:14px;max-width:500px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.35);">'
+    +'<div style="background:linear-gradient(135deg,#07182e,#0e2540);color:#fff;padding:16px 20px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:10px;">'
+    +'<div style="flex:1;"><div style="font-size:14px;font-weight:800;">📋 Subir Evidência</div>'
+    +'<div style="font-size:11px;opacity:.7;margin-top:2px;">#'+('0'+(j+1)).slice(-2)+' '+escHtml(it.area||'—')+'</div></div>'
+    +'<button onclick="closeQE()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:7px;padding:5px 10px;cursor:pointer;">✕</button>'
+    +'</div>'
+    +'<div style="padding:16px;">'
+
+    // Status selector
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px;">Status da Pendência</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px;">'
+    +['Conforme','Executado','Parcial','Pendente'].map(function(s){
+        var sc={'Conforme':['✅','#16a34a','#f0fdf4','#14532d'],'Executado':['✅','#0ea5e9','#e0f2fe','#0c4a6e'],'Parcial':['⚠️','#d97706','#fffbeb','#78350f'],'Pendente':['🔄','#7c3aed','#f5f3ff','#4c1d95']};
+        var ci=sc[s]; var sel=(it.result===s||it.statusOk&&s==='Executado');
+        return '<div onclick="qeSetStatus(\''+s+'\')" id="qe-st-'+s+'" style="border:2px solid '+(sel?ci[1]:'#e5e7eb')+';border-radius:8px;padding:8px 4px;text-align:center;cursor:pointer;background:'+(sel?ci[2]:'#fff')+';color:'+(sel?ci[3]:'#6b7280')+';font-size:11px;font-weight:700;transition:all .15s;"><span style="font-size:18px;display:block;margin-bottom:3px;">'+ci[0]+'</span>'+s+'</div>';
+    }).join('')
+    +'</div>'
+
+    // Resposta text
+    +'<div style="margin-bottom:14px;">'
+    +'<label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;display:block;margin-bottom:5px;">📝 Descrição da Ação / Evidência</label>'
+    +'<textarea id="qe-resposta" style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;min-height:70px;resize:vertical;" placeholder="Descreva a ação tomada, data de execução, material utilizado...">'+escHtml(it.resposta||'')+'</textarea>'
+    +'</div>'
+
+    // Date + OK
+    +'<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">'
+    +'<div><label style="font-size:10px;font-weight:700;color:#14532d;display:block;margin-bottom:3px;">📅 Data de Execução</label>'
+    +'<input type="date" id="qe-data-exec" value="'+(it.dataExecucao||new Date().toISOString().slice(0,10))+'" style="border:1px solid #86efac;border-radius:6px;padding:6px 10px;font-size:12px;"></div>'
+    +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:700;color:#14532d;margin-top:16px;">'
+    +'<input type="checkbox" id="qe-ok"'+(it.statusOk?' checked':'')+' style="width:16px;height:16px;"> ✅ Pendência OK</label>'
+    +'</div>'
+
+    // DEPOIS photos
+    +'<div style="background:#f0fdf4;border:2px solid #86efac;border-radius:10px;padding:12px;">'
+    +'<div style="font-size:12px;font-weight:800;color:#14532d;margin-bottom:10px;display:flex;align-items:center;gap:6px;">✅ DEPOIS — Fotos de Evidência'+(hasFotosD?'<span style="background:#16a34a;color:#fff;font-size:9px;padding:1px 8px;border-radius:8px;">'+(it.fotosDepois||[]).length+'</span>':'')+'</div>'
+    // Show existing depois photos
+    +(hasFotosD?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;" id="qe-fotos-existentes">'
+      +(it.fotosDepois||[]).map(function(u,fi){
+          return '<div style="position:relative;"><img src="'+u+'" onclick="viewP(\''+u+'\')" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1.5px solid #86efac;cursor:pointer;display:block;">'
+            +'<button onclick="qeRemoveDepois('+fi+')" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;line-height:1;">✕</button>'
+            +'</div>';
+        }).join('')
+      +'</div>':'')
+    +'<div id="qe-novas-fotos" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;"></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    +'<label class="btn btn-sm" style="cursor:pointer;background:#16a34a;color:#fff;font-weight:700;">📷 Câmera<input type="file" accept="image/*" capture="environment" style="display:none" onchange="qeAddFoto(this)"></label>'
+    +'<label class="btn btn-sm" style="cursor:pointer;background:#f0fdf4;border:1px solid #86efac;color:#14532d;">🖼 Galeria<input type="file" accept="image/*" multiple="multiple" style="display:none" onchange="qeAddFoto(this)"></label>'
+    +'</div></div>'
+
+    // Save button
+    +'<div style="margin-top:14px;display:flex;gap:10px;">'
+    +'<button onclick="saveQE()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;flex:1;">💾 Salvar Evidência</button>'
+    +'<button onclick="closeQE()" style="background:#f3f4f6;color:#374151;border:none;border-radius:8px;padding:12px 16px;font-size:14px;cursor:pointer;">Cancelar</button>'
+    +'</div>'
+    +'</div></div>';
+
+  // close on backdrop
+  modal.onclick = function(e){ if(e.target===modal) closeQE(); };
+}
+
+var _qeNovasFotos = [];
+
+function qeAddFoto(input){
+  var files = Array.from(input.files); if(!files.length) return;
+  var done=0;
+  files.forEach(function(f){
+    var fr=new FileReader();
+    fr.onload=function(e){
+      compressDataURL(e.target.result,function(u){
+        _qeNovasFotos.push(u);
+        var grid=document.getElementById('qe-novas-fotos');
+        if(grid){
+          var idx=_qeNovasFotos.length-1;
+          var cell=document.createElement('div'); cell.style.position='relative';
+          cell.innerHTML='<img src="'+u+'" onclick="viewP(\''+u+'\')" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:2px solid #16a34a;cursor:pointer;display:block;">'
+            +'<div style="position:absolute;bottom:0;left:0;right:0;background:#16a34a;color:#fff;font-size:7px;font-weight:700;text-align:center;border-radius:0 0 5px 5px;">NOVA</div>'
+            +'<button onclick="qeRemoveNova('+idx+')" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;line-height:1;">✕</button>';
+          grid.appendChild(cell);
+        }
+        done++;
+      });
+    };
+    fr.readAsDataURL(f);
+  });
+  input.value='';
+}
+
+function qeRemoveNova(i){ _qeNovasFotos.splice(i,1); openQuickEvidence(_qeInspId,_qeItemIdx); }
+
+function qeRemoveDepois(fi){
+  var ins=S.inspecoes.find(function(i){return i.id===_qeInspId;});
+  if(!ins||!ins.items||!ins.items[_qeItemIdx]) return;
+  ins.items[_qeItemIdx].fotosDepois=(ins.items[_qeItemIdx].fotosDepois||[]).filter(function(_,i){return i!==fi;});
+  saveData(true);
+  openQuickEvidence(_qeInspId,_qeItemIdx);
+}
+
+function qeSetStatus(st){
+  var it=S.inspecoes.find(function(i){return i.id===_qeInspId;});
+  if(!it||!it.items||!it.items[_qeItemIdx]) return;
+  ['Conforme','Executado','Parcial','Pendente'].forEach(function(s){
+    var el=document.getElementById('qe-st-'+s);
+    if(!el) return;
+    var sc={'Conforme':['#16a34a','#f0fdf4','#14532d'],'Executado':['#0ea5e9','#e0f2fe','#0c4a6e'],'Parcial':['#d97706','#fffbeb','#78350f'],'Pendente':['#7c3aed','#f5f3ff','#4c1d95']};
+    var ci=sc[s]||['#6b7280','#fff','#6b7280'];
+    el.style.borderColor=s===st?ci[0]:'#e5e7eb';
+    el.style.background=s===st?ci[1]:'#fff';
+    el.style.color=s===st?ci[2]:'#6b7280';
+  });
+  it.items[_qeItemIdx].result=st==='Executado'?'Conforme':st;
+  it.items[_qeItemIdx].statusOk=(st==='Executado'||st==='Conforme');
+}
+
+function saveQE(){
+  var ins=S.inspecoes.find(function(i){return i.id===_qeInspId;});
+  if(!ins||!ins.items||!ins.items[_qeItemIdx]){ closeQE(); return; }
+  var it=ins.items[_qeItemIdx];
+  var resp=document.getElementById('qe-resposta');
+  var de=document.getElementById('qe-data-exec');
+  var ok=document.getElementById('qe-ok');
+  if(resp) it.resposta=resp.value;
+  if(de)   it.dataExecucao=de.value;
+  if(ok){  it.statusOk=ok.checked; if(it.statusOk) it.result='Conforme'; }
+  it.fotosDepois=(it.fotosDepois||[]).concat(_qeNovasFotos);
+  _qeNovasFotos=[];
+  // Check if all items OK
+  var allOk=(ins.items||[]).every(function(i){return i.statusOk||i.result==='Conforme';});
+  if(allOk) ins.result='Conforme';
+  ins.ts=Date.now();
+  saveData(true);
+  toast('✅ Evidência salva!'+(allOk?' · Inspeção Conforme!':''),'ok');
+  closeQE();
+  renderInspecao();
+}
+
+function closeQE(){
+  _qeNovasFotos=[];
+  var m=document.getElementById('modal-quick-evidence');
+  if(m) m.style.display='none';
+}
+
+
 // ── Quick Before/After + OK ──
 function darOkRapido(id){
   _editInspId = id;
@@ -6581,33 +6807,33 @@ function updateIEItemColor(j){
 
 // ── Add photo to inspection edit ──
 function addInspEditPhoto(input, key){
-  var files = Array.from(input.files);
+  var files=Array.from(input.files);
   if(!files.length) return;
   if(!_iePhotos[key]) _iePhotos[key]=[];
+  var done=0; var total=files.length;
   files.forEach(function(f){
-    var r = new FileReader();
-    r.onload = function(e){
-      compressDataURL(e.target.result, function(u){
+    var r=new FileReader();
+    r.onload=function(e){
+      compressDataURL(e.target.result,function(u){
         _iePhotos[key].push(u);
-        // Re-render just the photo area
-        if(key==='general'){
-          var gfEl=document.getElementById('ie-fotos-general');
-          if(gfEl){
-            var ins=S.inspecoes.find(function(i){return i.id===_editInspId;});
-            var existing=(ins&&ins.fotos)||[];
-            var thumbs=existing.map(function(u2,i2){return makePhotoThumb(u2,'g-ex-'+i2,function(){if(ins)ins.fotos.splice(i2,1);renderInspEdit();});});
-            _iePhotos['general'].forEach(function(u2,i2){thumbs.push(makePhotoThumb(u2,'g-st-'+i2,function(){_iePhotos['general'].splice(i2,1);renderInspEdit();},true));});
-            gfEl.innerHTML='';
-            thumbs.forEach(function(t){gfEl.appendChild(t);});
-          }
+        if(++done===total) renderInspEdit();
+      });
+    };
+    r.readAsDataURL(f);
+  });
+  input.value='';
+}
+
 function addFotoAntes(input,j){
-  Array.from(input.files).forEach(function(f){
+  var files=Array.from(input.files); if(!files.length)return;
+  if(!_iePhotos['antes-'+j])_iePhotos['antes-'+j]=[];
+  var done=0; var total=files.length;
+  files.forEach(function(f){
     var fr=new FileReader();
     fr.onload=function(e){
       compressDataURL(e.target.result,function(u){
-        if(!_iePhotos['antes-'+j])_iePhotos['antes-'+j]=[];
         _iePhotos['antes-'+j].push(u);
-        renderInspEdit();
+        if(++done===total) renderInspEdit();
       });
     };
     fr.readAsDataURL(f);
@@ -6615,13 +6841,15 @@ function addFotoAntes(input,j){
   input.value='';
 }
 function addFotoDepois(input,j){
-  Array.from(input.files).forEach(function(f){
+  var files=Array.from(input.files); if(!files.length)return;
+  if(!_iePhotos['depois-'+j])_iePhotos['depois-'+j]=[];
+  var done=0; var total=files.length;
+  files.forEach(function(f){
     var fr=new FileReader();
     fr.onload=function(e){
       compressDataURL(e.target.result,function(u){
-        if(!_iePhotos['depois-'+j])_iePhotos['depois-'+j]=[];
         _iePhotos['depois-'+j].push(u);
-        renderInspEdit();
+        if(++done===total) renderInspEdit();
       });
     };
     fr.readAsDataURL(f);
@@ -6651,25 +6879,6 @@ function saveFotoDepoisDesc(j,fi,d){
   if(!ins.items[j].fotosDepoisDesc)ins.items[j].fotosDepoisDesc=[];
   ins.items[j].fotosDepoisDesc[fi]=d;
   clearTimeout(saveFotoDepoisDesc._t);saveFotoDepoisDesc._t=setTimeout(function(){saveData(true);},800);
-}
-
-        } else {
-          // item staged area
-          var j = parseInt(key.replace('item-',''));
-          var stagedEl = document.getElementById('ie-fotos-staged-'+j);
-          if(stagedEl){
-            var idx = _iePhotos[key].length-1;
-            stagedEl.appendChild(makePhotoThumb(u,'st-'+j+'-'+idx,function(){
-              _iePhotos[key].splice(idx,1);
-              stagedEl.removeChild(stagedEl.children[idx]);
-            },true));
-          }
-        }
-      });
-    };
-    r.readAsDataURL(f);
-  });
-  input.value='';
 }
 
 function makePhotoThumb(url, key, onRemove, isNew, descVal, onDescChange){
@@ -8355,7 +8564,20 @@ const _importApply = {
 };
 
 // ── INIT ──
+// Auto-save on page close/refresh
+window.addEventListener('beforeunload', function(){ saveData(true); });
+// Auto-save every 60s as safety net  
+setInterval(function(){ saveData(true); }, 60000);
 loadData();checkInspFromURL();kpis();renderDash();fillWeekSel();renderDriveLinks();
+// Check for embedded data from shared HTML
+if(window.__JDATA_PENDING__){
+  setTimeout(function(){
+    if(confirm('📦 Este arquivo foi compartilhado de outro dispositivo.\n\nDeseja importar os dados desse dispositivo?\n\nOK = Importar  |  Cancelar = Manter dados atuais')){
+      try{ localStorage.setItem('jac_v5', JSON.stringify(window.__JDATA_PENDING__)); loadData(); renderDash(); toast('✅ Dados importados!','ok'); }catch(e){}
+    }
+    delete window.__JDATA_PENDING__;
+  }, 1000);
+}
 fillDeptSelect('r-dept');fillRoleSelect('mc-fn');fillDeptSelect('mc-dp');
 setupAutoSync();
 initFloatBarDrag(); // init draggable float bar

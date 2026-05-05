@@ -1,2 +1,2 @@
-# ⚓ Jacarandá — build 20260505_2233
-Commit: `build 20260505_2233 - CORRIGE fotos depois/evidencia (double FileReader bug)`
+# ⚓ Jacarandá — build 20260505_2302
+Commit: `build 20260505_2302 - persiste automatico + galeria corrigida + compartilhar app + evidencia rapida`
