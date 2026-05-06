@@ -3303,78 +3303,29 @@ function buildUnifiedHTML(f, vcfg, opts){
            + 'color:#9ca3af;margin-bottom:8px;">'+ins.items.length+' ITENS INSPECIONADOS</div>';
         ins.items.forEach(function(it,j){
           var ic = RCOL[it.result]||'#6b7280';
-          var hasA = (it.fotosAntes||[]).length>0;
-          var hasD = (it.fotosDepois||[]).length>0;
-          var hasL = (it.fotos||[]).length>0;
-          var antesAll = hasA ? (it.fotosAntes||[]) : (it.fotos||[]);
-          var antesD   = hasA ? (it.fotosAntesDesc||[]) : (it.fotosDesc||[]);
-          h += '<div style="border:1px solid #f3f4f6;border-left:3px solid '+ic+';border-radius:7px;'
-             + 'margin-bottom:8px;overflow:hidden;">'
-             + '<div style="padding:8px 12px;display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;">'
+          h += '<div style="border:1px solid #f3f4f6;border-left:3px solid '+ic+';border-radius:5px;'
+             + 'padding:7px 10px;margin-bottom:6px;">'
+             + '<div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;">'
              + '<span style="background:'+ic+';color:#fff;font-family:monospace;font-size:9px;'
-             + 'padding:2px 7px;border-radius:4px;flex-shrink:0;">#'+('0'+(j+1)).slice(-2)+'</span>'
+             + 'padding:1px 6px;border-radius:3px;flex-shrink:0;">#'+('0'+(j+1)).slice(-2)+'</span>'
              + '<div style="flex:1;min-width:0;">'
-             + '<div style="font-size:13px;font-weight:700;color:#111827;">'+escHtml(it.area||'—')+'</div>'
-             + (it.dept||it.respItemNm?'<div style="font-size:10px;color:#6b7280;margin-top:2px;">'+(it.dept?'🏢 '+escHtml(it.dept)+' ':'' )+(it.respItemNm?'👷 '+escHtml(it.respItemNm):'')+'</div>':'')
-             + (it.desc?'<div style="font-size:11px;color:#374151;margin-top:4px;background:#f9fafb;border-radius:5px;padding:5px 8px;">'+escHtml(it.desc.slice(0,150))+'</div>':'')
+             + '<div style="font-size:12px;font-weight:700;color:#111827;">'+escHtml(it.area||'—')+'</div>'
+             + (it.desc?'<div style="font-size:11px;color:#6b7280;margin-top:2px;">'+escHtml(it.desc.slice(0,100))+'</div>':'')
+             + (it.resposta?'<div style="font-size:11px;color:#16a34a;margin-top:4px;font-style:italic;">✅ '+escHtml(it.resposta.slice(0,120))+'</div>':'')
+             + (it.respItemNm?'<div style="font-size:10px;color:#9ca3af;margin-top:2px;">👷 '+escHtml(it.respItemNm)+'</div>':'')
              + '</div>'
              + '<span style="background:'+ic+'22;color:'+ic+';font-size:10px;font-weight:700;'
-             + 'padding:3px 10px;border-radius:10px;white-space:nowrap;">'+(it.statusOk?'✅ ':'')+it.result+'</span>'
+             + 'padding:2px 8px;border-radius:8px;white-space:nowrap;">'+it.result+'</span>'
              + '</div>';
-          // ANTES / DEPOIS photos (vertical stacked, 4 per row)
-          if(opts.incFotos && (antesAll.length>0 || hasD)){
-            var okSt = it.statusOk?'<span style="background:#16a34a;color:#fff;font-size:8px;padding:1px 8px;border-radius:8px;margin-left:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"> ✅ OK</span>':'';
-            // ANTES
-            h += '<div style="margin:0 10px 6px;border-radius:7px;overflow:hidden;border:1.5px solid #fca5a5;">';
-            h += '<div style="background:#7f1d1d;color:#fff;padding:5px 10px;display:flex;align-items:center;gap:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">';
-            h += '<span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;">📷 ANTES — Achado</span>';
-            h += '<span style="font-size:8px;opacity:.7;margin-left:auto;">'+antesAll.length+' foto'+(antesAll.length!==1?'s':'')+'</span>';
+          // Item photos
+          if(opts.incFotos && (it.fotos||[]).length){
+            h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px;">';
+            it.fotos.slice(0,4).forEach(function(u){
+              h += '<div style="height:60px;border-radius:4px;overflow:hidden;border:1px solid #e5e7eb;">'
+                 + '<img src="'+u+'" style="width:100%;height:100%;object-fit:cover;display:block;">'
+                 + '</div>';
+            });
             h += '</div>';
-            if(antesAll.length>0){
-              h += '<div style="background:#fff8f8;padding:7px;"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;">';
-              antesAll.forEach(function(u,fi){
-                var dc=antesD[fi]||'';
-                h += '<div style="border-radius:5px;overflow:hidden;border:1px solid #fca5a5;">'
-                   + '<img src="'+u+'" style="width:100%;height:90px;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-                   + (dc?'<div style="font-size:7px;color:#991b1b;text-align:center;padding:2px 3px;background:#fff8f8;border-top:1px solid #fecdd3;font-weight:600;">'+escHtml(dc)+'</div>':'')
-                   + '</div>';
-              });
-              h += '</div></div>';
-            } else h += '<div style="background:#fff8f8;padding:10px;text-align:center;font-size:10px;color:#d1d5db;font-style:italic;">Sem fotos de antes</div>';
-            h += '</div>';
-            // DEPOIS
-            h += '<div style="margin:0 10px 10px;border-radius:7px;overflow:hidden;border:1.5px solid #86efac;">';
-            h += '<div style="background:#14532d;color:#fff;padding:5px 10px;display:flex;align-items:center;gap:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">';
-            h += '<span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;">✅ DEPOIS — Evidência'+okSt+'</span>';
-            if(it.dataExecucao) h += '<span style="font-size:8px;opacity:.7;margin-left:auto;">📅 '+it.dataExecucao+'</span>';
-            else if(hasD) h += '<span style="font-size:8px;opacity:.7;margin-left:auto;">'+(it.fotosDepois||[]).length+' foto(s)</span>';
-            h += '</div>';
-            if(hasD){
-              h += '<div style="background:#f0fdf4;padding:7px;"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;">';
-              (it.fotosDepois||[]).forEach(function(u,fi){
-                var dc=(it.fotosDepoisDesc&&it.fotosDepoisDesc[fi])||'';
-                h += '<div style="border-radius:5px;overflow:hidden;border:1px solid #86efac;">'
-                   + '<img src="'+u+'" style="width:100%;height:90px;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-                   + (dc?'<div style="font-size:7px;color:#14532d;text-align:center;padding:2px 3px;background:#f0fdf4;border-top:1px solid #86efac;font-weight:600;">'+escHtml(dc)+'</div>':'')
-                   + '</div>';
-              });
-              h += '</div>';
-              if(it.resposta) h += '<div style="margin-top:5px;background:#dcfce7;border-radius:5px;padding:5px 8px;font-size:10px;color:#14532d;"><span style="font-weight:700;">📝 </span>'+escHtml(it.resposta.slice(0,150))+'</div>';
-              h += '</div>';
-            } else {
-              var noDepMsg = it.resposta
-                ? '<div style="background:#f0fdf4;padding:8px 10px;font-size:10px;color:#14532d;"><span style="font-weight:700;">📝 </span>'+escHtml(it.resposta)+'</div>'
-                : '<div style="background:#f0fdf4;padding:10px;text-align:center;font-size:10px;color:#9ca3af;font-style:italic;">⏳ Aguardando evidência</div>';
-              h += noDepMsg;
-            }
-            h += '</div>';
-          } else if(opts.incFotos && hasL){
-            // Legacy photos only
-            h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:6px 10px 10px;">';
-            it.fotos.slice(0,4).forEach(function(u){ h += '<div style="height:70px;border-radius:4px;overflow:hidden;border:1px solid #e5e7eb;"><img src="'+u+'" style="width:100%;height:100%;object-fit:cover;display:block;"></div>'; });
-            h += '</div>';
-          } else if(it.resposta && !opts.incFotos){
-            h += '<div style="padding:5px 12px 8px;"><div style="background:#f0fdf4;border-radius:5px;padding:5px 8px;font-size:10px;color:#14532d;"><span style="font-weight:700;">📝 </span>'+escHtml(it.resposta.slice(0,150))+'</div></div>';
           }
           h += '</div>';
         });
@@ -6273,36 +6224,24 @@ function renderInspCard(ins, i, showEdit=true){
     actionBar+='</div>';
   }
 
-  // Card HTML — improved visual matching weekly report style
-  let html='<div class="act-card" id="insp-card-'+ins.id+'" style="border:none;border-radius:10px;margin-bottom:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);">';
-  // Colored band header
-  html+='<div style="background:'+bc+';padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">';
-  html+='<span style="background:rgba(0,0,0,.2);color:#fff;font-size:18px;padding:0 6px;border-radius:5px;">'+fi+'</span>';
-  html+='<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;color:#fff;line-height:1.2;">'+escHtml(ins.titulo)+'</div>';
-  if(ins.desc) html+='<div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:2px;">'+escHtml(ins.desc.slice(0,80))+'</div>';
+  // Card HTML
+  let html='<div class="act-card" id="insp-card-'+ins.id+'" style="border-left:3px solid '+bc+';">';
+  html+='<div class="act-card-head">';
+  html+='<span class="act-num" style="background:'+bc+';font-size:10px;">'+fi+'</span>';
+  html+='<div class="act-title-block"><div class="act-title">'+escHtml(ins.titulo)+'</div>';
+  if(ins.desc) html+='<div class="act-desc">'+escHtml(ins.desc)+'</div>';
   html+='</div>';
-  html+='<span style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">'+fi+' '+ins.result+'</span>';
+  html+='<span style="'+sbadge+';font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;white-space:nowrap;flex-shrink:0;">'+fi+' '+ins.result+'</span>';
   html+='</div>';
-  // Meta row
-  html+='<div style="background:#fff;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:0;">';
-  const metas=[
-    ['📅',ins.data+(ins.hora?' '+ins.hora:'')],
-    ['🔍',ins.tipo||'—'],
-    ins.area&&ins.area!=='—'?['📍',ins.area.slice(0,25)]:null,
-    ['👷',ins.respNm||'—'],
-    ['SEM','SEM '+(ins.semana||'—')],
-  ].filter(Boolean);
-  metas.forEach(function(m){
-    html+='<div style="padding:6px 12px;border-right:1px solid var(--border);font-size:11px;color:var(--text-dim);">'
-      +'<span style="font-weight:700;color:var(--text);">'+m[0]+' </span>'+escHtml(String(m[1]))
-      +'</div>';
-  });
+  html+='<div class="act-meta">';
+  html+='<span class="act-meta-item">📅 '+ins.data+(ins.hora?' '+ins.hora:'')+'</span>';
+  html+='<span class="act-meta-item">🔍 '+(ins.tipo||'—')+'</span>';
+  if(ins.area&&ins.area!=='—') html+='<span class="act-meta-item">📍 '+escHtml(ins.area)+'</span>';
+  html+='<span class="act-meta-item">👷 '+(ins.respNm||'—')+'</span>';
+  if(ins.testNm) html+='<span class="act-meta-item">👁 '+ins.testNm+'</span>';
+  html+='<span class="act-meta-item" style="margin-left:auto;color:var(--muted);font-size:10px;font-family:monospace;">SEM '+(ins.semana||'—')+'</span>';
   html+='</div>';
-  // Items + photos
-  html+='<div style="background:#fff;">'+itemsHtml+fotos+'</div>';
-  // Action bar
-  html+=actionBar;
-  html+='</div>';
+  html+=itemsHtml+fotos+actionBar+'</div>';
   return html;
 }
 
@@ -7673,81 +7612,17 @@ function renderInspecao(){
   const list=document.getElementById('insp-list');if(!list)return;
   let insp=[...S.inspecoes].sort((a,b)=>b.ts-a.ts);
   if(_inspFilter!=='todas')insp=insp.filter(i=>i.result===_inspFilter);
-
-  // ── KPI bar above list ──
-  const conf   = S.inspecoes.filter(i=>i.result==='Conforme').length;
-  const naConf = S.inspecoes.filter(i=>i.result==='Não Conforme').length;
-  const parcial= S.inspecoes.filter(i=>i.result==='Parcial').length;
-  const pend   = S.inspecoes.filter(i=>i.result==='Pendente').length;
-  const totalItems = S.inspecoes.reduce((a,i)=>(a+(i.items||[]).length),0);
-  const pendItems  = S.inspecoes.reduce((a,i)=>(a+(i.items||[]).filter(it=>!it.statusOk&&it.result!=='Conforme').length),0);
-
-  const kpiHtml = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:12px;">
-    ${[
-      {n:S.inspecoes.length, l:'Total', c:'var(--login-blue)'},
-      {n:conf,    l:'Conformes',    c:'var(--login-green)'},
-      {n:parcial, l:'Parciais',     c:'var(--warn)'},
-      {n:naConf,  l:'Não Conformes',c:'var(--danger)'},
-      {n:pend,    l:'Pendentes',    c:'#7c3aed'},
-      {n:pendItems,l:'Itens Pend.', c:'var(--danger)'},
-    ].map(k=>`<div style="background:#fff;border:1px solid var(--border);border-top:3px solid ${k.c};border-radius:8px;padding:10px 12px;text-align:center;">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:${k.c};">${k.n}</div>
-      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);">${k.l}</div>
-    </div>`).join('')}
-  </div>`;
-
-  if(!insp.length){
-    list.innerHTML=kpiHtml+'<div class="empty-state"><div class="ico">🔍</div><p>Nenhuma inspeção registrada</p></div>';
-    return;
-  }
-
+  if(!insp.length){list.innerHTML='<div class="empty-state"><div class="ico">🔍</div><p>Nenhuma inspeção registrada</p></div>';return;}
   const byW={};insp.forEach(i=>{byW[i.semana]=byW[i.semana]||[];byW[i.semana].push(i);});
-  const vcfg=(getCfg().vessel)||{};
-
-  const semHtml = Object.entries(byW).sort((a,b)=>b[0].localeCompare(a[0])).map(([sem,items])=>{
-    const semConf = items.filter(i=>i.result==='Conforme').length;
-    const semPend = items.filter(i=>i.result!=='Conforme').length;
-    return `<div style="margin-bottom:20px;">
-      <div class="rpt-header" style="border-radius:8px 8px 0 0;margin-bottom:0;">
-        <div class="rpt-logo"><span>log</span><span class="gi">in</span><span class="dot">.</span></div>
-        <div style="flex:1;padding-left:14px;border-left:2px solid rgba(255,255,255,.3);">
-          <div class="rpt-title">Inspeções — Semana ${sem}</div>
-          <div class="rpt-sub">${vcfg.vessel||'LOG-IN JACARANDÁ'} &nbsp;·&nbsp; ${items.length} inspeção(ões) &nbsp;·&nbsp; ${semConf} conformes · ${semPend} pendentes</div>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3);font-size:11px;" onclick="printWeekInsps('${sem}')">🖨 PDF</button>
-          <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3);font-size:11px;" onclick="addWeekInspsToSemanal('${sem}')">➕ Semana</button>
-        </div>
+  list.innerHTML=Object.entries(byW).sort((a,b)=>b[0].localeCompare(a[0])).map(([sem,items])=>`
+    <div style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:6px 0;border-bottom:2px solid var(--border);">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--login-blue);">🔍 SEMANA ${sem}</span>
+        <span style="margin-left:auto;background:var(--login-blue);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">${items.length}</span>
       </div>
-      <div class="panel" style="border-radius:0 0 8px 8px;border-top:none;margin-top:0;">
-        <div style="padding:10px 12px;">${items.map((ins,i)=>renderInspCard(ins,i,true)).join('')}</div>
-      </div>
-    </div>`;
-  }).join('');
-
-  list.innerHTML = kpiHtml + semHtml;
-}
-
-// Print all inspections for a specific week
-function printWeekInsps(sem){
-  const insps = S.inspecoes.filter(i=>i.semana===sem);
-  if(!insps.length){ toast('Nenhuma inspeção nesta semana','warn'); return; }
-  _ciSelected = new Set(insps.map(i=>i.id));
-  printConsolidado();
-}
-
-// Add all inspections of a week to the weekly report
-function addWeekInspsToSemanal(sem){
-  const insps = S.inspecoes.filter(i=>i.semana===sem);
-  if(!insps.length){ toast('Nenhuma inspeção','warn'); return; }
-  insps.forEach(function(ins){
-    if(!S.regs.some(r=>r.inspId===ins.id)){
-      var lbReg=S.regs.find(function(r){return r.s===sem;});
-      S.regs.push({id:gid(),s:sem,lb:lbReg?lbReg.lb:'SEM '+sem,d:ins.data||new Date().toISOString().slice(0,10),dp:'Inspeção',a:ins.titulo,q:'',l:ins.area||'—',st:ins.result==='Conforme'?'Concluído':'Em Andamento',fotos:[],ts:Date.now(),inspId:ins.id,_fromInsp:true});
-    }
-  });
-  saveData(true);
-  toast('✅ '+insps.length+' inspeção(ões) adicionadas à SEM '+sem,'ok');
+      ${items.map((ins,i)=>renderInspCard(ins,i,true)).join('')}
+    </div>`
+  ).join('');
 }
 
 function delInspecao(id){
