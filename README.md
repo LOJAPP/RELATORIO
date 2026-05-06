@@ -1,2 +1,2 @@
-# ⚓ Jacarandá — build 20260506_0241
-Commit: `build 20260506_0241 - visual unificado semanal/mensal/inspeções + ANTES/DEPOIS cards`
+# ⚓ Jacarandá — build 20260506_0329
+Commit: `build 20260506_0329 - FIX paginas semanal/mensal + PDF profissional formato inspeção`

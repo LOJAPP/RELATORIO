@@ -776,6 +776,22 @@
       </div>
     </div>
 
+    <!-- SEMANAL -->
+    <div id="page-semanal" class="page">
+      <div class="export-bar"><span>📅</span><p>Relatório semanal com fotos das atividades. Edite diretamente aqui.</p><button class="btn btn-warn btn-sm" onclick="curWeek?openSemPrint(curWeek):exportPDF()">🖨 Imprimir / PDF</button></div>
+      <div class="week-tabs" id="wtabs"></div>
+      <div id="rpt-sem"><div class="empty-state"><div class="ico">📅</div><p>Selecione uma semana</p></div></div>
+    </div>
+
+    <!-- MENSAL -->
+    <div id="page-mensal" class="page">
+      <div class="export-bar"><span>📆</span><p>Relatório mensal consolidado. Edite registros diretamente.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button></div>
+      <div class="form-row" style="margin-bottom:14px;">
+        <div class="form-group" style="max-width:200px;"><label>Mês</label><input type="month" class="form-control" id="mes-sel" onchange="renderMensal()"></div>
+      </div>
+      <div id="rpt-mes"><div class="empty-state"><div class="ico">📆</div><p>Selecione um mês</p></div></div>
+    </div>
+
     <!-- CARTÕES DE DESVIO -->
     <div id="page-desvios" class="page">
       <div class="export-bar"><span>⚠️</span><p>Registro de não conformidades e desvios de segurança/qualidade. Abra e feche cartões conforme a resolução.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button></div>
@@ -837,6 +853,61 @@
     </div>
 
     <!-- FOTOS -->
+
+    <!-- HISTÓRICO -->
+    <div id="page-historico" class="page">
+      <div class="export-bar"><span>🗂️</span><p>Histórico completo de todos os trabalhos registrados.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+        <button class="dept-pill pa" onclick="setDept('Todos',this)">Todos</button>
+        <button class="dept-pill" onclick="setDept('Convés',this)">Convés</button>
+        <button class="dept-pill" onclick="setDept('Máquinas',this)">Máquinas</button>
+        <button class="dept-pill" onclick="setDept('MC Reefer',this)">MC Reefer</button>
+        <button class="dept-pill" onclick="setDept('Bloco',this)">Bloco</button>
+      </div>
+      <div class="form-group" style="max-width:400px;margin-bottom:12px;">
+        <input type="text" class="form-control" id="hist-q" placeholder="🔍 Buscar atividade, local, equipe..." oninput="renderHistorico()">
+      </div>
+      <div id="tl-content"></div>
+    </div>
+
+    <!-- TRIPULANTES -->
+    <div id="page-tripulantes" class="page">
+      <div class="export-bar"><span>👥</span><p>Gestão da tripulação a bordo.</p><button class="btn btn-primary btn-sm" onclick="openCrew(null)">➕ Novo</button></div>
+      <div class="form-group" style="max-width:400px;margin-bottom:12px;">
+        <input type="text" class="form-control" id="crew-q" placeholder="🔍 Buscar por nome, função ou matrícula..." oninput="renderCrew()">
+      </div>
+      <div id="crew-list"></div>
+    </div>
+
+    <!-- EMBARQUE -->
+    <div id="page-embarque" class="page">
+      <div class="export-bar"><span>🚢</span><p>Relatório de embarque e desembarque da tripulação.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button></div>
+      <div id="embarque-content"></div>
+    </div>
+
+    <!-- BLOCO / OFICINA (page kept for direct access) -->
+    <div id="page-oficina" class="page">
+      <div class="export-bar"><span>🏭</span><p>Relatório de serviços realizados por empresas terceirizadas / bloco / oficina.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button></div>
+      <div class="panel">
+        <div class="panel-header">🏢 Empresas Terceirizadas <span class="badge" id="emp-count">0</span></div>
+        <div style="padding:14px;">
+          <div id="empresas-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;min-height:32px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input type="text" class="form-control" id="emp-nm" placeholder="Nome da empresa" style="flex:1;min-width:160px;">
+            <select class="form-control" id="emp-tipo" style="max-width:200px;">
+              <option value="Terceirizada">Terceirizada</option><option value="Armador">Armador</option>
+              <option value="Estaleiro">Estaleiro</option><option value="Fornecedor">Fornecedor</option>
+            </select>
+            <button class="btn btn-green btn-sm" onclick="addEmpresa()">➕ Adicionar</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:14px;">
+        <div class="panel-header">🏭 Serviços Bloco/Oficina <span class="badge" id="of-count">0</span></div>
+        <div id="oficina-list" style="padding:10px 14px;"></div>
+      </div>
+    </div>
+
     <div id="page-fotos" class="page">
       <div class="compress-info">⚡ <strong>Compressão automática:</strong> máx. 1024px / JPEG 70% → reduz ~90% do tamanho original.</div>
       <div class="panel">
@@ -2767,22 +2838,260 @@ function semPrintSelectAll(val){
 function doSemPrint(){
   if(!_semPrintWeek) return;
   closeSemPrint();
-  // Apply exclusion temporarily for print
-  const excluded = new Set(_semPrintExclude);
-  // Mark excluded items
-  S.regs.forEach(r=>{ r._semExclude = excluded.has('reg-'+r.id); });
-  S.oficina.forEach(o=>{ o._semExclude = excluded.has('of-'+o.id); });
-  S.desvios.forEach(d=>{ d._semExclude = excluded.has('dv-'+d.id); });
-  S.inspecoes.forEach(i=>{ i._semExclude = excluded.has('insp-'+i.id); });
-  // Print then clean up
-  exportPDF();
-  setTimeout(()=>{
-    S.regs.forEach(r=>delete r._semExclude);
-    S.oficina.forEach(o=>delete o._semExclude);
-    S.desvios.forEach(d=>delete d._semExclude);
-    S.inspecoes.forEach(i=>delete i._semExclude);
-  }, 2000);
+  printSemPDF(_semPrintWeek, _semPrintExclude);
 }
+
+// ── Professional PDF for weekly report (new window, like inspection PDF) ──
+function printSemPDF(week, excluded){
+  excluded = excluded || new Set();
+  const regs   = S.regs.filter(r=>r.s===week && !excluded.has('reg-'+r.id));
+  const ofWeek = S.oficina.filter(o=>o.s===week && !excluded.has('of-'+o.id));
+  const dvWeek = S.desvios.filter(d=>d.s===week && !excluded.has('dv-'+d.id));
+  const inspW  = S.inspecoes.filter(i=>i.semana===week && !excluded.has('insp-'+i.id));
+  const vcfg   = (getCfg().vessel)||{};
+  const vessel = vcfg.vessel||'LOG-IN JACARANDÁ';
+  const cmte   = vcfg.cmte||'Jose Moncada';
+  const imo    = vcfg.imo||'Robson Freitas';
+  const cmaq   = vcfg.cmaq||'Jorge Murrieta';
+  const scmaq  = vcfg.scmaq||'Cesar Diaz';
+  const now    = new Date().toLocaleString('pt-BR');
+  const concl  = regs.filter(r=>r.st==='Concluído').length;
+  const byD    = {};
+  regs.forEach(r=>{ byD[r.dp]=byD[r.dp]||[]; byD[r.dp].push(r); });
+
+  // ── CSS (following inspection PDF style) ──
+  const css = `
+    *{box-sizing:border-box;margin:0;padding:0;}
+    @page{margin:12mm 14mm;size:A4;}
+    body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;background:#fff;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .wrap{max-width:820px;margin:0 auto;}
+    @media print{.wrap{max-width:100%;} .no-print{display:none!important;} .pb{page-break-before:always;}}
+    /* Header */
+    .hdr{background:linear-gradient(135deg,#07182e,#0e2540);color:#fff;padding:18px 24px;
+      display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+    .hdr-logo{font-size:28px;font-weight:900;letter-spacing:-2px;line-height:1;font-family:serif;}
+    .hdr-logo .g{color:#6DB847;} .hdr-logo .d{color:#f59e0b;}
+    .hdr-right{text-align:right;}
+    .hdr-title{font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;}
+    .hdr-sub{font-size:11px;opacity:.75;margin-top:3px;}
+    /* KPI summary */
+    .summary{background:#f8fafc;border-bottom:2px solid #e5e7eb;padding:12px 24px;
+      display:flex;gap:10px;flex-wrap:wrap;}
+    .kc{text-align:center;padding:8px 12px;background:#fff;border-radius:8px;border:1px solid #e5e7eb;
+      flex:1;min-width:80px;}
+    .kc-n{font-size:24px;font-weight:900;line-height:1;font-family:serif;}
+    .kc-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;margin-top:2px;}
+    /* Section headers */
+    .sec-hdr{padding:10px 24px 8px;border-bottom:2px solid;margin-bottom:0;
+      display:flex;align-items:center;justify-content:space-between;}
+    .sec-hdr-title{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;}
+    .sec-hdr-count{font-size:11px;font-weight:400;opacity:.7;}
+    /* Dept label */
+    .dept-hdr{background:#f3f4f6;padding:6px 24px;border-bottom:1px solid #e5e7eb;
+      font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#374151;
+      display:flex;align-items:center;justify-content:space-between;}
+    /* Activity card in PDF */
+    .act-row{padding:10px 24px;border-bottom:1px solid #f3f4f6;display:flex;align-items:flex-start;gap:12px;}
+    .act-num{background:#1A5FA8;color:#fff;font-family:monospace;font-size:9px;font-weight:700;
+      padding:2px 7px;border-radius:4px;flex-shrink:0;margin-top:2px;}
+    .act-body{flex:1;min-width:0;}
+    .act-title{font-size:13px;font-weight:700;color:#111827;margin-bottom:3px;}
+    .act-desc{font-size:11px;color:#374151;white-space:pre-wrap;line-height:1.5;margin-bottom:5px;
+      background:#f9fafb;border-radius:5px;padding:5px 8px;border-left:2px solid #e5e7eb;}
+    .act-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:#6b7280;margin-top:4px;}
+    .st-badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;white-space:nowrap;}
+    /* Photos in PDF — 4 per row */
+    .photo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+      padding:8px 24px 12px;background:#fafafa;border-bottom:1px solid #f3f4f6;}
+    .photo-cell{border-radius:6px;overflow:hidden;border:1px solid #e5e7eb;}
+    .photo-cell img{width:100%;height:120px;object-fit:cover;display:block;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    /* Bloco card */
+    .bloco-row{padding:10px 24px;border-bottom:1px solid #f3f4f6;border-left:4px solid #059669;display:flex;align-items:flex-start;gap:12px;}
+    .bloco-num{background:#059669;color:#fff;font-family:monospace;font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;flex-shrink:0;margin-top:2px;}
+    /* Desvio row */
+    .dv-row{padding:10px 24px;border-bottom:1px solid #f3f4f6;display:flex;align-items:flex-start;gap:12px;}
+    /* Insp summary row */
+    .insp-row{padding:10px 24px;border-bottom:1px solid #f3f4f6;display:flex;align-items:flex-start;gap:12px;border-left:3px solid;}
+    /* Signatures */
+    .ftr{padding:16px 24px;border-top:2px solid #e5e7eb;display:flex;justify-content:space-around;gap:20px;flex-wrap:wrap;}
+    .sig{text-align:center;flex:1;max-width:200px;}
+    .sig-line{border-bottom:1.5px solid #374151;height:44px;margin-bottom:6px;}
+    .sig-name{font-size:12px;font-weight:700;color:#374151;}
+    .sig-role{font-size:10px;color:#9ca3af;margin-top:2px;}
+  `;
+
+  // ── KPI summary HTML ──
+  const kpis = [
+    {n:regs.length,    l:'Atividades',  c:'#1A5FA8'},
+    {n:concl,          l:'Concluídas',  c:'#16a34a'},
+    {n:regs.length-concl,l:'Pendentes', c:'#d97706'},
+    {n:ofWeek.length,  l:'Bloco/Oficina',c:'#059669'},
+    {n:dvWeek.length,  l:'Desvios',     c:'#dc2626'},
+    {n:inspW.length,   l:'Inspeções',   c:'#7c3aed'},
+  ].map(k=>`<div class="kc"><div class="kc-n" style="color:${k.c};">${k.n}</div><div class="kc-l">${k.l}</div></div>`).join('');
+
+  // ── Activity rows by department ──
+  let actsHtml = '';
+  Object.entries(byD).forEach(([dp,drs],di)=>{
+    actsHtml += `<div class="dept-hdr"><span>${dp.toUpperCase()}</span><span>${drs.length} atividade(s)</span></div>`;
+    drs.forEach((r,i)=>{
+      const titulo = r.titulo||(r.a?r.a.split('\n')[0]:'—');
+      const desc   = r.titulo?r.a:(r.a?r.a.split('\n').slice(1).join('\n').trim():'');
+      const stC    = r.st==='Concluído'?'#f0fdf4;color:#16a34a':r.st==='Em Andamento'?'#eff6ff;color:#1A5FA8':'#fffbeb;color:#d97706';
+      actsHtml += `<div class="act-row">
+        <span class="act-num">${String(i+1).padStart(2,'0')}</span>
+        <div class="act-body">
+          <div class="act-title">${escHtml(titulo)}</div>
+          ${desc?`<div class="act-desc">${escHtml(desc)}</div>`:''}
+          <div class="act-meta">
+            ${r.d?`<span>📅 ${r.d}</span>`:''}
+            ${r.l?`<span>📍 <strong>${escHtml(r.l)}</strong></span>`:''}
+            ${r.q?`<span>👷 ${escHtml(r.q)}</span>`:''}
+          </div>
+        </div>
+        <span class="st-badge" style="background:${stC};">${r.st}</span>
+      </div>`;
+      if((r.fotos||[]).length){
+        actsHtml += `<div class="photo-grid">${r.fotos.map(u=>`<div class="photo-cell"><img src="${u}" alt=""></div>`).join('')}</div>`;
+      }
+    });
+  });
+
+  // ── Bloco/Oficina rows ──
+  let blocoHtml = '';
+  if(ofWeek.length){
+    blocoHtml = `<div class="sec-hdr" style="border-color:#059669;"><span class="sec-hdr-title" style="color:#059669;">🏭 Bloco / Oficina</span><span class="sec-hdr-count">${ofWeek.length} serviço(s)</span></div>`;
+    ofWeek.forEach((o,i)=>{
+      const valor = o.valor?`💰 R$ ${parseFloat(o.valor).toFixed(2).replace('.',',')}` : '';
+      blocoHtml += `<div class="bloco-row">
+        <span class="bloco-num">${String(i+1).padStart(2,'0')}</span>
+        <div class="act-body">
+          <div class="act-title">${escHtml(o.titulo||o.desc||'—')}</div>
+          ${o.desc&&o.titulo?`<div class="act-desc">${escHtml(o.desc)}</div>`:''}
+          <div class="act-meta">
+            <span>🏢 <strong>${escHtml(o.empNm||'—')}</strong></span>
+            ${o.local?`<span>📍 ${escHtml(o.local)}</span>`:''}
+            <span>👷 ${escHtml(o.respNm||'—')}</span>
+            ${o.os?`<span>📄 ${escHtml(o.os)}</span>`:''}
+            ${valor?`<span>${valor}</span>`:''}
+          </div>
+        </div>
+        <span class="st-badge" style="background:${o.st==='Concluído'?'#f0fdf4;color:#16a34a':'#fffbeb;color:#d97706'};">${o.st||'—'}</span>
+      </div>`;
+    });
+  }
+
+  // ── Desvios rows ──
+  let dvHtml = '';
+  if(dvWeek.length){
+    dvHtml = `<div class="sec-hdr" style="border-color:#dc2626;"><span class="sec-hdr-title" style="color:#dc2626;">⚠️ Desvios / NCAR</span><span class="sec-hdr-count">${dvWeek.length} cartão(ões)</span></div>`;
+    dvWeek.forEach((d,i)=>{
+      const isFech = d.status==='fechado';
+      dvHtml += `<div class="dv-row" style="border-left:4px solid ${isFech?'#16a34a':'#dc2626'};">
+        <span style="background:${isFech?'#16a34a':'#dc2626'};color:#fff;font-family:monospace;font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;flex-shrink:0;margin-top:2px;">${d.num}</span>
+        <div class="act-body">
+          <div class="act-title">${escHtml(d.titulo||'—')}</div>
+          ${d.desc?`<div class="act-desc">${escHtml(d.desc.slice(0,150))}</div>`:''}
+          <div class="act-meta">
+            ${d.local?`<span>📍 ${escHtml(d.local)}</span>`:''}
+            ${d.prioridade?`<span>⚡ ${d.prioridade}</span>`:''}
+            ${d.acaoCorretiva?`<span style="color:#16a34a;">🔧 ${escHtml(d.acaoCorretiva.slice(0,80))}</span>`:''}
+          </div>
+        </div>
+        <span class="st-badge" style="background:${isFech?'#f0fdf4;color:#16a34a':'#fef2f2;color:#dc2626'};">${isFech?'✅ Fechado':'🔴 Aberto'}</span>
+      </div>`;
+    });
+  }
+
+  // ── Inspections summary ──
+  const RCOL={'Conforme':'#16a34a','Não Conforme':'#dc2626','Parcial':'#d97706','Pendente':'#7c3aed'};
+  const RICO={'Conforme':'✅','Não Conforme':'❌','Parcial':'⚠️','Pendente':'🔄'};
+  let inspHtml = '';
+  if(inspW.length){
+    inspHtml = `<div class="sec-hdr" style="border-color:#7c3aed;"><span class="sec-hdr-title" style="color:#7c3aed;">🔍 Inspeções</span><span class="sec-hdr-count">${inspW.length} inspeção(ões)</span></div>`;
+    inspW.forEach((ins,i)=>{
+      const rc = RCOL[ins.result]||'#6b7280';
+      const ri = RICO[ins.result]||'🔄';
+      const pendN = (ins.items||[]).filter(it=>!it.statusOk&&it.result!=='Conforme').length;
+      inspHtml += `<div class="insp-row" style="border-color:${rc};">
+        <span style="background:${rc};color:#fff;font-family:monospace;font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;flex-shrink:0;margin-top:2px;">${ri}</span>
+        <div class="act-body">
+          <div class="act-title">${escHtml(ins.titulo||'—')}</div>
+          <div class="act-meta">
+            <span>📅 ${ins.data||'—'}</span>
+            <span>🔍 ${ins.tipo||'—'}</span>
+            ${ins.area&&ins.area!=='—'?`<span>📍 ${escHtml(ins.area)}</span>`:''}
+            <span>👷 ${escHtml(ins.respNm||'—')}</span>
+            ${(ins.items||[]).length?`<span>📋 ${ins.items.length} itens${pendN?` · <span style="color:#dc2626">${pendN} pendentes</span>`:''}</span>`:''}
+          </div>
+        </div>
+        <span class="st-badge" style="background:${rc}22;color:${rc};">${ri} ${ins.result}</span>
+      </div>`;
+    });
+  }
+
+  // ── Signatures footer ──
+  const sigHtml = `<div class="ftr">
+    ${[{nm:cmte,rl:'Comandante'},{nm:imo,rl:'Imediato'},{nm:cmaq,rl:'Ch. Máquinas'},{nm:scmaq,rl:'Sub-Ch. Máquinas'}].map(s=>`
+      <div class="sig"><div class="sig-line"></div><div class="sig-name">${escHtml(s.nm)}</div><div class="sig-role">${s.rl}</div></div>`).join('')}
+  </div>`;
+
+  // ── Full HTML ──
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Relatório Semanal — SEM ${week} — ${vessel}</title>
+<style>${css}</style>
+</head>
+<body>
+<div class="no-print" style="background:#07182e;padding:10px 20px;display:flex;gap:8px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;flex-wrap:wrap;">
+  <span style="color:#fff;font-size:13px;font-weight:700;">📅 Relatório Semanal — SEM ${week} — ${vessel}</span>
+  <div style="display:flex;gap:8px;">
+    <button onclick="window.print()" style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Imprimir / PDF</button>
+    <button onclick="window.close()" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:8px 14px;font-size:13px;cursor:pointer;">✕</button>
+  </div>
+</div>
+<div class="wrap">
+  <!-- HEADER -->
+  <div class="hdr">
+    <div>
+      <div class="hdr-logo">log<span class="g">in</span><span class="d">.</span></div>
+      <div class="hdr-sub">${vessel}</div>
+    </div>
+    <div class="hdr-right">
+      <div class="hdr-title">Relatório de Trabalhos a Bordo</div>
+      <div class="hdr-sub">Semana ${week} &nbsp;·&nbsp; ${regs.length} atividades &nbsp;·&nbsp; ${concl} concluídas</div>
+      <div style="font-size:10px;opacity:.6;margin-top:2px;">Gerado: ${now}</div>
+    </div>
+  </div>
+  <!-- SUMMARY KPIs -->
+  <div class="summary">${kpis}</div>
+  <!-- ATIVIDADES -->
+  ${regs.length?`<div class="sec-hdr" style="border-color:#1A5FA8;"><span class="sec-hdr-title" style="color:#1A5FA8;">📋 Atividades e Trabalhos a Bordo</span><span class="sec-hdr-count">${regs.length} registros</span></div>${actsHtml}`:''}
+  <!-- BLOCO / OFICINA -->
+  ${blocoHtml}
+  <!-- DESVIOS -->
+  ${dvHtml}
+  <!-- INSPEÇÕES -->
+  ${inspHtml}
+  <!-- ASSINATURAS -->
+  ${sigHtml}
+</div>
+</body>
+</html>`;
+
+  const w = window.open('','_blank','width=960,height=1080');
+  if(!w){ toast('⚠️ Permita pop-ups para abrir o PDF','warn'); return; }
+  w.document.write(html);
+  w.document.close();
+  toast('📄 Relatório SEM '+week+' aberto!','ok');
+}
+
+
 
 // ── Novo Registro: Bloco/Oficina tab ──
 var _novoTab = 'atividade';
