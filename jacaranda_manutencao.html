@@ -589,8 +589,6 @@
     <div class="nav-item" onclick="showPage('semanal')"><span class="ico">📅</span> Relatório Semanal</div>
     <div class="nav-item" onclick="showPage('mensal')"><span class="ico">📆</span> Relatório Mensal</div>
     <div class="nav-item" onclick="showPage('historico')"><span class="ico">🗂️</span> Histórico</div>
-    <div class="nav-item" onclick="showPage('oficina')"><span class="ico">🏭</span> Bloco / Oficina</div>
-    <div class="nav-item" onclick="showPage('desvios')"><span class="ico">⚠️</span> Cartões de Desvio</div>
   </div>
   <div class="nav-section">
     <div class="nav-label">Tripulação</div>
@@ -602,7 +600,7 @@
     <div class="nav-item" onclick="showPage('fotos')"><span class="ico">📷</span> Fotos & Anexos</div>
     <div class="nav-item" onclick="showPage('storage')"><span class="ico">💾</span> Armazenamento</div>
     <div class="nav-item" onclick="showPage('import')"><span class="ico">📥</span> Importar Arquivos</div>
-    <div class="nav-item" onclick="showPage('inspecao')"><span class="ico">🔍</span> Relatório de Inspeção</div>
+    <div class="nav-item" onclick="showPage('inspecao')"><span class="ico">🔍</span> Inspeções</div>
     <div class="nav-item" onclick="showPage('unificado')" style="background:linear-gradient(90deg,rgba(109,184,71,.15),transparent);border-left:3px solid #6DB847;"><span class="ico">📊</span> Relatório Unificado</div>
     <div class="nav-item" onclick="showPage('mobile')"><span class="ico">📱</span> Modo Celular / Tablet</div>
     <div class="nav-item" onclick="showPage('config')"><span class="ico">⚙️</span> Configurações</div>
@@ -654,6 +652,14 @@
 
     <!-- NOVO REGISTRO -->
     <div id="page-novo" class="page">
+      <!-- TAB BUTTONS -->
+      <div style="display:flex;gap:8px;padding:12px 0 0;margin-bottom:14px;">
+        <button id="ntab-atividade" class="btn btn-sm btn-primary" onclick="switchNovoTab('atividade')">✏️ Novo Registro</button>
+        <button id="ntab-bloco" class="btn btn-sm btn-ghost" onclick="switchNovoTab('bloco')">🏭 Bloco / Oficina</button>
+      </div>
+
+      <!-- PANEL: ATIVIDADE -->
+      <div id="npanel-atividade">
       <div class="panel">
         <div class="panel-header">✏️ Novo Registro de Trabalho</div>
         <div style="padding:16px;">
@@ -697,156 +703,76 @@
           <input type="file" id="foto-reg" accept="image/*" multiple style="display:none" onchange="addPhotos(this.files,'reg')">
           <div class="photo-grid" id="pg-reg"></div>
           <div class="sep"></div>
-          <div style="display:flex;gap:10px;">
-            <button class="btn btn-primary" onclick="saveReg()">💾 Salvar Registro</button>
-            <button class="btn btn-ghost" onclick="clearRegForm()">🗑 Limpar</button>
-          </div>
+          <button class="btn btn-primary" onclick="saveReg()" style="width:100%;padding:14px;font-size:15px;font-weight:700;">💾 Salvar Registro</button>
         </div>
       </div>
-    </div>
-
-    <!-- SEMANAL -->
-    <div id="page-semanal" class="page">
-      <div class="export-bar"><span>📅</span><p>Relatório semanal com fotos das atividades. Edite diretamente aqui.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 Imprimir / PDF</button></div>
-      <div class="week-tabs" id="wtabs"></div>
-      <div id="rpt-sem"><div class="empty-state"><div class="ico">📅</div><p>Selecione uma semana</p></div></div>
-    </div>
-
-    <!-- MENSAL -->
-    <div id="page-mensal" class="page">
-      <div class="export-bar"><span>📆</span><p>Relatório mensal consolidado. Edite registros diretamente.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button></div>
-      <div class="form-row" style="margin-bottom:14px;">
-        <div class="form-group" style="max-width:200px;"><label>Mês</label><input type="month" class="form-control" id="mes-sel" onchange="renderMensal()"></div>
       </div>
-      <div id="rpt-mes"><div class="empty-state"><div class="ico">📆</div><p>Selecione um mês</p></div></div>
-    </div>
 
-    <!-- HISTÓRICO -->
-    <div id="page-historico" class="page">
-      <div class="search-bar"><span>🔍</span><input type="text" placeholder="Buscar atividade, equipe, local..." id="hist-q" oninput="renderHistorico()"></div>
-      <div class="dept-pills">
-        <div class="dept-pill pa" onclick="setDept('Todos',this)">Todos</div>
-        <div class="dept-pill" onclick="setDept('Convés',this)">Convés</div>
-        <div class="dept-pill" onclick="setDept('Máquinas',this)">Máquinas</div>
-        <div class="dept-pill" onclick="setDept('MC Reefer',this)">MC Reefer</div>
-        <div class="dept-pill" onclick="setDept('Bloco',this)">Bloco</div>
-      </div>
-      <div class="timeline" id="tl-content"><div class="empty-state"><div class="ico">🗂️</div><p>Nenhum registro</p></div></div>
-    </div>
-
-    <!-- TRIPULANTES -->
-    <div id="page-tripulantes" class="page">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div class="section-title">👥 Tripulantes a Bordo — M/V Jacarandá</div>
-        <button class="btn btn-primary btn-sm" onclick="openCrew(null)">+ Novo Tripulante</button>
-      </div>
-      <div class="search-bar"><span>🔍</span><input type="text" placeholder="Nome, função, matrícula..." id="crew-q" oninput="renderCrew()"></div>
-      <div id="crew-list"><div class="empty-state"><div class="ico">👤</div><p>Nenhum tripulante</p></div></div>
-    </div>
-
-    <!-- EMBARQUE -->
-    <div id="page-embarque" class="page">
-      <div class="export-bar"><span>🚢</span><p>Relatório de embarque e desembarque por turma. Clique em ✏️ para editar datas.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button></div>
-      <div class="form-row" style="margin-bottom:14px;">
-        <div class="form-group" style="max-width:260px;"><label>Filtrar Turma</label>
-          <select class="form-control" id="turma-sel" onchange="renderEmbarque()">
-            <option value="Todas">Todas as Turmas</option><option>Turma A</option><option>Turma B</option>
-          </select>
-        </div>
-      </div>
-      <div id="rpt-emb"><div class="empty-state"><div class="ico">🚢</div><p>Cadastre tripulantes</p></div></div>
-    </div>
-
-    <!-- BLOCO / OFICINA -->
-    <div id="page-oficina" class="page">
-      <div class="export-bar"><span>🏭</span><p>Relatório de serviços realizados por empresas terceirizadas / bloco / oficina.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button></div>
-
-      <!-- Cadastro rápido de empresa -->
+      <!-- PANEL: BLOCO / OFICINA -->
+      <div id="npanel-bloco" style="display:none;">
       <div class="panel">
-        <div class="panel-header">🏢 Empresas Terceirizadas <span class="badge" id="emp-count">0</span></div>
-        <div style="padding:14px;">
-          <div id="empresas-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;min-height:32px;"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
-            <div class="form-group" style="min-width:200px;margin-bottom:0;">
-              <label>Nome da Empresa</label>
-              <input type="text" class="form-control" id="new-emp-name" placeholder="Ex: RB Dias Serviços">
-            </div>
-            <div class="form-group" style="min-width:140px;margin-bottom:0;">
-              <label>CNPJ / Contato</label>
-              <input type="text" class="form-control" id="new-emp-cnpj" placeholder="CNPJ ou telefone">
-            </div>
-            <div class="form-group" style="min-width:160px;margin-bottom:0;">
-              <label>Tipo de Serviço</label>
-              <select class="form-control" id="new-emp-tipo">
-                <option>Bloco / Pintura</option>
-                <option>Caldaderia / Solda</option>
-                <option>Elétrica</option>
-                <option>Mecânica</option>
-                <option>Limpeza / Higienização</option>
-                <option>Inspeção / Vistoria</option>
-                <option>Outro</option>
-              </select>
-            </div>
-            <button class="btn btn-green btn-sm" style="margin-bottom:0;height:36px;" onclick="addEmpresa()">+ Adicionar</button>
+        <div class="panel-header" style="color:#059669;">🏭 Novo Serviço Bloco / Oficina</div>
+        <div style="padding:16px;">
+          <div class="form-group" style="margin-bottom:10px;">
+            <label>📌 Título do Serviço <span style="color:var(--danger)">*</span></label>
+            <input type="text" class="form-control" id="novo-bloco-titulo" placeholder="Ex: Pintura interior porão 02 — prime e acabamento" style="font-weight:600;font-size:14px;">
           </div>
-        </div>
-      </div>
-
-      <!-- Novo serviço terceirizado -->
-      <div class="panel">
-        <div class="panel-header">📋 Novo Serviço Terceirizado</div>
-        <div style="padding:14px;">
-          <div class="form-row">
-            <div class="form-group" style="max-width:140px;"><label>Semana</label><select class="form-control" id="of-sem"></select></div>
-            <div class="form-group" style="max-width:160px;"><label>Data</label><input type="date" class="form-control" id="of-data"></div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label>📝 Descrição</label>
+            <textarea class="form-control" id="novo-bloco-desc" placeholder="Descreva o serviço realizado..." style="min-height:70px;"></textarea>
+          </div>
+          <div class="form-row" style="margin-bottom:10px;">
             <div class="form-group">
-              <label>Empresa Responsável</label>
-              <select class="form-control" id="of-empresa">
-                <option value="">— Selecionar empresa —</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group" style="flex:2;">
-              <label>📌 Título do Serviço *</label>
-              <input type="text" class="form-control" id="of-titulo" placeholder="Ex: Bloco Cross Deck Porão 02 — tratamento e pintura" style="font-weight:600;">
+              <label>🏢 Empresa</label>
+              <select class="form-control" id="novo-bloco-emp"></select>
             </div>
             <div class="form-group">
+              <label>👷 Responsável</label>
+              <select class="form-control" id="novo-bloco-resp"></select>
+            </div>
+          </div>
+          <!-- Add nova empresa inline -->
+          <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;margin-bottom:12px;">
+            <div style="font-size:11px;font-weight:700;color:#14532d;margin-bottom:8px;">➕ Adicionar Nova Empresa</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
+              <div>
+                <label style="font-size:11px;color:var(--text-dim);">Nome da Empresa</label>
+                <input type="text" class="form-control" id="novo-emp-nm" placeholder="Ex: Marítima Serviços Ltda.">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text-dim);">Tipo</label>
+                <select class="form-control" id="novo-emp-tipo">
+                  <option>Terceirizada</option><option>Armador</option><option>Estaleiro</option><option>Fornecedor</option>
+                </select>
+              </div>
+              <button class="btn btn-green btn-sm" onclick="novoAddEmpresa()" style="white-space:nowrap;">✅ Adicionar</button>
+            </div>
+          </div>
+          <div class="form-row" style="margin-bottom:10px;">
+            <div class="form-group" style="max-width:160px;">
               <label>Status</label>
-              <select class="form-control" id="of-st">
-                <option>Concluído</option><option>Em Andamento</option><option>Pendente</option><option>Aguardando Material</option>
+              <select class="form-control" id="novo-bloco-st">
+                <option>Em Andamento</option><option>Concluído</option><option>Pendente</option><option>Cancelado</option>
               </select>
             </div>
+            <div class="form-group">
+              <label>📍 Local / Bloco</label>
+              <input type="text" class="form-control" id="novo-bloco-local" placeholder="Porão 02, Bay 30, etc.">
+            </div>
           </div>
-          <div class="form-group" style="margin-bottom:12px;">
-            <label>📝 Descrição Detalhada do Serviço</label>
-            <textarea class="form-control" id="of-desc" placeholder="Descreva detalhadamente o serviço:&#10;- Materiais utilizados&#10;- Área / extensão do trabalho&#10;- Observações técnicas..." style="min-height:110px;white-space:pre-wrap;line-height:1.6;"></textarea>
+          <div class="form-row" style="margin-bottom:14px;">
+            <div class="form-group">
+              <label>📄 O.S. / Referência</label>
+              <input type="text" class="form-control" id="novo-bloco-os" placeholder="Número da OS">
+            </div>
+            <div class="form-group" style="max-width:180px;">
+              <label>💰 Valor (R$)</label>
+              <input type="number" class="form-control" id="novo-bloco-valor" placeholder="0,00" step="0.01">
+            </div>
           </div>
-          <div class="form-row">
-            <div class="form-group"><label>Local / Bay / Porão</label><input type="text" class="form-control" id="of-local" placeholder="Porão 02 / Cross Deck / Praça de Máquinas"></div>
-            <div class="form-group"><label>Responsável a Bordo (supervisão)</label><select class="form-control" id="of-resp"></select></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group" style="max-width:160px;"><label>Valor (R$)</label><input type="number" class="form-control" id="of-valor" placeholder="0,00" step="0.01"></div>
-            <div class="form-group"><label>N° OS / Contrato</label><input type="text" class="form-control" id="of-os" placeholder="OS-2026-001"></div>
-          </div>
-          <div class="sep"></div>
-          <div class="section-title">📷 Fotos do Serviço</div>
-          <label class="photo-drop-zone" for="foto-of">📷 Fotos do serviço terceirizado</label>
-          <input type="file" id="foto-of" accept="image/*" multiple style="display:none" onchange="addPhotos(this.files,'of')">
-          <div class="photo-grid" id="pg-of"></div>
-          <div class="sep"></div>
-          <button class="btn btn-primary" onclick="saveOficina()">💾 Salvar Serviço</button>
-          <button class="btn btn-ghost" onclick="clearOfForm()">🗑 Limpar</button>
+          <button class="btn btn-primary" onclick="saveNovoBloco()" style="width:100%;padding:14px;font-size:15px;font-weight:700;background:#059669;border-color:#047857;">💾 Registrar Serviço</button>
         </div>
       </div>
-
-      <!-- Lista de serviços -->
-      <div class="panel">
-        <div class="panel-header">📋 Serviços Registrados <span class="badge" id="of-count">0</span></div>
-        <div style="padding:10px 12px;" id="oficina-list">
-          <div class="empty-state"><div class="ico">🏭</div><p>Nenhum serviço registrado</p></div>
-        </div>
       </div>
     </div>
 
@@ -1897,6 +1823,10 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
                 📋 Trabalhos / Atividades
               </label>
               <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                <input type="checkbox" id="uni-inc-of" checked onchange="renderUnificado()">
+                🏭 Bloco / Oficina
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
                 <input type="checkbox" id="uni-inc-insp" checked onchange="renderUnificado()">
                 🔍 Inspeções
               </label>
@@ -1964,7 +1894,7 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
           <div style="font-weight:700;color:var(--login-green-dk);font-family:'Barlow Condensed',sans-serif;font-size:15px;">INSPEÇÃO</div>
           <div style="font-size:11px;color:var(--text-dim);">Relatório de inspeção</div>
         </div>
-        <div onclick="showPage('desvios')" class="mob-action-card" style="border-color:var(--danger);">
+        <div onclick="showPage('semanal')" class="mob-action-card" style="border-color:var(--login-blue);">
           <div style="font-size:32px;margin-bottom:6px;">⚠️</div>
           <div style="font-weight:700;color:var(--danger);font-family:'Barlow Condensed',sans-serif;font-size:15px;">DESVIO</div>
           <div style="font-size:11px;color:var(--text-dim);">Abrir cartão de desvio</div>
@@ -2242,6 +2172,14 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
         <div class="crew-check-list" id="crew-check-list-edit"></div>
         <input type="hidden" id="e-eq-hidden">
       </div>
+      <!-- Row 5: Fotos -->
+      <div class="sep" style="margin:12px 0 10px;"></div>
+      <div style="font-size:12px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">📷 Fotos da Atividade</div>
+      <div id="e-fotos-grid" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;min-height:40px;"></div>
+      <div style="display:flex;gap:8px;">
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;">📷 Câmera<input type="file" accept="image/*" capture="environment" style="display:none" onchange="editRegAddPhoto(this)"></label>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;">🖼 Galeria<input type="file" accept="image/*" multiple="multiple" style="display:none" onchange="editRegAddPhoto(this)"></label>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-edit')">Cancelar</button>
@@ -2444,7 +2382,7 @@ function _goPage(id){
   if(id==='embarque'){renderEmbarque();}
   if(id==='semanal'){renderSemTabs();}
   if(id==='fotos'){renderGallery();fillFotoAssoc();}
-  if(id==='novo'){fillWeekSel();buildCrewCheckList('novo');fillDeptSelect('r-dept');}
+  if(id==='novo'){fillWeekSel();buildCrewCheckList('novo');fillDeptSelect('r-dept');initNovoBlocoSelects();switchNovoTab('atividade');}
   if(id==='storage'){storStatus();renderDriveLinks();renderModulosStatus();renderNetPaths();renderBackupHistory();renderNetConfigFields();updateDriveConnStatus();updateStorageKpis();}
   if(id==='config'){renderConfigPage();}
   if(id==='oficina'){renderOficina();}
@@ -2583,14 +2521,57 @@ function editReg(id){
   fillDeptSelect('e-dept');
   document.getElementById('e-dept').value=r.dp;
   document.getElementById('e-st').value=r.st;
-  // Título: use r.titulo if exists, fallback to first line of r.a
   const titulo=r.titulo||(r.a?r.a.split('\n')[0]:'');
   const desc=r.titulo?r.a:(r.a?r.a.split('\n').slice(1).join('\n').trim():'');
   document.getElementById('e-titulo').value=titulo;
   document.getElementById('e-atv').value=desc;
   document.getElementById('e-loc').value=r.l||'';
+  // Render existing photos
+  editRegRenderPhotos(id);
   openModal('modal-edit');
   setTimeout(()=>{buildCrewCheckList('edit',r.q);filterCrewByDept('edit');},50);
+}
+
+function editRegRenderPhotos(regId){
+  const r=S.regs.find(x=>x.id===regId);
+  const grid=document.getElementById('e-fotos-grid');
+  if(!grid) return;
+  const fotos=r?r.fotos||[]:[];
+  if(!fotos.length){ grid.innerHTML='<span style="color:var(--muted);font-size:12px;font-style:italic;">Sem fotos — adicione usando os botões abaixo</span>'; return; }
+  grid.innerHTML=fotos.map((u,i)=>`
+    <div style="position:relative;width:80px;">
+      <img src="${u}" onclick="viewP('${u}')" style="width:80px;height:80px;object-fit:cover;border-radius:7px;border:2px solid var(--border);cursor:pointer;display:block;">
+      <button onclick="editRegRemovePhoto('${regId}',${i})" style="position:absolute;top:-5px;right:-5px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;font-weight:700;line-height:1;">✕</button>
+    </div>`).join('');
+}
+
+function editRegAddPhoto(input){
+  const id=document.getElementById('edit-id').value;
+  const r=S.regs.find(x=>x.id===id);
+  if(!r) return;
+  r.fotos=r.fotos||[];
+  const files=Array.from(input.files);
+  if(!files.length) return;
+  let done=0;
+  files.forEach(f=>{
+    const fr=new FileReader();
+    fr.onload=e=>{
+      compressDataURL(e.target.result,u=>{
+        r.fotos.push(u);
+        if(++done===files.length){ editRegRenderPhotos(id); saveData(true); }
+      });
+    };
+    fr.readAsDataURL(f);
+  });
+  input.value='';
+}
+
+function editRegRemovePhoto(regId,idx){
+  const r=S.regs.find(x=>x.id===regId);
+  if(!r||!r.fotos) return;
+  r.fotos.splice(idx,1);
+  editRegRenderPhotos(regId);
+  saveData(true);
 }
 function updateReg(){
   const id=document.getElementById('edit-id').value;
@@ -2707,7 +2688,176 @@ function renderSemTabs(){
 }
 function selWeek(w){curWeek=w;document.querySelectorAll('.week-tab').forEach(t=>t.classList.toggle('active',t.textContent.trim()==='SEM '+w));renderSem(w);}
 
-// ── MAPA DE ABREVIAÇÕES POR FUNÇÃO ──
+// ── PDF SEMANAL com seleção de itens ──
+var _semPrintWeek = null;
+var _semPrintExclude = new Set();
+
+function openSemPrint(week){
+  _semPrintWeek = week;
+  _semPrintExclude = new Set();
+  const regs   = S.regs.filter(r=>r.s===week);
+  const ofWeek = S.oficina.filter(o=>o.s===week);
+  const dvWeek = S.desvios.filter(d=>d.s===week);
+  const inspWeek=S.inspecoes.filter(i=>i.semana===week);
+
+  let modal = document.getElementById('modal-sem-print');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id='modal-sem-print';
+    modal.className='modal-overlay';
+    document.body.appendChild(modal);
+  }
+
+  const itemRow = (id,label,sub,color)=>
+    `<label style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:7px;cursor:pointer;border:1px solid var(--border);margin-bottom:6px;background:#fff;">
+      <input type="checkbox" checked id="sp-chk-${id}" onchange="_semPrintExclude.has('${id}')?_semPrintExclude.delete('${id}'):_semPrintExclude.add('${id}')" style="flex-shrink:0;width:16px;height:16px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:#111827;">${label}</div>
+        <div style="font-size:11px;color:var(--text-dim);">${sub}</div>
+      </div>
+      <span style="background:${color}22;color:${color};font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;white-space:nowrap;flex-shrink:0;">incluído</span>
+    </label>`;
+
+  const regsRows  = regs.map(r=>itemRow('reg-'+r.id, r.titulo||(r.a.split('\n')[0]), r.dp+' · '+r.st, '#1A5FA8')).join('');
+  const ofRows    = ofWeek.map(o=>itemRow('of-'+o.id, o.titulo||o.desc, '🏭 '+o.empNm, '#059669')).join('');
+  const dvRows    = dvWeek.map(d=>itemRow('dv-'+d.id, d.titulo, '⚠️ '+d.prioridade, '#dc2626')).join('');
+  const inspRows  = inspWeek.map(ins=>itemRow('insp-'+ins.id, ins.titulo, '🔍 '+ins.result, '#7c3aed')).join('');
+
+  modal.innerHTML=`
+  <div style="background:#fff;border-radius:14px;max-width:560px;width:95%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.35);">
+    <div style="background:linear-gradient(135deg,#07182e,#0e2540);color:#fff;padding:16px 20px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10;">
+      <div style="flex:1;"><div style="font-size:16px;font-weight:800;">🖨 PDF Semana ${week}</div>
+      <div style="font-size:11px;opacity:.7;margin-top:2px;">Escolha os itens que aparecerão no relatório</div></div>
+      <button onclick="closeSemPrint()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:16px;">
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button onclick="semPrintSelectAll(true)" class="btn btn-ghost btn-sm">✅ Selecionar tudo</button>
+        <button onclick="semPrintSelectAll(false)" class="btn btn-ghost btn-sm">☐ Desmarcar tudo</button>
+      </div>
+      ${regsRows?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--login-blue);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border);">📋 Atividades (${regs.length})</div>${regsRows}`:''}
+      ${ofRows?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#059669;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);">🏭 Bloco/Oficina (${ofWeek.length})</div>${ofRows}`:''}
+      ${dvRows?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#dc2626;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);">⚠️ Desvios (${dvWeek.length})</div>${dvRows}`:''}
+      ${inspRows?`<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#7c3aed;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);">🔍 Inspeções (${inspWeek.length})</div>${inspRows}`:''}
+      <div style="margin-top:14px;display:flex;gap:10px;">
+        <button onclick="doSemPrint()" style="background:#6DB847;color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;flex:1;">🖨 Gerar PDF</button>
+        <button onclick="closeSemPrint()" class="btn btn-ghost">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+
+  modal.style.display='flex';modal.style.alignItems='center';modal.style.justifyContent='center';
+  modal.onclick=e=>{if(e.target===modal)closeSemPrint();};
+}
+
+function closeSemPrint(){ const m=document.getElementById('modal-sem-print');if(m)m.style.display='none'; }
+
+function semPrintSelectAll(val){
+  const regs   = S.regs.filter(r=>r.s===_semPrintWeek);
+  const ofWeek = S.oficina.filter(o=>o.s===_semPrintWeek);
+  const dvWeek = S.desvios.filter(d=>d.s===_semPrintWeek);
+  const inspWeek=S.inspecoes.filter(i=>i.semana===_semPrintWeek);
+  [...regs.map(r=>'reg-'+r.id),...ofWeek.map(o=>'of-'+o.id),...dvWeek.map(d=>'dv-'+d.id),...inspWeek.map(i=>'insp-'+i.id)].forEach(id=>{
+    const chk=document.getElementById('sp-chk-'+id);
+    if(chk) chk.checked=val;
+    val ? _semPrintExclude.delete(id) : _semPrintExclude.add(id);
+  });
+}
+
+function doSemPrint(){
+  if(!_semPrintWeek) return;
+  closeSemPrint();
+  // Apply exclusion temporarily for print
+  const excluded = new Set(_semPrintExclude);
+  // Mark excluded items
+  S.regs.forEach(r=>{ r._semExclude = excluded.has('reg-'+r.id); });
+  S.oficina.forEach(o=>{ o._semExclude = excluded.has('of-'+o.id); });
+  S.desvios.forEach(d=>{ d._semExclude = excluded.has('dv-'+d.id); });
+  S.inspecoes.forEach(i=>{ i._semExclude = excluded.has('insp-'+i.id); });
+  // Print then clean up
+  exportPDF();
+  setTimeout(()=>{
+    S.regs.forEach(r=>delete r._semExclude);
+    S.oficina.forEach(o=>delete o._semExclude);
+    S.desvios.forEach(d=>delete d._semExclude);
+    S.inspecoes.forEach(i=>delete i._semExclude);
+  }, 2000);
+}
+
+// ── Novo Registro: Bloco/Oficina tab ──
+var _novoTab = 'atividade';
+
+function switchNovoTab(tab){
+  _novoTab = tab;
+  ['atividade','bloco'].forEach(t=>{
+    const btn = document.getElementById('ntab-'+t);
+    const pnl = document.getElementById('npanel-'+t);
+    if(btn) btn.className = 'btn btn-sm '+(t===tab?'btn-primary':'btn-ghost');
+    if(pnl) pnl.style.display = t===tab?'':'none';
+  });
+}
+
+// Add empresa from novo form
+function novoAddEmpresa(){
+  const inp = document.getElementById('novo-emp-nm');
+  const nm = inp?inp.value.trim():'';
+  if(!nm){ toast('⚠️ Nome da empresa obrigatório','warn'); return; }
+  const tipo = document.getElementById('novo-emp-tipo')?.value||'Terceirizada';
+  const id = gid();
+  S.empresas.push({id, nm, tipo, ts:Date.now()});
+  saveData(true);
+  toast('✅ Empresa '+nm+' adicionada!','ok');
+  if(inp) inp.value='';
+  // Refresh empresa select in bloco panel
+  const sel = document.getElementById('novo-bloco-emp');
+  if(sel){
+    sel.innerHTML = '<option value="">— Selecionar empresa —</option>' + S.empresas.map(e=>`<option value="${e.id}">${escHtml(e.nm)}</option>`).join('');
+    sel.value = id;
+  }
+}
+
+function saveNovoBloco(){
+  const titulo = document.getElementById('novo-bloco-titulo')?.value.trim();
+  if(!titulo){ toast('⚠️ Preencha o título do serviço','warn'); return; }
+  const semVal = document.getElementById('r-sem')?.value || String(wn()).padStart(2,'0');
+  const empId  = document.getElementById('novo-bloco-emp')?.value||'';
+  const emp    = S.empresas.find(e=>e.id===empId);
+  const respId = document.getElementById('novo-bloco-resp')?.value||'';
+  const resp   = S.crew.find(c=>c.id===respId);
+  const abbr   = resp?(resp.abbr||(ROLE_ABBR[resp.fn]||resp.fn.slice(0,3).toUpperCase())):'';
+  S.oficina.push({
+    id:gid(), s:semVal, d:document.getElementById('r-data')?.value||new Date().toISOString().slice(0,10),
+    titulo, desc:document.getElementById('novo-bloco-desc')?.value||'',
+    empId, empNm:emp?.nm||'—', empTipo:emp?.tipo||'Terceirizada',
+    local:document.getElementById('novo-bloco-local')?.value||'',
+    st:document.getElementById('novo-bloco-st')?.value||'Em Andamento',
+    respId, respNm:resp?`[${abbr}] ${resp.nm.split(' ')[0]}`:'—',
+    valor:parseFloat(document.getElementById('novo-bloco-valor')?.value)||0,
+    os:document.getElementById('novo-bloco-os')?.value||'',
+    fotos:[], ts:Date.now()
+  });
+  saveData(true);
+  // Clear form
+  ['novo-bloco-titulo','novo-bloco-desc','novo-bloco-local','novo-bloco-os','novo-bloco-valor'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  toast('✅ Serviço Bloco/Oficina registrado!','ok');
+  switchNovoTab('atividade');
+}
+
+// Initialize novo-bloco selects
+function initNovoBlocoSelects(){
+  const empSel = document.getElementById('novo-bloco-emp');
+  if(empSel) empSel.innerHTML = '<option value="">— Selecionar empresa —</option>' + S.empresas.map(e=>`<option value="${e.id}">${escHtml(e.nm)}</option>`).join('');
+  const respSel = document.getElementById('novo-bloco-resp');
+  if(respSel){
+    respSel.innerHTML = '<option value="">— Responsável —</option>' + S.crew.map(c=>{
+      const a=c.abbr||(ROLE_ABBR[c.fn]||c.fn.slice(0,3).toUpperCase());
+      return `<option value="${c.id}">[${a}] ${c.nm.split(' ')[0]}</option>`;
+    }).join('');
+  }
+}
+
 const ROLE_ABBR={
   'Master':'CMT','Chief Officer':'IMT','2nd Officer':'1ON','3rd Officer':'2ON',
   'Bosun':'CTR','AB Seaman':'MNC','OS Seaman':'MOC','OS Seaman 2':'MOM',
@@ -2735,7 +2885,6 @@ function crewAbbr(nameStr){
 // ── RENDER ACTIVITY CARD ──
 function renderActCard(r, i, showEdit=true){
   const fotos=r.fotos||[];
-  // Título: use r.titulo if set, else first line of r.a (backwards compat)
   const titulo=r.titulo||(r.a?r.a.split('\n')[0]:'—');
   const desc=r.titulo?r.a:(r.a?r.a.split('\n').slice(1).join('\n').trim():'');
   const descHtml=desc?`<div class="act-desc">${escHtml(desc)}</div>`:'';
@@ -2746,32 +2895,47 @@ function renderActCard(r, i, showEdit=true){
         ${fotos.map(u=>`<div class="act-photo-wrap" onclick="viewP('${u}')"><img src="${u}" alt="foto" loading="lazy"></div>`).join('')}
       </div>
     </div>`:'';
+
+  // Status color for band
+  const stColors={
+    'Concluído':  ['#16a34a','#f0fdf4'],
+    'Em Andamento':['#1A5FA8','#eff6ff'],
+    'Pendente':   ['#d97706','#fffbeb'],
+    'Cancelado':  ['#6b7280','#f9fafb'],
+  };
+  const [bandColor, bandBg] = stColors[r.st]||stColors['Pendente'];
+
   const editBtns=showEdit?`
     <div class="act-actions">
-      <button class="btn btn-primary btn-sm" onclick="editReg('${r.id}')">✏️</button>
+      <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3);" onclick="editReg('${r.id}')" title="Editar">✏️</button>
       <button class="btn btn-danger btn-sm" onclick="delReg('${r.id}')">🗑</button>
     </div>`:'';
-  const equipeHtml=r.q?`<span class="act-meta-item act-meta-equipe">👷 ${crewAbbr(r.q)}</span>`:'<span class="act-meta-item" style="color:var(--muted);font-size:11px;">👷 Sem equipe</span>';
+  const equipeHtml=r.q?`<span class="act-meta-item">👷 ${crewAbbr(r.q)}</span>`:'';
   const equipeBtn=showEdit?`<button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;" onclick="openEquipePopup('${r.id}',event)" title="Editar equipe">👷 +</button>`:'';
-  return `<div class="act-card">
-    <div class="act-card-head">
-      <span class="act-num">${String(i+1).padStart(2,'0')}</span>
-      <div class="act-title-block">
-        <div class="act-title">${escHtml(titulo)}</div>
-        ${descHtml}
+
+  return `<div class="act-card ${r._semExclude?'no-print':''}" style="border:none;border-radius:10px;margin-bottom:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.08);${r._semExclude?'opacity:.4;':''}">
+    <!-- Band header -->
+    <div style="background:${bandColor};padding:9px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="background:rgba(0,0,0,.18);color:#fff;font-family:monospace;font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;flex-shrink:0;">${String(i+1).padStart(2,'0')}</span>
+      <div class="act-title-block" style="flex:1;min-width:0;">
+        <div class="act-title" style="color:#fff;">${escHtml(titulo)}</div>
+        ${desc?`<div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:2px;">${escHtml(desc.slice(0,80))}</div>`:''}
       </div>
+      <span style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:10px;font-weight:700;padding:2px 10px;border-radius:10px;white-space:nowrap;">${stg(r.st)}</span>
       ${editBtns}
     </div>
-    <div class="act-meta">
-      ${r.l?`<span class="act-meta-item">📍 <strong>${r.l}</strong></span>`:''}
-      ${equipeHtml}
-      ${equipeBtn}
-      <span class="act-meta-item">${stg(r.st)}</span>
-      <span class="act-meta-item" style="margin-left:auto;color:var(--muted);font-size:10px;font-family:'IBM Plex Mono',monospace;">${fd(r.d)}</span>
+    <!-- Meta row -->
+    <div style="background:#fff;padding:7px 14px;display:flex;flex-wrap:wrap;gap:0;border-bottom:${fotosHtml?'1px solid var(--border)':'none'};">
+      ${r.dp?`<div style="padding:4px 12px 4px 0;border-right:1px solid var(--border);font-size:11px;color:var(--text-dim);"><span style="font-weight:700;color:var(--text);">${dtg(r.dp)} </span>${escHtml(r.dp)}</div>`:''}
+      ${r.l?`<div style="padding:4px 12px;border-right:1px solid var(--border);font-size:11px;color:var(--text-dim);">📍 <strong>${escHtml(r.l)}</strong></div>`:''}
+      ${equipeHtml?`<div style="padding:4px 12px;border-right:1px solid var(--border);font-size:11px;color:var(--text-dim);">${equipeHtml}</div>`:''}
+      ${equipeBtn?`<div style="padding:4px 8px;font-size:11px;">${equipeBtn}</div>`:''}
+      <div style="padding:4px 12px;font-size:10px;color:var(--muted);margin-left:auto;font-family:'IBM Plex Mono',monospace;">${fd(r.d)}</div>
     </div>
     ${fotosHtml}
   </div>`;
 }
+
 function escHtml(s){
   if(!s)return '';
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -2779,88 +2943,235 @@ function escHtml(s){
 
 
 function renderSem(week){
-  const regs=S.regs.filter(r=>r.s===week);
   const div=document.getElementById('rpt-sem');
-  if(!regs.length){div.innerHTML='<div class="empty-state"><div class="ico">📅</div><p>Nenhum registro</p></div>';return;}
-  const byD={};regs.forEach(r=>{byD[r.dp]=byD[r.dp]||[];byD[r.dp].push(r);});
-  const vcfg=(getCfg().vessel)||{};
-  div.innerHTML=`
-    <div class="rpt-header">
-      <div class="rpt-logo"><span>log</span><span class="gi">in</span><span class="dot">.</span></div>
-      <div style="flex:1;padding-left:16px;border-left:2px solid rgba(255,255,255,.3)">
-        <div class="rpt-title">Relatório de Trabalhos a Bordo — Semana ${week}</div>
-        <div class="rpt-sub">Navio: ${vcfg.vessel||'LOG-IN JACARANDÁ'} &nbsp;|&nbsp; ${regs[0]?.lb||''} &nbsp;|&nbsp; Cmte. ${vcfg.cmte||'Jose Moncada'}</div>
-      </div>
-      <div style="text-align:right;font-size:11px;opacity:.75;">${regs.length} atividade${regs.length>1?'s':''}<br>${regs.filter(r=>r.st==='Concluído').length} concluídas</div>
-    </div>
-    ${Object.entries(byD).map(([dp,drs])=>`
-      <div class="panel" style="margin-top:14px;">
-        <div class="panel-header">${dtg(dp)} ${dp.toUpperCase()} <span class="badge">${drs.length}</span></div>
-        <div style="padding:10px 12px;">
-          ${drs.map((r,i)=>renderActCard(r,i,true)).join('')}
+  const regs    =S.regs.filter(r=>r.s===week);
+  const ofWeek  =S.oficina.filter(o=>o.s===week);
+  const dvWeek  =S.desvios.filter(d=>d.s===week);
+  const dvFech  =S.desvios.filter(d=>d.status==='fechado'&&d.dataFechamento&&d.s===week);
+  const inspWeek=S.inspecoes.filter(i=>i.semana===week);
+  const vcfg    =(getCfg().vessel)||{};
+
+  if(!regs.length&&!ofWeek.length&&!dvWeek.length&&!inspWeek.length){
+    div.innerHTML='<div class="empty-state"><div class="ico">📅</div><p>Nenhum dado para esta semana</p></div>';
+    return;
+  }
+
+  const concl=regs.filter(r=>r.st==='Concluído').length;
+  const byD  ={};regs.forEach(r=>{byD[r.dp]=byD[r.dp]||[];byD[r.dp].push(r);});
+
+  // ── Shared section header builder ──
+  function secHeader(ico, label, count, color, addBtn, addFn){
+    return `<div class="rpt-header" style="border-radius:8px 8px 0 0;margin-bottom:0;background:linear-gradient(135deg,${color}dd,${color}99);">
+      <div style="flex:1;padding-left:0;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">${ico}</span>
+          <div>
+            <div class="rpt-title" style="font-size:15px;">${label}</div>
+            <div class="rpt-sub">${count} item${count!==1?'s':''} &nbsp;·&nbsp; semana ${week}</div>
+          </div>
+          <span style="background:rgba(255,255,255,.25);color:#fff;font-size:11px;font-weight:800;padding:2px 10px;border-radius:12px;margin-left:4px;">${count}</span>
         </div>
-      </div>`).join('')}
-    ${(()=>{
-      // Desvios fechados nessa semana
-      const dvFechados=S.desvios.filter(d=>d.status==='fechado'&&d.dataFechamento&&d.s===week);
-      // Serviços de Bloco/Oficina nessa semana
-      const ofWeek=S.oficina.filter(o=>o.s===week);
-      // Inspeções nessa semana
-      const inspWeek=S.inspecoes.filter(i=>i.semana===week);
-      let extra='';
-      if(dvFechados.length) extra+=`
-        <div class="panel" style="margin-top:14px;border-left:4px solid var(--login-green);">
-          <div class="panel-header" style="color:var(--login-green-dk);">✅ DESVIOS FECHADOS ESTA SEMANA <span class="badge" style="background:var(--login-green);">${dvFechados.length}</span></div>
-          <div style="padding:10px 12px;">${dvFechados.map((d,i)=>`
-            <div class="act-card" style="border-left:3px solid var(--login-green);">
-              <div class="act-card-head">
-                <span class="act-num" style="background:var(--login-green);">${d.num}</span>
-                <div class="act-title-block"><div class="act-title">${d.titulo}</div></div>
-              </div>
-              <div class="act-meta">
-                <span class="act-meta-item">📍 ${d.local||'—'}</span>
-                <span class="act-meta-item">✅ Fechado: ${d.dataFechamento}</span>
-                ${d.acaoCorretiva?'<span class="act-meta-item" style="color:var(--login-green-dk);">🔧 '+d.acaoCorretiva.slice(0,60)+'</span>':''}
-              </div>
-            </div>`).join('')}
-          </div>
-        </div>`;
-      if(ofWeek.length) extra+=`
-        <div class="panel" style="margin-top:14px;border-left:4px solid var(--login-green);">
-          <div class="panel-header">🏭 BLOCO / OFICINA ESTA SEMANA <span class="badge">${ofWeek.length}</span></div>
-          <div style="padding:10px 12px;">${ofWeek.map((o,i)=>`
-            <div class="act-card" style="border-left:3px solid var(--login-green);">
-              <div class="act-card-head">
-                <span class="act-num" style="background:var(--login-green);">${String(i+1).padStart(2,'0')}</span>
-                <div class="act-title-block">
-                  <div class="act-title">${o.titulo||o.desc}</div>
-                  ${o.desc&&o.titulo?'<div class="act-desc">'+escHtml(o.desc)+'</div>':''}
-                  <div style="font-size:10px;color:var(--login-green-dk);margin-top:3px;">🏢 ${o.empNm}</div>
-                </div>
-              </div>
-              <div class="act-meta">
-                ${o.local?'<span class="act-meta-item">📍 <strong>'+o.local+'</strong></span>':''}
-                <span class="act-meta-item">👷 ${o.respNm}</span>
-                <span class="act-meta-item">${stg(o.st)}</span>
-              </div>
-            </div>`).join('')}
-          </div>
-        </div>`;
-      if(inspWeek.length) extra+=`
-        <div class="panel" style="margin-top:14px;border-left:4px solid var(--login-blue-lt);">
-          <div class="panel-header">🔍 INSPEÇÕES ESTA SEMANA <span class="badge">${inspWeek.length}</span></div>
-          <div style="padding:10px 12px;">${inspWeek.map((ins,i)=>renderInspCard(ins,i,false)).join('')}</div>
-        </div>`;
-      return extra;
-    })()}
-    <div style="margin-top:14px;padding:12px 16px;background:#fff;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;border-top:3px solid var(--login-blue);display:flex;flex-wrap:wrap;gap:16px;">
+      </div>
+      ${addBtn?`<button class="btn btn-sm" style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;font-size:11px;font-weight:700;" onclick="${addFn}">➕ Adicionar</button>`:''}
+    </div>`;
+  }
+
+  // ── Bloco/Oficina inline form ──
+  const empOpts=S.empresas.map(e=>`<option value="${e.id}">${escHtml(e.nm)}</option>`).join('');
+  const respOpts=[['','— Resp —'],...S.crew.map(c=>{const a=c.abbr||(ROLE_ABBR[c.fn]||c.fn.slice(0,3).toUpperCase());return [c.id,`[${a}] ${c.nm.split(' ')[0]}`];})].map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+  const stOpts=['Em Andamento','Concluído','Pendente','Cancelado'].map(s=>`<option>${s}</option>`).join('');
+
+  const addOfForm=`<div id="sem-add-of-form" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:14px;margin-bottom:10px;display:none;">
+    <div style="font-size:12px;font-weight:800;color:#14532d;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🏭 Novo Serviço Bloco/Oficina
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px;" onclick="document.getElementById('sem-add-of-form').style.display='none'">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+      <input type="text" id="saof-titulo" class="form-control" placeholder="Título do serviço *" style="font-size:12px;">
+      <select id="saof-empresa" class="form-control" style="font-size:12px;"><option value="">— Empresa —</option>${empOpts}</select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
+      <select id="saof-resp" class="form-control" style="font-size:12px;">${respOpts}</select>
+      <select id="saof-st" class="form-control" style="font-size:12px;">${stOpts}</select>
+      <input type="date" id="saof-data" class="form-control" value="${new Date().toISOString().slice(0,10)}" style="font-size:12px;">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+      <input type="text" id="saof-local" class="form-control" placeholder="Local / Bloco" style="font-size:12px;">
+      <input type="text" id="saof-os" class="form-control" placeholder="O.S. / Referência" style="font-size:12px;">
+    </div>
+    <textarea id="saof-desc" class="form-control" placeholder="Descrição do serviço" style="min-height:52px;font-size:12px;margin-bottom:8px;resize:vertical;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-green btn-sm" style="font-weight:700;" onclick="semSaveOf('${week}')">💾 Salvar Serviço</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sem-add-of-form').style.display='none'">Cancelar</button>
+    </div>
+  </div>`;
+
+  // ── Desvio inline form ──
+  const priOpts=['Alta','Média','Baixa'].map(p=>`<option>${p}</option>`).join('');
+  const catOpts=['Segurança','Qualidade','Manutenção','Ambiental','Outro'].map(c=>`<option>${c}</option>`).join('');
+
+  const addDvForm=`<div id="sem-add-dv-form" style="background:#fff1f2;border:1.5px solid #fca5a5;border-radius:8px;padding:14px;margin-bottom:10px;display:none;">
+    <div style="font-size:12px;font-weight:800;color:#991b1b;margin-bottom:10px;display:flex;align-items:center;gap:6px;">⚠️ Novo Cartão de Desvio
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px;" onclick="document.getElementById('sem-add-dv-form').style.display='none'">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+      <input type="text" id="sadv-titulo" class="form-control" placeholder="Título do desvio *" style="font-size:12px;">
+      <input type="text" id="sadv-local" class="form-control" placeholder="Local" style="font-size:12px;">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+      <select id="sadv-cat" class="form-control" style="font-size:12px;">${catOpts}</select>
+      <select id="sadv-pri" class="form-control" style="font-size:12px;">${priOpts}</select>
+    </div>
+    <textarea id="sadv-desc" class="form-control" placeholder="Descrição do problema" style="min-height:52px;font-size:12px;margin-bottom:8px;resize:vertical;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-danger btn-sm" style="font-weight:700;" onclick="semSaveDv('${week}')">⚠️ Registrar Desvio</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sem-add-dv-form').style.display='none'">Cancelar</button>
+    </div>
+  </div>`;
+
+  // ── Oficina card ──
+  function semOfCard(o,i){
+    const stColor=o.st==='Concluído'?'#16a34a':o.st==='Cancelado'?'#dc2626':'#d97706';
+    const stBg   =o.st==='Concluído'?'#f0fdf4':o.st==='Cancelado'?'#fef2f2':'#fffbeb';
+    const valor  =o.valor?`<span class="act-meta-item">💰 R$ ${parseFloat(o.valor).toFixed(2).replace('.',',')}</span>`:'';
+    const fotos  =(o.fotos||[]).length?`<div class="act-photos"><div class="act-photos-label">📷 ${o.fotos.length} foto(s)</div><div class="act-photos-grid">${(o.fotos||[]).map(u=>`<div class="act-photo-wrap" onclick="viewP('${u}')"><img src="${u}" loading="lazy"></div>`).join('')}</div></div>`:'';
+    return `<div class="act-card" style="border:none;border-radius:10px;margin-bottom:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.07);">
+      <div style="background:#059669;padding:9px 14px;display:flex;align-items:center;gap:10px;">
+        <span style="background:rgba(0,0,0,.2);color:#fff;font-size:10px;font-family:monospace;padding:2px 7px;border-radius:4px;">${String(i+1).padStart(2,'0')}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:800;color:#fff;line-height:1.2;">${escHtml(o.titulo||o.desc||'—')}</div>
+          ${o.desc&&o.titulo?`<div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:1px;">${escHtml(o.desc.slice(0,70))}</div>`:''}
+          <div style="font-size:10px;color:rgba(255,255,255,.8);margin-top:2px;font-weight:600;">🏢 ${escHtml(o.empNm||'—')}</div>
+        </div>
+        <span style="background:${stBg};color:${stColor};font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">${o.st}</span>
+        <div class="act-actions" style="flex-shrink:0;">
+          <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3);" onclick="semEditOf('${o.id}','${week}')" title="Editar">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="semDelOf('${o.id}')">🗑</button>
+        </div>
+      </div>
+      <div style="background:#fff;padding:8px 14px;display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid #f0fdf4;">
+        ${o.local?`<span class="act-meta-item">📍 <strong>${escHtml(o.local)}</strong></span>`:''}
+        <span class="act-meta-item">👷 ${escHtml(o.respNm||'—')}</span>
+        ${valor}
+        ${o.os?`<span class="act-meta-item" style="font-family:monospace;font-size:10px;">📄 ${escHtml(o.os)}</span>`:''}
+        <span class="act-meta-item" style="margin-left:auto;color:var(--muted);font-size:10px;">${fd(o.d)}</span>
+      </div>
+      ${fotos}
+    </div>`;
+  }
+
+  // ── Desvio card ──
+  function semDvCard(d,i){
+    const isFech=d.status==='fechado';
+    const col=isFech?'#16a34a':'#dc2626';
+    const bg =isFech?'#f0fdf4':'#fef2f2';
+    const ico=isFech?'✅':'🔴';
+    return `<div class="act-card" style="border:none;border-radius:10px;margin-bottom:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.07);">
+      <div style="background:${col};padding:9px 14px;display:flex;align-items:center;gap:10px;">
+        <span style="background:rgba(0,0,0,.2);color:#fff;font-size:10px;font-family:monospace;padding:2px 7px;border-radius:4px;">${d.num}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:800;color:#fff;line-height:1.2;">${escHtml(d.titulo)}</div>
+          ${d.desc?`<div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:1px;">${escHtml(d.desc.slice(0,70))}</div>`:''}
+        </div>
+        <span style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">${ico} ${isFech?'Fechado':'Aberto'}</span>
+        <div class="act-actions" style="flex-shrink:0;">
+          <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3);" onclick="semEditDv('${d.id}','${week}')" title="Editar">✏️</button>
+          <button class="btn btn-danger btn-sm" style="background:rgba(0,0,0,.2);border-color:transparent;" onclick="semDelDv('${d.id}')">🗑</button>
+        </div>
+      </div>
+      <div style="background:#fff;padding:8px 14px;display:flex;flex-wrap:wrap;gap:0;">
+        ${d.local?`<span class="act-meta-item">📍 <strong>${escHtml(d.local)}</strong></span>`:''}
+        ${d.pri?`<span class="act-meta-item">⚡ ${d.pri}</span>`:''}
+        ${d.acaoCorretiva?`<span class="act-meta-item" style="color:#16a34a;">🔧 ${escHtml(d.acaoCorretiva.slice(0,60))}</span>`:''}
+        ${isFech&&d.dataFechamento?`<span class="act-meta-item">✅ ${d.dataFechamento}</span>`:''}
+        <span class="act-meta-item" style="margin-left:auto;color:var(--muted);font-size:10px;">${fd(d.dataAbertura||d.data||'')}</span>
+      </div>
+    </div>`;
+  }
+
+  // ── KPI bar ──
+  const kpi=(n,l,c)=>`<div style="background:#fff;border:1px solid var(--border);border-top:3px solid ${c};border-radius:8px;padding:10px 12px;text-align:center;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:${c};">${n}</div>
+    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);">${l}</div>
+  </div>`;
+
+  const kpis=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin-bottom:14px;">
+    ${kpi(regs.length,'Atividades','var(--login-blue)')}
+    ${kpi(concl,'Concluídas','#16a34a')}
+    ${kpi(regs.length-concl,'Pendentes','#d97706')}
+    ${kpi(ofWeek.length,'Bloco/Oficina','#059669')}
+    ${kpi(dvWeek.length,'Desvios','#dc2626')}
+    ${kpi(inspWeek.length,'Inspeções','#7c3aed')}
+  </div>`;
+
+  // ── Departments (atividades) ──
+  const deptsHtml=Object.entries(byD).map(([dp,drs])=>`
+    <div style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:0 0 6px;border-bottom:2px solid var(--border);">
+        <span style="font-size:13px;font-weight:800;color:var(--login-blue);">${dtg(dp)} ${dp.toUpperCase()}</span>
+        <span style="background:var(--login-blue);color:#fff;font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;">${drs.length}</span>
+      </div>
+      ${drs.map((r,i)=>renderActCard(r,i,true)).join('')}
+    </div>`).join('');
+
+  div.innerHTML=`
+    ${kpis}
+
+    <!-- HEADER LOGIM STYLE -->
+    <div class="rpt-header" style="border-radius:8px 8px 0 0;">
+      <div class="rpt-logo"><span>log</span><span class="gi">in</span><span class="dot">.</span></div>
+      <div style="flex:1;padding-left:16px;border-left:2px solid rgba(255,255,255,.3);">
+        <div class="rpt-title">Relatório de Trabalhos a Bordo — Semana ${week}</div>
+        <div class="rpt-sub">${vcfg.vessel||'LOG-IN JACARANDÁ'} &nbsp;·&nbsp; Cmte. ${vcfg.cmte||'Jose Moncada'}</div>
+      </div>
+      <div style="text-align:right;font-size:11px;opacity:.8;white-space:nowrap;">
+        ${regs.length} atividade${regs.length!==1?'s':''}<br>${concl} concluída${concl!==1?'s':''}
+      </div>
+    </div>
+
+    <!-- ATIVIDADES por departamento -->
+    <div class="panel" style="border-radius:0 0 8px 8px;border-top:none;margin-top:0;margin-bottom:14px;">
+      <div style="padding:12px 14px;">${deptsHtml||'<div style="color:var(--muted);font-size:12px;font-style:italic;">Nenhuma atividade esta semana</div>'}</div>
+    </div>
+
+    <!-- BLOCO / OFICINA -->
+    <div style="margin-bottom:14px;">
+      ${secHeader('🏭','BLOCO / OFICINA',ofWeek.length,'#059669',true,"(function(){var f=document.getElementById('sem-add-of-form');f.style.display=f.style.display==='none'||!f.style.display?'block':'none';})()")}
+      <div class="panel" style="border-radius:0 0 8px 8px;border-top:none;margin-top:0;">
+        <div style="padding:10px 12px;">
+          ${addOfForm}
+          ${ofWeek.length?ofWeek.map((o,i)=>semOfCard(o,i)).join(''):'<div style="color:var(--muted);font-size:12px;font-style:italic;padding:4px 0;">Nenhum serviço de bloco/oficina esta semana</div>'}
+        </div>
+      </div>
+    </div>
+
+    <!-- DESVIOS / NCAR -->
+    <div style="margin-bottom:14px;">
+      ${secHeader('⚠️','DESVIOS / NCAR',dvWeek.length,'#dc2626',true,"(function(){var f=document.getElementById('sem-add-dv-form');f.style.display=f.style.display==='none'||!f.style.display?'block':'none';})()")}
+      <div class="panel" style="border-radius:0 0 8px 8px;border-top:none;margin-top:0;">
+        <div style="padding:10px 12px;">
+          ${addDvForm}
+          ${dvWeek.length?dvWeek.map((d,i)=>semDvCard(d,i)).join(''):'<div style="color:var(--muted);font-size:12px;font-style:italic;padding:4px 0;">Nenhum desvio esta semana</div>'}
+        </div>
+      </div>
+    </div>
+
+    <!-- INSPEÇÕES -->
+    ${inspWeek.length?`
+    <div style="margin-bottom:14px;">
+      ${secHeader('🔍','INSPEÇÕES',inspWeek.length,'#7c3aed',false,'')}
+      <div class="panel" style="border-radius:0 0 8px 8px;border-top:none;margin-top:0;">
+        <div style="padding:10px 12px;">${inspWeek.map((ins,i)=>renderInspCard(ins,i,true)).join('')}</div>
+      </div>
+    </div>`:''}
+
+    <!-- RODAPÉ -->
+    <div style="padding:12px 16px;background:#fff;border:1px solid var(--border);border-radius:8px;font-size:12px;border-top:3px solid var(--login-blue);display:flex;flex-wrap:wrap;gap:16px;">
       <span><strong style="color:var(--login-blue)">Cmte.:</strong> ${vcfg.cmte||'Jose Moncada'}</span>
       <span><strong style="color:var(--login-blue)">Imediato:</strong> ${vcfg.imo||'Robson Freitas'}</span>
       <span><strong style="color:var(--login-blue)">Ch. Máq.:</strong> ${vcfg.cmaq||'Jorge Murrieta'}</span>
       <span><strong style="color:var(--login-blue)">Sub-Ch.:</strong> ${vcfg.scmaq||'Cesar Diaz'}</span>
     </div>`;
 }
-
 // ── MENSAL ──
 function renderMensal(){
   const mes=document.getElementById('mes-sel').value;if(!mes)return;
@@ -3091,8 +3402,9 @@ function getUniFilter(){
     var w = document.getElementById('uni-semana')?.value || '';
     return { tipo:'semana', semana:w,
       regs:   S.regs.filter(function(r){return r.s===w;}),
-      insps:  S.inspecoes.filter(function(i){return i.semana===w;}),
+      insps:  S.inspecoes.filter(function(i){return i.semana===w && !i._uniExclude;}),
       desvios:S.desvios.filter(function(d){return d.s===w;}),
+      ofic:   S.oficina.filter(function(o){return o.s===w;}),
       label:  'Semana '+w, period: w };
   }
   if(tipo === 'mes'){
@@ -3102,8 +3414,9 @@ function getUniFilter(){
     var inDate = function(d){ var dt=new Date(d+'T12:00:00'); return dt.getFullYear()===yr&&(dt.getMonth()+1)===mo; };
     return { tipo:'mes', label:mName, period:mes,
       regs:   S.regs.filter(function(r){return inDate(r.d);}),
-      insps:  S.inspecoes.filter(function(i){return inDate(i.data);}),
-      desvios:S.desvios.filter(function(d){return inDate(d.data)||inDate(d.dataFechamento||'');}) };
+      insps:  S.inspecoes.filter(function(i){return inDate(i.data) && !i._uniExclude;}),
+      desvios:S.desvios.filter(function(d){return inDate(d.data)||inDate(d.dataFechamento||'');}),
+      ofic:   S.oficina.filter(function(o){return inDate(o.d);}) };
   }
   // range
   var d1 = document.getElementById('uni-d1')?.value||'';
@@ -3111,8 +3424,9 @@ function getUniFilter(){
   var inRange = function(d){ return (!d1||d>=d1)&&(!d2||d<=d2); };
   return { tipo:'range', label:(d1||'...')+' → '+(d2||'...'), period:d1+'_'+d2,
     regs:   S.regs.filter(function(r){return inRange(r.d);}),
-    insps:  S.inspecoes.filter(function(i){return inRange(i.data);}),
-    desvios:S.desvios.filter(function(d){return inRange(d.data);}) };
+    insps:  S.inspecoes.filter(function(i){return inRange(i.data) && !i._uniExclude;}),
+    desvios:S.desvios.filter(function(d){return inRange(d.data);}),
+    ofic:   S.oficina.filter(function(o){return inRange(o.d);}) };
 }
 
 function renderUnificado(){
@@ -3125,6 +3439,7 @@ function renderUnificado(){
   }
 
   var incRegs    = document.getElementById('uni-inc-regs')?.checked   !== false;
+  var incOf      = document.getElementById('uni-inc-of')?.checked    !== false;
   var incInsp    = document.getElementById('uni-inc-insp')?.checked   !== false;
   var incDesvios = document.getElementById('uni-inc-desvios')?.checked !== false;
   var incFotos   = document.getElementById('uni-inc-fotos')?.checked  !== false;
@@ -3135,6 +3450,7 @@ function renderUnificado(){
   var pend   = f.regs.length - concl;
   var inspConf = f.insps.filter(function(i){return i.result==='Conforme';}).length;
   var dvAbertos= f.desvios.filter(function(d){return d.status==='aberto';}).length;
+  var totalOf    = (f.ofic||[]).length;
   var totalFotos= f.regs.reduce(function(a,r){return a+(r.fotos||[]).length;},0)
                 + f.insps.reduce(function(a,i){return a+(i.fotos||[]).length;},0);
 
@@ -3157,7 +3473,7 @@ function renderUnificado(){
 
   // ── Build preview ──
   var vcfg = getCfg().vessel || {};
-  var html = buildUnifiedHTML(f, vcfg, {incRegs,incInsp,incDesvios,incFotos,incDetail});
+  var html = buildUnifiedHTML(f, vcfg, {incRegs,incOf,incInsp,incDesvios,incFotos,incDetail});
   document.getElementById('uni-preview').innerHTML = html;
 }
 
@@ -3232,7 +3548,7 @@ function buildUnifiedHTML(f, vcfg, opts){
         var stBg    = r.st==='Concluído'?'#f0fdf4':r.st==='Em Andamento'?'#eff6ff':'#fffbeb';
         h += '<div style="border:1px solid #e5e7eb;border-left:4px solid '+stColor+';border-radius:7px;'
            + 'margin-bottom:8px;overflow:hidden;">'
-           // row 1: title + status
+           // row 1: title + status + delete
            + '<div style="padding:8px 12px;display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">'
            + '<div style="flex:1;min-width:0;">'
            + '<div style="font-size:13px;font-weight:700;color:#111827;">'+escHtml(r.a)+'</div>'
@@ -3243,6 +3559,7 @@ function buildUnifiedHTML(f, vcfg, opts){
            + '</div></div>'
            + '<span style="background:'+stBg+';color:'+stColor+';font-size:10px;font-weight:700;'
            + 'padding:2px 10px;border-radius:10px;white-space:nowrap;">'+r.st+'</span>'
+           + '<button onclick="deleteUniItem(\'reg\',\''+r.id+'\')" class="no-print" title="Remover do relatório" style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;font-size:10px;padding:2px 8px;border-radius:5px;cursor:pointer;white-space:nowrap;">🗑 Excluir</button>'
            + '</div>';
         // Photos
         if(opts.incFotos && (r.fotos||[]).length){
@@ -3259,6 +3576,45 @@ function buildUnifiedHTML(f, vcfg, opts){
         h += '</div>';
       });
       h += '</div>';
+    });
+    h += '</div>';
+  }
+
+  // ── SECTION 1.5: BLOCO / OFICINA ──
+  if(opts.incOf && (f.ofic||[]).length){
+    h += '<div style="'+pad+'border-top:1px solid #e5e7eb;">'
+       + '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:800;'
+       + 'color:#07182e;border-bottom:2px solid #16a34a;padding-bottom:6px;margin-bottom:12px;">'
+       + '🏭 BLOCO / OFICINA <span style="font-size:12px;font-weight:400;color:#6b7280;">— '+(f.ofic||[]).length+' serviço(s)</span>'
+       + '</div>';
+    (f.ofic||[]).forEach(function(o){
+      var valor = o.valor ? '💰 R$ '+o.valor.toFixed(2).replace('.',',')+' &nbsp;·&nbsp; ' : '';
+      h += '<div style="border:1px solid #e5e7eb;border-left:4px solid #16a34a;border-radius:7px;'
+         + 'margin-bottom:8px;overflow:hidden;">'
+         + '<div style="padding:9px 14px;display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">'
+         + '<div style="flex:1;min-width:0;">'
+         + '<div style="font-size:13px;font-weight:700;color:#111827;">'+escHtml(o.titulo||o.desc||'—')+'</div>'
+         + (o.desc&&o.titulo?'<div style="font-size:11px;color:#6b7280;margin-top:2px;">'+escHtml(o.desc.slice(0,100))+'</div>':'')
+         + '<div style="font-size:11px;color:#16a34a;font-weight:700;margin-top:3px;">🏢 '+escHtml(o.empNm||'—')+'</div>'
+         + '<div style="font-size:11px;color:#6b7280;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;">'
+         + (o.local?'<span>📍 '+escHtml(o.local)+'</span>':'')
+         + '<span>👷 '+escHtml(o.respNm||'—')+'</span>'
+         + (o.st?'<span>'+stg(o.st)+'</span>':'')
+         + (o.os?'<span style="font-family:monospace;">📄 '+escHtml(o.os)+'</span>':'')
+         + '</div></div>'
+         + '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0;">'
+         + (o.st?'':'')
+         + '<button onclick="deleteUniItem(\'of\',\''+o.id+'\')" class="no-print" title="Remover do relatório" style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;font-size:10px;padding:3px 10px;border-radius:5px;cursor:pointer;white-space:nowrap;">🗑 Excluir</button>'
+         + '</div>'
+         + '</div>'
+         + (o.os?'<span>📄 '+escHtml(o.os)+'</span>':'')
+         + '<span style="margin-left:auto;">'+valor+'SEM '+o.s+'</span>'
+         + '</div></div>'
+         + '<span style="background:'+(o.st==='Concluído'?'#f0fdf4':'#fffbeb')+';color:'+(o.st==='Concluído'?'#16a34a':'#d97706')+';'
+         + 'font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">'+escHtml(o.st||'—')+'</span>'
+         + '</div>'
+         + (opts.incFotos&&(o.fotos||[]).length?'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:0 14px 10px;">'+(o.fotos||[]).map(function(u){return '<div style="height:80px;border-radius:5px;overflow:hidden;border:1px solid #e5e7eb;"><img src="'+u+'" style="width:100%;height:100%;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>';}).join('')+'</div>':'')
+         + '</div>';
     });
     h += '</div>';
   }
@@ -3284,9 +3640,11 @@ function buildUnifiedHTML(f, vcfg, opts){
          + '<div style="font-size:11px;color:#6b7280;margin-top:3px;">'
          + (ins.tipo||'')+(ins.area&&ins.area!=='—'?' · '+ins.area:'')+'</div>'
          + '</div>'
+         + '<div style="display:flex;align-items:center;gap:8px;">'
          + '<span style="background:'+rc+';color:#fff;font-size:11px;font-weight:700;'
          + 'padding:3px 12px;border-radius:12px;">'+ins.result+'</span>'
-         + '</div>'
+         + '<button onclick="deleteUniItem(\'insp\',\''+ins.id+'\')" class="no-print" title="Excluir/reincluir do relatório" style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;font-size:10px;padding:2px 8px;border-radius:5px;cursor:pointer;">'+(ins._uniExclude?'↩ Reincluir':'🗑 Excluir')+'</button>'
+         + '</div></div>'
          // Meta
          + '<div style="display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid #f3f4f6;">';
       [['Data',ins.data||'—'],['Responsável',ins.respNm||'—'],['Semana','SEM '+(ins.semana||'—')]].forEach(function(m){
@@ -3303,29 +3661,78 @@ function buildUnifiedHTML(f, vcfg, opts){
            + 'color:#9ca3af;margin-bottom:8px;">'+ins.items.length+' ITENS INSPECIONADOS</div>';
         ins.items.forEach(function(it,j){
           var ic = RCOL[it.result]||'#6b7280';
-          h += '<div style="border:1px solid #f3f4f6;border-left:3px solid '+ic+';border-radius:5px;'
-             + 'padding:7px 10px;margin-bottom:6px;">'
-             + '<div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;">'
+          var hasA = (it.fotosAntes||[]).length>0;
+          var hasD = (it.fotosDepois||[]).length>0;
+          var hasL = (it.fotos||[]).length>0;
+          var antesAll = hasA ? (it.fotosAntes||[]) : (it.fotos||[]);
+          var antesD   = hasA ? (it.fotosAntesDesc||[]) : (it.fotosDesc||[]);
+          h += '<div style="border:1px solid #f3f4f6;border-left:3px solid '+ic+';border-radius:7px;'
+             + 'margin-bottom:8px;overflow:hidden;">'
+             + '<div style="padding:8px 12px;display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;">'
              + '<span style="background:'+ic+';color:#fff;font-family:monospace;font-size:9px;'
-             + 'padding:1px 6px;border-radius:3px;flex-shrink:0;">#'+('0'+(j+1)).slice(-2)+'</span>'
+             + 'padding:2px 7px;border-radius:4px;flex-shrink:0;">#'+('0'+(j+1)).slice(-2)+'</span>'
              + '<div style="flex:1;min-width:0;">'
-             + '<div style="font-size:12px;font-weight:700;color:#111827;">'+escHtml(it.area||'—')+'</div>'
-             + (it.desc?'<div style="font-size:11px;color:#6b7280;margin-top:2px;">'+escHtml(it.desc.slice(0,100))+'</div>':'')
-             + (it.resposta?'<div style="font-size:11px;color:#16a34a;margin-top:4px;font-style:italic;">✅ '+escHtml(it.resposta.slice(0,120))+'</div>':'')
-             + (it.respItemNm?'<div style="font-size:10px;color:#9ca3af;margin-top:2px;">👷 '+escHtml(it.respItemNm)+'</div>':'')
+             + '<div style="font-size:13px;font-weight:700;color:#111827;">'+escHtml(it.area||'—')+'</div>'
+             + (it.dept||it.respItemNm?'<div style="font-size:10px;color:#6b7280;margin-top:2px;">'+(it.dept?'🏢 '+escHtml(it.dept)+' ':'' )+(it.respItemNm?'👷 '+escHtml(it.respItemNm):'')+'</div>':'')
+             + (it.desc?'<div style="font-size:11px;color:#374151;margin-top:4px;background:#f9fafb;border-radius:5px;padding:5px 8px;">'+escHtml(it.desc.slice(0,150))+'</div>':'')
              + '</div>'
              + '<span style="background:'+ic+'22;color:'+ic+';font-size:10px;font-weight:700;'
-             + 'padding:2px 8px;border-radius:8px;white-space:nowrap;">'+it.result+'</span>'
+             + 'padding:3px 10px;border-radius:10px;white-space:nowrap;">'+(it.statusOk?'✅ ':'')+it.result+'</span>'
              + '</div>';
-          // Item photos
-          if(opts.incFotos && (it.fotos||[]).length){
-            h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px;">';
-            it.fotos.slice(0,4).forEach(function(u){
-              h += '<div style="height:60px;border-radius:4px;overflow:hidden;border:1px solid #e5e7eb;">'
-                 + '<img src="'+u+'" style="width:100%;height:100%;object-fit:cover;display:block;">'
-                 + '</div>';
-            });
+          // ANTES / DEPOIS photos (vertical stacked, 4 per row)
+          if(opts.incFotos && (antesAll.length>0 || hasD)){
+            var okSt = it.statusOk?'<span style="background:#16a34a;color:#fff;font-size:8px;padding:1px 8px;border-radius:8px;margin-left:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"> ✅ OK</span>':'';
+            // ANTES
+            h += '<div style="margin:0 10px 6px;border-radius:7px;overflow:hidden;border:1.5px solid #fca5a5;">';
+            h += '<div style="background:#7f1d1d;color:#fff;padding:5px 10px;display:flex;align-items:center;gap:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">';
+            h += '<span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;">📷 ANTES — Achado</span>';
+            h += '<span style="font-size:8px;opacity:.7;margin-left:auto;">'+antesAll.length+' foto'+(antesAll.length!==1?'s':'')+'</span>';
             h += '</div>';
+            if(antesAll.length>0){
+              h += '<div style="background:#fff8f8;padding:7px;"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;">';
+              antesAll.forEach(function(u,fi){
+                var dc=antesD[fi]||'';
+                h += '<div style="border-radius:5px;overflow:hidden;border:1px solid #fca5a5;">'
+                   + '<img src="'+u+'" style="width:100%;height:90px;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+                   + (dc?'<div style="font-size:7px;color:#991b1b;text-align:center;padding:2px 3px;background:#fff8f8;border-top:1px solid #fecdd3;font-weight:600;">'+escHtml(dc)+'</div>':'')
+                   + '</div>';
+              });
+              h += '</div></div>';
+            } else h += '<div style="background:#fff8f8;padding:10px;text-align:center;font-size:10px;color:#d1d5db;font-style:italic;">Sem fotos de antes</div>';
+            h += '</div>';
+            // DEPOIS
+            h += '<div style="margin:0 10px 10px;border-radius:7px;overflow:hidden;border:1.5px solid #86efac;">';
+            h += '<div style="background:#14532d;color:#fff;padding:5px 10px;display:flex;align-items:center;gap:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">';
+            h += '<span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;">✅ DEPOIS — Evidência'+okSt+'</span>';
+            if(it.dataExecucao) h += '<span style="font-size:8px;opacity:.7;margin-left:auto;">📅 '+it.dataExecucao+'</span>';
+            else if(hasD) h += '<span style="font-size:8px;opacity:.7;margin-left:auto;">'+(it.fotosDepois||[]).length+' foto(s)</span>';
+            h += '</div>';
+            if(hasD){
+              h += '<div style="background:#f0fdf4;padding:7px;"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;">';
+              (it.fotosDepois||[]).forEach(function(u,fi){
+                var dc=(it.fotosDepoisDesc&&it.fotosDepoisDesc[fi])||'';
+                h += '<div style="border-radius:5px;overflow:hidden;border:1px solid #86efac;">'
+                   + '<img src="'+u+'" style="width:100%;height:90px;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+                   + (dc?'<div style="font-size:7px;color:#14532d;text-align:center;padding:2px 3px;background:#f0fdf4;border-top:1px solid #86efac;font-weight:600;">'+escHtml(dc)+'</div>':'')
+                   + '</div>';
+              });
+              h += '</div>';
+              if(it.resposta) h += '<div style="margin-top:5px;background:#dcfce7;border-radius:5px;padding:5px 8px;font-size:10px;color:#14532d;"><span style="font-weight:700;">📝 </span>'+escHtml(it.resposta.slice(0,150))+'</div>';
+              h += '</div>';
+            } else {
+              var noDepMsg = it.resposta
+                ? '<div style="background:#f0fdf4;padding:8px 10px;font-size:10px;color:#14532d;"><span style="font-weight:700;">📝 </span>'+escHtml(it.resposta)+'</div>'
+                : '<div style="background:#f0fdf4;padding:10px;text-align:center;font-size:10px;color:#9ca3af;font-style:italic;">⏳ Aguardando evidência</div>';
+              h += noDepMsg;
+            }
+            h += '</div>';
+          } else if(opts.incFotos && hasL){
+            // Legacy photos only
+            h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:6px 10px 10px;">';
+            it.fotos.slice(0,4).forEach(function(u){ h += '<div style="height:70px;border-radius:4px;overflow:hidden;border:1px solid #e5e7eb;"><img src="'+u+'" style="width:100%;height:100%;object-fit:cover;display:block;"></div>'; });
+            h += '</div>';
+          } else if(it.resposta && !opts.incFotos){
+            h += '<div style="padding:5px 12px 8px;"><div style="background:#f0fdf4;border-radius:5px;padding:5px 8px;font-size:10px;color:#14532d;"><span style="font-weight:700;">📝 </span>'+escHtml(it.resposta.slice(0,150))+'</div></div>';
           }
           h += '</div>';
         });
@@ -3408,7 +3815,7 @@ function printUnificado(){
   var incFotos   = document.getElementById('uni-inc-fotos')?.checked  !== false;
   var incDetail  = document.getElementById('uni-inc-insp-detail')?.checked !== false;
 
-  var body = buildUnifiedHTML(f, vcfg, {incRegs,incInsp,incDesvios,incFotos,incDetail});
+  var body = buildUnifiedHTML(f, vcfg, {incRegs,incOf,incInsp,incDesvios,incFotos,incDetail});
 
   var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
     + '<title>Relatório Unificado — '+f.label+'</title>'
@@ -3440,9 +3847,32 @@ function printUnificado(){
   toast('📊 Relatório unificado aberto!','ok');
 }
 
+// ── Delete / Discard item from unified report view ──
+function deleteUniItem(type, id){
+  var msg = type==='reg' ? 'Remover este registro do relatório?' :
+            type==='of'  ? 'Remover este serviço do relatório?' :
+            type==='insp'? 'Desconsiderar esta inspeção do relatório unificado?\n(a inspeção NÃO será apagada)' :
+            type==='desv'? 'Desconsiderar este desvio do relatório unificado?' : 'Confirmar?';
+  if(!confirm(msg)) return;
+  if(type==='reg'){
+    S.regs = S.regs.filter(function(r){return r.id!==id;});
+    saveData(true); renderUnificado(); toast('🗑 Registro removido','ok');
+  } else if(type==='of'){
+    S.oficina = S.oficina.filter(function(o){return o.id!==id;});
+    saveData(true); renderUnificado(); renderOficina(); toast('🗑 Serviço removido','ok');
+  } else if(type==='insp'){
+    // Mark inspection as excluded from unified (don't delete)
+    var ins = S.inspecoes.find(function(i){return i.id===id;});
+    if(ins){ ins._uniExclude=!ins._uniExclude; saveData(true); }
+    renderUnificado(); toast(ins&&ins._uniExclude?'⚫ Excluída do relatório unificado':'✅ Reincluída','ok');
+  } else if(type==='desv'){
+    S.desvios = S.desvios.filter(function(d){return d.id!==id;});
+    saveData(true); renderUnificado(); toast('🗑 Desvio removido','ok');
+  }
+}
+
 // ── Export unified as JSON ──
 function exportUnificadoJSON(){
-  var f = getUniFilter();
   var vcfg = getCfg().vessel || {};
   var data = {
     _tipo: 'relatorio_unificado_jacaranda',
@@ -4941,6 +5371,7 @@ function renderOficina(){
         <div class="act-photos-grid">${o.fotos.map(u=>`<div class="act-photo-wrap" onclick="viewP('${u}')"><img src="${u}" loading="lazy"></div>`).join('')}</div>
       </div>`:'';
     const valor=o.valor?`💰 R$ ${o.valor.toFixed(2).replace('.',',')} &nbsp;·&nbsp; `:'';
+    const alreadyInSem = S.regs.some(r=>r.ofId===o.id);
     return `<div class="act-card" style="border-left:3px solid var(--login-green);">
       <div class="act-card-head">
         <span class="act-num" style="background:var(--login-green);">${String(i+1).padStart(2,'0')}</span>
@@ -4950,6 +5381,7 @@ function renderOficina(){
           <div style="font-size:10px;color:var(--login-green-dk);margin-top:4px;font-weight:700;">🏢 ${o.empNm} <span style="opacity:.6;font-weight:400;">${o.empTipo}</span></div>
         </div>
         <div class="act-actions">
+          <button class="btn btn-ghost btn-sm" onclick="editOficina('${o.id}')" title="Editar">✏️</button>
           <button class="btn btn-danger btn-sm" onclick="delOficina('${o.id}')">🗑</button>
         </div>
       </div>
@@ -4961,11 +5393,320 @@ function renderOficina(){
         <span class="act-meta-item" style="margin-left:auto;color:var(--muted);font-size:10px;">${valor}SEM ${o.s} · ${fd(o.d)}</span>
       </div>
       ${fotosHtml}
+      <div style="padding:8px 12px;border-top:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-primary btn-sm" onclick="editOficina('${o.id}')">✏️ Editar</button>
+        <button class="btn btn-ghost btn-sm" onclick="addOficinaToSemanal('${o.id}')" ${alreadyInSem?'style="opacity:.5;cursor:default;" disabled':''} title="${alreadyInSem?'Já adicionado':'Adicionar ao Relatório Semanal'}">
+          ${alreadyInSem?'✅ Na Semana':'➕ Rel. Semanal'}
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="addOficinaToUnificado('${o.id}')" title="Ver no Relatório Unificado">
+          📊 Rel. Unificado
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="delOficina('${o.id}')" style="margin-left:auto;" title="Excluir serviço">🗑 Excluir</button>
+      </div>
     </div>`;
   }).join('');
 }
 
-// ── EMBARQUE: iniciais na coluna Função ──
+// ── Edit oficina ──
+function editOficina(id){
+  const o = S.oficina.find(x=>x.id===id);
+  if(!o) return;
+
+  // Build modal
+  let modal = document.getElementById('modal-edit-oficina');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id='modal-edit-oficina';
+    modal.className='modal-overlay';
+    document.body.appendChild(modal);
+  }
+
+  const empOpts = S.empresas.map(e=>`<option value="${e.id}"${e.id===o.empId?' selected':''}>${escHtml(e.nm)}</option>`).join('');
+  const respOpts = [['','— Selecionar —'],...S.crew.map(c=>{
+    const abbr=c.abbr||(ROLE_ABBR[c.fn]||c.fn.slice(0,3).toUpperCase());
+    return [c.id,'['+abbr+'] '+c.nm];
+  })].map(([v,l])=>`<option value="${v}"${v===o.respId?' selected':''}>${escHtml(l)}</option>`).join('');
+  const stOpts=['Concluído','Em Andamento','Pendente','Cancelado'].map(s=>`<option${s===o.st?' selected':''}>${s}</option>`).join('');
+
+  modal.innerHTML=`
+  <div style="background:#fff;border-radius:14px;max-width:560px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.35);">
+    <div style="background:linear-gradient(135deg,#07182e,#0e2540);color:#fff;padding:16px 20px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:12px;">
+      <div style="flex:1;"><div style="font-size:16px;font-weight:800;">✏️ Editar Serviço Bloco/Oficina</div></div>
+      <button onclick="closeEditOficina()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:18px 20px;">
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label>Título do Serviço</label>
+          <input type="text" class="form-control" id="eof-titulo" value="${escHtml(o.titulo||'')}">
+        </div>
+        <div class="form-group" style="max-width:140px;">
+          <label>Status</label>
+          <select class="form-control" id="eof-st">${stOpts}</select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Descrição</label>
+        <textarea class="form-control" id="eof-desc" style="min-height:56px;">${escHtml(o.desc||'')}</textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Empresa</label>
+          <select class="form-control" id="eof-empresa">${empOpts}</select>
+        </div>
+        <div class="form-group">
+          <label>Responsável</label>
+          <select class="form-control" id="eof-resp">${respOpts}</select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="max-width:160px;">
+          <label>Data</label>
+          <input type="date" class="form-control" id="eof-data" value="${o.d||''}">
+        </div>
+        <div class="form-group" style="max-width:120px;">
+          <label>Semana</label>
+          <input type="text" class="form-control" id="eof-sem" value="${o.s||''}" placeholder="ex: 16">
+        </div>
+        <div class="form-group">
+          <label>Local</label>
+          <input type="text" class="form-control" id="eof-local" value="${escHtml(o.local||'')}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>O.S. / Ref.</label>
+          <input type="text" class="form-control" id="eof-os" value="${escHtml(o.os||'')}">
+        </div>
+        <div class="form-group" style="max-width:160px;">
+          <label>Valor (R$)</label>
+          <input type="number" class="form-control" id="eof-valor" value="${o.valor||0}" step="0.01">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="applyEditOficina('${id}')">💾 Salvar Alterações</button>
+        <button class="btn btn-ghost" onclick="closeEditOficina()">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+
+  modal.style.display='flex';modal.style.alignItems='center';modal.style.justifyContent='center';
+  modal.onclick=function(e){ if(e.target===modal) closeEditOficina(); };
+}
+
+function applyEditOficina(id){
+  const o = S.oficina.find(x=>x.id===id);
+  if(!o) return;
+  const empId = document.getElementById('eof-empresa')?.value||o.empId;
+  const emp   = S.empresas.find(e=>e.id===empId);
+  const respId= document.getElementById('eof-resp')?.value||o.respId;
+  const resp  = S.crew.find(c=>c.id===respId);
+  const abbr  = resp?(resp.abbr||(ROLE_ABBR[resp.fn]||resp.fn.slice(0,3).toUpperCase())):'';
+  o.titulo = document.getElementById('eof-titulo')?.value.trim()||o.titulo;
+  o.desc   = document.getElementById('eof-desc')?.value.trim()||'';
+  o.st     = document.getElementById('eof-st')?.value||o.st;
+  o.d      = document.getElementById('eof-data')?.value||o.d;
+  o.s      = (document.getElementById('eof-sem')?.value||o.s).trim().padStart(2,'0');
+  o.local  = document.getElementById('eof-local')?.value.trim()||'';
+  o.os     = document.getElementById('eof-os')?.value.trim()||'';
+  o.valor  = parseFloat(document.getElementById('eof-valor')?.value)||0;
+  o.empId=empId; o.empNm=emp?.nm||o.empNm; o.empTipo=emp?.tipo||o.empTipo;
+  o.respId=respId; o.respNm=resp?`[${abbr}] ${resp.nm.split(' ')[0]}`:o.respNm;
+  o.ts=Date.now();
+  saveData(true); closeEditOficina(); renderOficina();
+  toast('✅ Serviço atualizado!','ok');
+}
+
+function closeEditOficina(){
+  const m=document.getElementById('modal-edit-oficina');
+  if(m) m.style.display='none';
+}
+
+// ── Add oficina to weekly report ──
+function addOficinaToSemanal(id){
+  const o = S.oficina.find(x=>x.id===id);
+  if(!o) return;
+  if(S.regs.some(r=>r.ofId===o.id)){ toast('ℹ️ Já adicionado ao relatório semanal','ok'); return; }
+  const lbReg = S.regs.find(r=>r.s===o.s);
+  S.regs.push({
+    id:gid(), s:o.s, lb:lbReg?lbReg.lb:'SEM '+o.s,
+    d:o.d||new Date().toISOString().slice(0,10),
+    dp:'Bloco/Oficina', a:o.titulo, q:o.respNm, st:o.st,
+    l:o.local||'—', fotos:[], ts:Date.now(),
+    ofId:o.id, _fromOf:true
+  });
+  saveData(true); renderOficina();
+  toast('✅ Adicionado ao Relatório SEM '+o.s,'ok');
+}
+
+// ── Add oficina directly to unified report view ──
+function addOficinaToUnificado(id){
+  const o = S.oficina.find(x=>x.id===id);
+  if(!o){ toast('❌ Não encontrado','err'); return; }
+  // Navigate to unified report, pre-filter by this week
+  showPage('unificado');
+  setTimeout(function(){
+    const semEl = document.getElementById('uni-semana');
+    if(semEl){
+      // Try to set the week if available
+      const opt = Array.from(semEl.options).find(op=>op.value===o.s);
+      if(opt){ semEl.value=o.s; document.getElementById('uni-tipo').value='semana'; onUniTipo(); }
+    }
+    renderUnificado();
+    toast('📊 Relatório Unificado — SEM '+o.s,'ok');
+  }, 300);
+}
+
+// ══════════════════════════════════════════════════════════
+// ── BLOCO/OFICINA & DESVIOS INLINE (within weekly report) ──
+// ══════════════════════════════════════════════════════════
+
+function semSaveOf(week){
+  const titulo = document.getElementById('saof-titulo')?.value.trim();
+  if(!titulo){ toast('⚠️ Preencha o título','warn'); return; }
+  const empId  = document.getElementById('saof-empresa')?.value||'';
+  const emp    = S.empresas.find(e=>e.id===empId);
+  const respId = document.getElementById('saof-resp')?.value||'';
+  const resp   = S.crew.find(c=>c.id===respId);
+  const abbr   = resp?(resp.abbr||(ROLE_ABBR[resp.fn]||resp.fn.slice(0,3).toUpperCase())):'';
+  S.oficina.push({
+    id:gid(), s:week,
+    d:document.getElementById('saof-data')?.value||new Date().toISOString().slice(0,10),
+    titulo, desc:document.getElementById('saof-desc')?.value.trim()||'',
+    empId, empNm:emp?.nm||'—', empTipo:emp?.tipo||'—',
+    local:document.getElementById('saof-local')?.value.trim()||'',
+    st:document.getElementById('saof-st')?.value||'Em Andamento',
+    respId, respNm:resp?`[${abbr}] ${resp.nm.split(' ')[0]}`:'—',
+    os:document.getElementById('saof-os')?.value.trim()||'',
+    valor:0, fotos:[], ts:Date.now()
+  });
+  saveData(true); renderSem(week);
+  toast('✅ Serviço adicionado à semana!','ok');
+}
+
+function semEditOf(id, week){
+  const o = S.oficina.find(x=>x.id===id);
+  if(!o){ toast('❌ Não encontrado','err'); return; }
+  editOficina(id);  // reuse existing edit modal
+  // After save, re-render sem
+  const orig = window.applyEditOficina;
+  window.applyEditOficina = function(eid){
+    orig(eid);
+    setTimeout(()=>renderSem(week), 100);
+    window.applyEditOficina = orig;
+  };
+}
+
+function semDelOf(id){
+  if(!confirm('Remover este serviço?')) return;
+  const o = S.oficina.find(x=>x.id===id);
+  const week = o?.s;
+  S.oficina = S.oficina.filter(x=>x.id!==id);
+  saveData(true);
+  if(week) renderSem(week);
+  toast('🗑 Serviço removido','ok');
+}
+
+function semSaveDv(week){
+  const titulo = document.getElementById('sadv-titulo')?.value.trim();
+  if(!titulo){ toast('⚠️ Preencha o título','warn'); return; }
+  const num = 'D'+String(S.desvios.length+1).padStart(3,'0');
+  S.desvios.push({
+    id:gid(), num, s:week,
+    data:new Date().toISOString().slice(0,10),
+    dataAbertura:new Date().toISOString().slice(0,10),
+    cat:document.getElementById('sadv-cat')?.value||'Outro',
+    pri:document.getElementById('sadv-pri')?.value||'Média',
+    titulo, desc:document.getElementById('sadv-desc')?.value.trim()||'',
+    local:document.getElementById('sadv-local')?.value.trim()||'',
+    status:'aberto', respNm:'—', respId:'',
+    dataFechamento:'', acaoCorretiva:'', fotos:[], ts:Date.now()
+  });
+  saveData(true); renderSem(week);
+  toast('⚠️ Desvio registrado!','ok');
+}
+
+function semEditDv(id, week){
+  const d = S.desvios.find(x=>x.id===id);
+  if(!d){ toast('❌ Não encontrado','err'); return; }
+
+  let modal = document.getElementById('modal-sem-edit-dv');
+  if(!modal){ modal=document.createElement('div'); modal.id='modal-sem-edit-dv'; modal.className='modal-overlay'; document.body.appendChild(modal); }
+
+  const priOpts=['Alta','Média','Baixa'].map(p=>`<option${p===d.pri?' selected':''}>${p}</option>`).join('');
+  const catOpts=['Segurança','Qualidade','Manutenção','Ambiental','Outro'].map(c=>`<option${c===d.cat?' selected':''}>${c}</option>`).join('');
+  const stOpts=[['aberto','🔴 Aberto'],['fechado','✅ Fechado']].map(([v,l])=>`<option value="${v}"${v===d.status?' selected':''}>${l}</option>`).join('');
+  const respOpts=[['','— Responsável —'],...S.crew.map(c=>{const a=c.abbr||(ROLE_ABBR[c.fn]||c.fn.slice(0,3).toUpperCase());return [c.id,`[${a}] ${c.nm}`];})].map(([v,l])=>`<option value="${v}"${v===d.respId?' selected':''}>${l}</option>`).join('');
+
+  modal.innerHTML=`
+  <div style="background:#fff;border-radius:14px;max-width:520px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.35);">
+    <div style="background:linear-gradient(135deg,#7f1d1d,#991b1b);color:#fff;padding:14px 20px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:12px;">
+      <div style="flex:1;font-size:15px;font-weight:800;">⚠️ Editar Cartão de Desvio ${d.num}</div>
+      <button onclick="document.getElementById('modal-sem-edit-dv').style.display='none'" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:7px;padding:4px 10px;cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:16px 18px;">
+      <div class="form-row">
+        <div class="form-group" style="flex:2;"><label>Título</label><input type="text" class="form-control" id="sedv-titulo" value="${escHtml(d.titulo)}"></div>
+        <div class="form-group" style="max-width:130px;"><label>Status</label><select class="form-control" id="sedv-status">${stOpts}</select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Categoria</label><select class="form-control" id="sedv-cat">${catOpts}</select></div>
+        <div class="form-group"><label>Prioridade</label><select class="form-control" id="sedv-pri">${priOpts}</select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Local</label><input type="text" class="form-control" id="sedv-local" value="${escHtml(d.local||'')}"></div>
+        <div class="form-group"><label>Responsável</label><select class="form-control" id="sedv-resp">${respOpts}</select></div>
+      </div>
+      <div class="form-group"><label>Descrição</label><textarea class="form-control" id="sedv-desc" style="min-height:56px;">${escHtml(d.desc||'')}</textarea></div>
+      <div class="form-group"><label>Ação Corretiva</label><textarea class="form-control" id="sedv-acao" style="min-height:50px;">${escHtml(d.acaoCorretiva||'')}</textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>Data Abertura</label><input type="date" class="form-control" id="sedv-data" value="${d.dataAbertura||d.data||''}"></div>
+        <div class="form-group"><label>Data Fechamento</label><input type="date" class="form-control" id="sedv-datafech" value="${d.dataFechamento||''}"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="semApplyDv('${id}','${week}')">💾 Salvar</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-sem-edit-dv').style.display='none'">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+  modal.style.display='flex'; modal.style.alignItems='center'; modal.style.justifyContent='center';
+  modal.onclick=function(e){ if(e.target===modal) modal.style.display='none'; };
+}
+
+function semApplyDv(id, week){
+  const d = S.desvios.find(x=>x.id===id);
+  if(!d) return;
+  const respId = document.getElementById('sedv-resp')?.value||'';
+  const resp   = S.crew.find(c=>c.id===respId);
+  const abbr   = resp?(resp.abbr||(ROLE_ABBR[resp.fn]||resp.fn.slice(0,3).toUpperCase())):'';
+  d.titulo        = document.getElementById('sedv-titulo')?.value.trim()||d.titulo;
+  d.cat           = document.getElementById('sedv-cat')?.value||d.cat;
+  d.pri           = document.getElementById('sedv-pri')?.value||d.pri;
+  d.local         = document.getElementById('sedv-local')?.value.trim()||'';
+  d.desc          = document.getElementById('sedv-desc')?.value.trim()||'';
+  d.acaoCorretiva = document.getElementById('sedv-acao')?.value.trim()||'';
+  d.status        = document.getElementById('sedv-status')?.value||d.status;
+  d.dataAbertura  = document.getElementById('sedv-data')?.value||d.dataAbertura;
+  d.dataFechamento= document.getElementById('sedv-datafech')?.value||'';
+  d.respId=respId; d.respNm=resp?`[${abbr}] ${resp.nm}`:d.respNm;
+  d.ts=Date.now();
+  saveData(true);
+  document.getElementById('modal-sem-edit-dv').style.display='none';
+  renderSem(week);
+  toast('✅ Desvio atualizado!','ok');
+}
+
+function semDelDv(id){
+  if(!confirm('Remover este desvio?')) return;
+  const d = S.desvios.find(x=>x.id===id);
+  const week = d?.s;
+  S.desvios = S.desvios.filter(x=>x.id!==id);
+  saveData(true);
+  if(week) renderSem(week);
+  toast('🗑 Desvio removido','ok');
+}
+
+
 function renderEmbarque(){
   const tu=document.getElementById('turma-sel')?.value||'Todas';
   let crew=S.crew;if(tu!=='Todas')crew=crew.filter(t=>t.tu===tu);
@@ -6224,24 +6965,36 @@ function renderInspCard(ins, i, showEdit=true){
     actionBar+='</div>';
   }
 
-  // Card HTML
-  let html='<div class="act-card" id="insp-card-'+ins.id+'" style="border-left:3px solid '+bc+';">';
-  html+='<div class="act-card-head">';
-  html+='<span class="act-num" style="background:'+bc+';font-size:10px;">'+fi+'</span>';
-  html+='<div class="act-title-block"><div class="act-title">'+escHtml(ins.titulo)+'</div>';
-  if(ins.desc) html+='<div class="act-desc">'+escHtml(ins.desc)+'</div>';
+  // Card HTML — improved visual matching weekly report style
+  let html='<div class="act-card" id="insp-card-'+ins.id+'" style="border:none;border-radius:10px;margin-bottom:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);">';
+  // Colored band header
+  html+='<div style="background:'+bc+';padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">';
+  html+='<span style="background:rgba(0,0,0,.2);color:#fff;font-size:18px;padding:0 6px;border-radius:5px;">'+fi+'</span>';
+  html+='<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;color:#fff;line-height:1.2;">'+escHtml(ins.titulo)+'</div>';
+  if(ins.desc) html+='<div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:2px;">'+escHtml(ins.desc.slice(0,80))+'</div>';
   html+='</div>';
-  html+='<span style="'+sbadge+';font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;white-space:nowrap;flex-shrink:0;">'+fi+' '+ins.result+'</span>';
+  html+='<span style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;">'+fi+' '+ins.result+'</span>';
   html+='</div>';
-  html+='<div class="act-meta">';
-  html+='<span class="act-meta-item">📅 '+ins.data+(ins.hora?' '+ins.hora:'')+'</span>';
-  html+='<span class="act-meta-item">🔍 '+(ins.tipo||'—')+'</span>';
-  if(ins.area&&ins.area!=='—') html+='<span class="act-meta-item">📍 '+escHtml(ins.area)+'</span>';
-  html+='<span class="act-meta-item">👷 '+(ins.respNm||'—')+'</span>';
-  if(ins.testNm) html+='<span class="act-meta-item">👁 '+ins.testNm+'</span>';
-  html+='<span class="act-meta-item" style="margin-left:auto;color:var(--muted);font-size:10px;font-family:monospace;">SEM '+(ins.semana||'—')+'</span>';
+  // Meta row
+  html+='<div style="background:#fff;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:0;">';
+  const metas=[
+    ['📅',ins.data+(ins.hora?' '+ins.hora:'')],
+    ['🔍',ins.tipo||'—'],
+    ins.area&&ins.area!=='—'?['📍',ins.area.slice(0,25)]:null,
+    ['👷',ins.respNm||'—'],
+    ['SEM','SEM '+(ins.semana||'—')],
+  ].filter(Boolean);
+  metas.forEach(function(m){
+    html+='<div style="padding:6px 12px;border-right:1px solid var(--border);font-size:11px;color:var(--text-dim);">'
+      +'<span style="font-weight:700;color:var(--text);">'+m[0]+' </span>'+escHtml(String(m[1]))
+      +'</div>';
+  });
   html+='</div>';
-  html+=itemsHtml+fotos+actionBar+'</div>';
+  // Items + photos
+  html+='<div style="background:#fff;">'+itemsHtml+fotos+'</div>';
+  // Action bar
+  html+=actionBar;
+  html+='</div>';
   return html;
 }
 
@@ -7612,17 +8365,81 @@ function renderInspecao(){
   const list=document.getElementById('insp-list');if(!list)return;
   let insp=[...S.inspecoes].sort((a,b)=>b.ts-a.ts);
   if(_inspFilter!=='todas')insp=insp.filter(i=>i.result===_inspFilter);
-  if(!insp.length){list.innerHTML='<div class="empty-state"><div class="ico">🔍</div><p>Nenhuma inspeção registrada</p></div>';return;}
+
+  // ── KPI bar above list ──
+  const conf   = S.inspecoes.filter(i=>i.result==='Conforme').length;
+  const naConf = S.inspecoes.filter(i=>i.result==='Não Conforme').length;
+  const parcial= S.inspecoes.filter(i=>i.result==='Parcial').length;
+  const pend   = S.inspecoes.filter(i=>i.result==='Pendente').length;
+  const totalItems = S.inspecoes.reduce((a,i)=>(a+(i.items||[]).length),0);
+  const pendItems  = S.inspecoes.reduce((a,i)=>(a+(i.items||[]).filter(it=>!it.statusOk&&it.result!=='Conforme').length),0);
+
+  const kpiHtml = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:12px;">
+    ${[
+      {n:S.inspecoes.length, l:'Total', c:'var(--login-blue)'},
+      {n:conf,    l:'Conformes',    c:'var(--login-green)'},
+      {n:parcial, l:'Parciais',     c:'var(--warn)'},
+      {n:naConf,  l:'Não Conformes',c:'var(--danger)'},
+      {n:pend,    l:'Pendentes',    c:'#7c3aed'},
+      {n:pendItems,l:'Itens Pend.', c:'var(--danger)'},
+    ].map(k=>`<div style="background:#fff;border:1px solid var(--border);border-top:3px solid ${k.c};border-radius:8px;padding:10px 12px;text-align:center;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:${k.c};">${k.n}</div>
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);">${k.l}</div>
+    </div>`).join('')}
+  </div>`;
+
+  if(!insp.length){
+    list.innerHTML=kpiHtml+'<div class="empty-state"><div class="ico">🔍</div><p>Nenhuma inspeção registrada</p></div>';
+    return;
+  }
+
   const byW={};insp.forEach(i=>{byW[i.semana]=byW[i.semana]||[];byW[i.semana].push(i);});
-  list.innerHTML=Object.entries(byW).sort((a,b)=>b[0].localeCompare(a[0])).map(([sem,items])=>`
-    <div style="margin-bottom:16px;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:6px 0;border-bottom:2px solid var(--border);">
-        <span style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--login-blue);">🔍 SEMANA ${sem}</span>
-        <span style="margin-left:auto;background:var(--login-blue);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">${items.length}</span>
+  const vcfg=(getCfg().vessel)||{};
+
+  const semHtml = Object.entries(byW).sort((a,b)=>b[0].localeCompare(a[0])).map(([sem,items])=>{
+    const semConf = items.filter(i=>i.result==='Conforme').length;
+    const semPend = items.filter(i=>i.result!=='Conforme').length;
+    return `<div style="margin-bottom:20px;">
+      <div class="rpt-header" style="border-radius:8px 8px 0 0;margin-bottom:0;">
+        <div class="rpt-logo"><span>log</span><span class="gi">in</span><span class="dot">.</span></div>
+        <div style="flex:1;padding-left:14px;border-left:2px solid rgba(255,255,255,.3);">
+          <div class="rpt-title">Inspeções — Semana ${sem}</div>
+          <div class="rpt-sub">${vcfg.vessel||'LOG-IN JACARANDÁ'} &nbsp;·&nbsp; ${items.length} inspeção(ões) &nbsp;·&nbsp; ${semConf} conformes · ${semPend} pendentes</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3);font-size:11px;" onclick="printWeekInsps('${sem}')">🖨 PDF</button>
+          <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3);font-size:11px;" onclick="addWeekInspsToSemanal('${sem}')">➕ Semana</button>
+        </div>
       </div>
-      ${items.map((ins,i)=>renderInspCard(ins,i,true)).join('')}
-    </div>`
-  ).join('');
+      <div class="panel" style="border-radius:0 0 8px 8px;border-top:none;margin-top:0;">
+        <div style="padding:10px 12px;">${items.map((ins,i)=>renderInspCard(ins,i,true)).join('')}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  list.innerHTML = kpiHtml + semHtml;
+}
+
+// Print all inspections for a specific week
+function printWeekInsps(sem){
+  const insps = S.inspecoes.filter(i=>i.semana===sem);
+  if(!insps.length){ toast('Nenhuma inspeção nesta semana','warn'); return; }
+  _ciSelected = new Set(insps.map(i=>i.id));
+  printConsolidado();
+}
+
+// Add all inspections of a week to the weekly report
+function addWeekInspsToSemanal(sem){
+  const insps = S.inspecoes.filter(i=>i.semana===sem);
+  if(!insps.length){ toast('Nenhuma inspeção','warn'); return; }
+  insps.forEach(function(ins){
+    if(!S.regs.some(r=>r.inspId===ins.id)){
+      var lbReg=S.regs.find(function(r){return r.s===sem;});
+      S.regs.push({id:gid(),s:sem,lb:lbReg?lbReg.lb:'SEM '+sem,d:ins.data||new Date().toISOString().slice(0,10),dp:'Inspeção',a:ins.titulo,q:'',l:ins.area||'—',st:ins.result==='Conforme'?'Concluído':'Em Andamento',fotos:[],ts:Date.now(),inspId:ins.id,_fromInsp:true});
+    }
+  });
+  saveData(true);
+  toast('✅ '+insps.length+' inspeção(ões) adicionadas à SEM '+sem,'ok');
 }
 
 function delInspecao(id){
@@ -7691,7 +8508,7 @@ function updateDriveConnStatus(){
 const FLOAT_ACTIONS = [
   {ico:'✏️', label:'REGISTRO', fn:"showPage('novo')"},
   {ico:'🔍', label:'INSPEÇÃO', fn:"showPage('inspecao')"},
-  {ico:'⚠️', label:'DESVIO',   fn:"showPage('desvios')"},
+  
   {ico:'📷', label:'FOTOS',    fn:"showPage('fotos')"},
   {ico:'📅', label:'SEMANA',   fn:"showPage('semanal')"},
   {ico:'🗂️', label:'HISTÓRICO',fn:"showPage('historico')"},
@@ -8659,8 +9476,7 @@ if(clnovo&&clnovo.parentNode)clnovo.parentNode.insertBefore(csnovo,clnovo);
   <div id="mobile-drawer-handle"></div>
   <div class="drawer-title">Menu Completo</div>
   <div class="drawer-grid">
-    <div class="drawer-item" onclick="navTo('desvios')"><span class="di">⚠️</span>Desvios</div>
-    <div class="drawer-item" onclick="navTo('oficina')"><span class="di">🏭</span>Oficina</div>
+    <div class="drawer-item" onclick="navTo('semanal')"><span class="di">📅</span>Semanal</div>
     <div class="drawer-item" onclick="navTo('mensal')"><span class="di">📆</span>Mensal</div>
     <div class="drawer-item" onclick="navTo('historico')"><span class="di">🗂️</span>Histórico</div>
     <div class="drawer-item" onclick="navTo('tripulantes')"><span class="di">👥</span>Tripulantes</div>
