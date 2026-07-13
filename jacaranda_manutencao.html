@@ -14,43 +14,44 @@
   <link rel="apple-touch-icon" href="icon.svg">
 
   <title>Log-In Jacarandá — Sistema de Relatórios de Trabalhos a Bordo</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap');
-
-  /* ── REMOVE cabeçalho e rodapé do browser na impressão ── */
-  @page {
-    margin: 12mm 10mm 10mm 10mm;
-    /* Remove URL, título e números de página do browser */
-    size: A4 portrait;
-  }
-  @page { margin-top: 10mm; }
-  /* Chrome/Edge: suprimir header/footer via JS antes de print (ver exportPDF) */
-
-  :root {
-    /* Log-In Brand Colors — exact from logo */
-    --login-blue:    #1A5FA8;
-    --login-green:   #5B9E3A;
-    --login-blue-dk: #0E3D72;
-    --login-blue-lt: #2471C2;
-    --login-blue-xlt:#EBF3FB;
-    --login-green-lt:#6DB847;
-    --login-green-dk:#3D7026;
-    --login-green-xlt:#EDF7E6;
-    --bg:       #F0F5FA;
+<style
+  :root{
+    /* Brand */
+    --login-blue:      #1A5FA8;
+    --login-blue-dk:   #0E3D72;
+    --login-blue-lt:   #2478C8;
+    --login-blue-xlt:  #EBF3FB;
+    --login-green:     #4E9A2E;
+    --login-green-dk:  #2D6B1A;
+    --login-green-xlt: #EDF7E6;
+    --login-gold:      #F59E0B;
+    /* Surface */
+    --bg:       #EFF5FB;
     --surface:  #FFFFFF;
     --surface2: #F7FAFE;
+    /* Border */
     --border:   #C8D9ED;
-    --border2:  #A3C2E0;
-    --text:     #1A2A3A;
-    --text-dim: #5A7A9A;
+    --border2:  #9DBDE0;
+    /* Text */
+    --text:     #0F1E2E;
+    --text-dim: #4A6880;
     --muted:    #8AACD0;
-    --danger:   #C0392B;
+    /* Status */
+    --danger:   #DC2626;
     --warn:     #D97706;
     --gold:     #B45309;
-    --radius:   8px;
+    /* Shadow */
+    --shadow-xs: 0 1px 3px rgba(14,61,114,.06);
+    --shadow-sm: 0 2px 8px rgba(14,61,114,.08);
+    --shadow-md: 0 4px 16px rgba(14,61,114,.10);
+    --shadow-lg: 0 8px 32px rgba(14,61,114,.14);
+    /* Radius */
+    --radius:   10px;
+    --radius-lg:14px;
+    --radius-sm:6px;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
-  html,body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;height:100%;overflow:hidden;}
+  html,body{height:100%;overflow:hidden;font-family:'Barlow',system-ui,sans-serif;font-size:14px;background:var(--bg);color:var(--text);}
   #app{display:flex;height:100vh;overflow:hidden;}
 
   /* ══ SIDEBAR — Desktop fixed, Mobile drawer ══ */
@@ -525,18 +526,25 @@
     .crew-tag-pill{background:#EBF3FB!important;color:#1A5FA8!important;border:1px solid #C8D9ED!important;font-size:9px!important;font-weight:700!important;padding:1px 5px!important;border-radius:8px!important;font-family:'IBM Plex Mono',monospace!important;}
 
     /* ── FOTOS EM GRADE 4 COLUNAS ── */
-    .act-photos{padding:6px 10px 8px!important;background:#FAFCFF!important;}
-    .act-photos-label{font-size:9px!important;color:#8AACD0!important;margin-bottom:4px!important;}
+    .act-photos{padding:10px 12px 12px;background:linear-gradient(180deg,#f8fbff,#f0f5fa);}
+    .act-photos-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+    .act-photos-label span{background:var(--login-blue);color:#fff;font-size:9px;padding:1px 7px;border-radius:10px;}
     .act-photos-grid{
-      display:grid!important;
-      grid-template-columns:repeat(4,1fr)!important;
-      gap:4px!important;
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
+      gap:8px;
     }
     .act-photo-wrap{
-      aspect-ratio:4/3!important;overflow:hidden!important;
-      border-radius:4px!important;border:1px solid #C8D9ED!important;
+      border-radius:10px;overflow:hidden;
+      border:2px solid var(--border);
+      background:#fff;
+      box-shadow:var(--shadow-xs);
+      transition:transform .2s,box-shadow .2s;
+      cursor:pointer;
     }
-    .act-photo-wrap img{width:100%!important;height:100%!important;object-fit:cover!important;display:block!important;}
+    .act-photo-wrap:hover{transform:scale(1.03);box-shadow:var(--shadow-md);border-color:var(--login-blue);}
+    .act-photo-wrap img{width:100%;height:120px;object-fit:cover;display:block;}
+    .act-photo-caption{font-size:9px;color:var(--text-dim);text-align:center;padding:4px 6px;background:#f9fafb;border-top:1px solid var(--border);line-height:1.3;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
     /* ── TAGS ── */
     .tag{font-size:9px!important;padding:1px 5px!important;border-radius:3px!important;font-weight:700!important;}
@@ -568,20 +576,185 @@
     .rpt-header,.panel-header{page-break-after:avoid!important;}
   }
 
-  /* ── VISUAL REFRESH 2026 ── */
-  .crew-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;box-shadow:0 1px 4px rgba(26,95,168,.04);transition:border-color .15s;}
-  .crew-card:hover{border-color:var(--login-blue);box-shadow:0 2px 12px rgba(26,95,168,.1);}
-  .act-card{background:#fff;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;box-shadow:0 1px 6px rgba(26,95,168,.06);}
-  .week-tab{padding:7px 16px;background:#fff;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-dim);transition:all .15s;white-space:nowrap;}
+  /* ═══════════════════════════════════════════════
+     VISUAL SYSTEM 2026 — Design Tokens & Components
+  ═══════════════════════════════════════════════ */
+
+  /* ── Buttons ── */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;
+    border:1.5px solid transparent;transition:all .15s;letter-spacing:.2px;white-space:nowrap;
+    font-family:'Barlow',system-ui,sans-serif;}
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:var(--login-blue);color:#fff;border-color:var(--login-blue);}
+  .btn-primary:hover{background:var(--login-blue-dk);}
+  .btn-ghost{background:transparent;color:var(--login-blue);border-color:var(--border2);}
+  .btn-ghost:hover{background:var(--login-blue-xlt);}
+  .btn-green{background:var(--login-green);color:#fff;border-color:var(--login-green);}
+  .btn-green:hover{background:var(--login-green-dk);}
+  .btn-warn{background:var(--warn);color:#fff;border-color:var(--warn);}
+  .btn-warn:hover{background:#B45309;}
+  .btn-danger{background:var(--danger);color:#fff;border-color:var(--danger);}
+  .btn-danger:hover{background:#B91C1C;}
+  .btn-sm{padding:5px 11px;font-size:11px;border-radius:6px;}
+  .btn-lg{padding:12px 24px;font-size:14px;border-radius:10px;}
+
+  /* ── Forms ── */
+  .form-control{width:100%;background:#fff;border:1.5px solid var(--border);border-radius:8px;
+    padding:9px 12px;font-size:13px;color:var(--text);font-family:'Barlow',system-ui,sans-serif;
+    transition:border-color .15s,box-shadow .15s;}
+  .form-control:focus{border-color:var(--login-blue);outline:none;
+    box-shadow:0 0 0 3px rgba(26,95,168,.12);}
+  .form-control::placeholder{color:var(--muted);}
+  .form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+  .form-group label{font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;}
+  .form-row{display:flex;gap:12px;flex-wrap:wrap;}
+  .form-row .form-group{flex:1;min-width:100px;}
+  .sep{height:1px;background:var(--border);margin:14px 0;}
+
+  /* ── Panels & Cards ── */
+  .panel{background:#fff;border:1px solid var(--border);border-radius:12px;
+    margin-bottom:16px;box-shadow:var(--shadow-sm);}
+  .panel-header{display:flex;align-items:center;gap:10px;padding:12px 16px;
+    border-bottom:1px solid var(--border);font-weight:700;font-size:14px;
+    color:var(--login-blue);background:linear-gradient(90deg,var(--login-blue-xlt),#fff);
+    border-radius:12px 12px 0 0;}
+
+  /* ── Act card ── */
+  .act-card{background:#fff;border:1px solid var(--border);border-radius:12px;
+    margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow-xs);transition:box-shadow .2s;}
+  .act-card:hover{box-shadow:var(--shadow-md);}
+  .act-card-head{display:flex;align-items:flex-start;gap:10px;padding:11px 14px 10px;}
+  .act-num{background:var(--login-blue);color:#fff;font-family:'IBM Plex Mono',monospace;
+    font-size:10px;font-weight:700;padding:3px 8px;border-radius:5px;flex-shrink:0;margin-top:2px;}
+  .act-title-block{flex:1;min-width:0;}
+  .act-title{font-size:14px;font-weight:700;color:var(--text);line-height:1.3;}
+  .act-desc{font-size:12px;color:var(--text-dim);margin-top:4px;white-space:pre-wrap;line-height:1.5;}
+  .act-meta{display:flex;flex-wrap:wrap;gap:8px;padding:7px 14px 8px;
+    background:var(--login-blue-xlt);border-top:1px solid var(--border);}
+  .act-meta-item{font-size:11px;color:var(--text-dim);}
+  .act-actions{display:flex;gap:4px;align-items:flex-start;flex-shrink:0;}
+
+  /* ── Photos ── */
+  .act-photos{padding:12px 14px 14px;background:linear-gradient(180deg,#f5f9ff,#eef4fb);}
+  .act-photos-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+    color:var(--text-dim);margin-bottom:9px;display:flex;align-items:center;gap:7px;}
+  .act-photo-count{background:var(--login-blue);color:#fff;font-size:9px;font-weight:700;
+    padding:1px 7px;border-radius:10px;}
+  .act-photos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;}
+  .act-photo-wrap{border-radius:10px;overflow:hidden;border:2px solid var(--border);
+    background:#fff;box-shadow:var(--shadow-xs);cursor:pointer;
+    transition:transform .2s,box-shadow .2s,border-color .2s;}
+  .act-photo-wrap:hover{transform:scale(1.04);box-shadow:var(--shadow-md);border-color:var(--login-blue);}
+  .act-photo-wrap img{width:100%;height:110px;object-fit:cover;display:block;}
+  .act-photo-caption{font-size:9px;color:var(--text-dim);text-align:center;
+    padding:4px 6px;background:#f9fafb;border-top:1px solid var(--border);
+    line-height:1.3;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+  /* ── Export bar ── */
+  .export-bar{background:linear-gradient(135deg,var(--login-blue-xlt),#fff);
+    border:1px solid var(--border);border-radius:12px;padding:12px 16px;
+    margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    box-shadow:var(--shadow-xs);}
+  .export-bar>span{font-size:26px;}
+  .export-bar>p{flex:1;font-size:12px;color:var(--text-dim);min-width:120px;line-height:1.4;}
+
+  /* ── Crew ── */
+  .crew-card{background:#fff;border:1.5px solid var(--border);border-radius:12px;
+    padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;
+    box-shadow:var(--shadow-xs);transition:border-color .15s,box-shadow .15s;}
+  .crew-card:hover{border-color:var(--login-blue);box-shadow:var(--shadow-sm);}
+  .crew-av{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;
+    justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0;}
+  .crew-name{font-size:14px;font-weight:700;color:var(--text);}
+  .crew-role{font-size:12px;color:var(--text-dim);margin-top:2px;}
+  .crew-tag-pill{display:inline-block;background:var(--login-blue-xlt);color:var(--login-blue);
+    font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;}
+  .emb-b{background:#eff6ff;color:var(--login-blue);font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;}
+  .des-b{background:#f0fdf4;color:var(--login-green);font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;}
+
+  /* ── KPI ── */
+  .kpi-card{flex:1;min-width:130px;background:#fff;border:1px solid var(--border);
+    border-radius:12px;padding:14px 16px;box-shadow:var(--shadow-xs);}
+  .kpi-val{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:var(--login-blue);line-height:1;}
+  .gv{color:var(--login-green)!important;}
+  .kpi-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-dim);margin-bottom:3px;}
+  .kpi-sub{font-size:11px;color:var(--muted);}
+
+  /* ── RPT Header ── */
+  .rpt-header{display:flex;align-items:center;gap:14px;
+    background:linear-gradient(135deg,#07182e 0%,#0e2540 60%,#1A5FA8 100%);
+    color:#fff;padding:16px 20px;border-radius:12px;margin-bottom:14px;
+    box-shadow:0 4px 20px rgba(7,24,46,.25);}
+  .rpt-logo{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;
+    letter-spacing:-1.5px;line-height:1;flex-shrink:0;}
+  .rpt-logo .gi{color:#6DB847;}
+  .rpt-logo .dot{color:var(--login-gold);}
+  .rpt-title{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.5px;}
+  .rpt-sub{font-size:11px;opacity:.8;margin-top:2px;}
+
+  /* ── Week tabs ── */
+  .week-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;
+    padding-bottom:12px;border-bottom:1px solid var(--border);}
+  .week-tab{padding:7px 16px;background:#fff;border:1.5px solid var(--border);
+    border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;
+    color:var(--text-dim);transition:all .15s;white-space:nowrap;
+    font-family:'Barlow',system-ui,sans-serif;}
   .week-tab.active,.week-tab:hover{background:var(--login-blue);color:#fff;border-color:var(--login-blue);}
-  .week-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);}
-  .act-photo-wrap{border-radius:8px;overflow:hidden;border:1px solid var(--border);background:#f9fafb;}
-  .act-photo-wrap img{width:100%;height:90px;object-fit:cover;display:block;}
-  .rpt-header{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#07182e,#0e2540);color:#fff;padding:16px 20px;border-radius:12px;margin-bottom:14px;box-shadow:0 4px 14px rgba(7,24,46,.3);}
-  .export-bar{background:linear-gradient(135deg,var(--login-blue-xlt),#fff);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-  .export-bar>span{font-size:24px;}
-  .export-bar>p{flex:1;font-size:12px;color:var(--text-dim);min-width:120px;}
-</style>
+
+  /* ── Topbar ── */
+  .topbar{display:flex;align-items:center;gap:12px;padding:11px 20px;
+    background:#fff;border-bottom:2px solid var(--border);
+    box-shadow:0 1px 6px rgba(14,61,114,.06);flex-shrink:0;}
+  #page-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;
+    color:var(--login-blue);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  /* ── Badges & Tags ── */
+  .tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap;}
+  .tok{background:#f0fdf4;color:var(--login-green);}
+  .tpnd{background:#fef9c3;color:#854d0e;}
+  .tcrit{background:#fef2f2;color:var(--danger);}
+  .tprog{background:#eff6ff;color:var(--login-blue);}
+  .badge{background:var(--login-blue);color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;}
+
+  /* ── Empty state ── */
+  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:40px 20px;color:var(--muted);text-align:center;}
+  .empty-state .ico{font-size:40px;margin-bottom:12px;opacity:.5;}
+  .empty-state p{font-size:14px;}
+
+  /* ── Section title ── */
+  .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+    color:var(--text-dim);margin:14px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--border);}
+
+  /* ── Compress info ── */
+  .compress-info{font-size:11px;color:var(--login-green);background:var(--login-green-xlt);
+    border:1px solid #bbf7d0;border-radius:6px;padding:6px 10px;margin-bottom:10px;}
+
+  /* ── Photo drop zone ── */
+  .photo-drop-zone{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:6px;border:2px dashed var(--border2);border-radius:12px;padding:20px;
+    cursor:pointer;color:var(--text-dim);font-size:13px;text-align:center;
+    background:var(--login-blue-xlt);transition:border-color .2s;margin-bottom:8px;}
+  .photo-drop-zone:hover{border-color:var(--login-blue);}
+
+  /* ── Misc ── */
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .selected-crew-tags{display:flex;flex-wrap:wrap;gap:5px;min-height:28px;padding:4px 0;margin-bottom:6px;}
+  .crew-check-list{max-height:140px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:6px;}
+  .crew-check-item{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;cursor:pointer;transition:background .1s;}
+  .crew-check-item:hover{background:var(--login-blue-xlt);}
+  .fn-badge{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;
+    background:var(--login-blue-xlt);color:var(--login-blue);padding:1px 5px;border-radius:4px;}
+
+  @media(max-width:600px){
+    .act-photos-grid{grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;}
+    .act-photo-wrap img{height:90px;}
+    .form-row{flex-direction:column;}
+    .form-row .form-group{min-width:unset;}
+  }
+
 </head>
 <body>
 <div id="app">
@@ -887,11 +1060,6 @@
     <!-- TRIPULANTES -->
     <div id="page-tripulantes" class="page">
       <div class="export-bar"><span>👥</span><p>Gestão da tripulação a bordo. Selecione múltiplos para atualização em lote.</p><button class="btn btn-primary btn-sm" onclick="openCrew(null)">➕ Novo</button></div>
-      <!-- Tabs -->
-      <div style="display:flex;gap:8px;margin-bottom:14px;">
-        <button id="ctab-list" class="btn btn-sm btn-primary" onclick="switchCrewTab('list')">👥 Tripulação</button>
-        <button id="ctab-hist" class="btn btn-sm btn-ghost" onclick="switchCrewTab('hist')">📋 Histórico de Embarques</button>
-      </div>
       <!-- Crew list tab -->
       <div id="cpanel-list">
         <!-- Bulk action bar (hidden by default) -->
@@ -906,15 +1074,6 @@
           <button class="btn btn-ghost btn-sm" onclick="deselectAllCrew()">☐ Nenhum</button>
         </div>
         <div id="crew-list"></div>
-      </div>
-      <!-- History tab -->
-      <div id="cpanel-hist" style="display:none;">
-        <div class="panel">
-          <div class="panel-header">📋 Histórico de Embarques / Desembarques</div>
-          <div style="padding:10px 14px;" id="emb-history-list">
-            <div style="color:var(--muted);font-size:12px;font-style:italic;">Nenhum histórico ainda.</div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -1370,72 +1529,45 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
     <!-- IMPORTAR DADOS -->
     <div id="page-importar" class="page">
       <div class="panel">
-        <div class="panel-header">📥 Importar Dados para o App</div>
+        <div class="panel-header">📥 Importar Dados</div>
         <div style="padding:16px;">
-
-          <!-- What can be imported -->
-          <div style="background:var(--login-blue-xlt);border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:18px;">
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--login-blue);margin-bottom:10px;">📋 O que pode ser importado</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;">
-              <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
-                <div style="font-weight:700;font-size:12px;color:var(--login-blue);">💾 Backup do App</div>
-                <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">Arquivo JSON do próprio Jacarandá — restaura ou mescla dados</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <label style="display:flex;flex-direction:column;align-items:center;gap:10px;background:var(--login-blue-xlt);border:2px dashed var(--border2);border-radius:12px;padding:24px 16px;cursor:pointer;transition:border-color .2s;" 
+              onmouseover="this.style.borderColor='var(--login-blue)'" onmouseout="this.style.borderColor='var(--border2)'">
+              <span style="font-size:36px;">💾</span>
+              <div style="text-align:center;">
+                <div style="font-size:14px;font-weight:700;color:var(--login-blue);">Backup JSON</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Restaurar ou mesclar dados do app</div>
               </div>
-              <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
-                <div style="font-weight:700;font-size:12px;color:var(--login-blue);">🔍 Inspeções JSON</div>
-                <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">Arquivos exportados da tela de Inspeção</div>
+              <input type="file" accept=".json" style="display:none" onchange="importBackupJSON(this)">
+              <span style="background:var(--login-blue);color:#fff;font-size:11px;font-weight:700;padding:6px 18px;border-radius:8px;">Selecionar arquivo</span>
+            </label>
+            <label style="display:flex;flex-direction:column;align-items:center;gap:10px;background:#f5f3ff;border:2px dashed #ddd6fe;border-radius:12px;padding:24px 16px;cursor:pointer;transition:border-color .2s;"
+              onmouseover="this.style.borderColor='#7c3aed'" onmouseout="this.style.borderColor='#ddd6fe'">
+              <span style="font-size:36px;">🔍</span>
+              <div style="text-align:center;">
+                <div style="font-size:14px;font-weight:700;color:#7c3aed;">Inspeções JSON</div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Importar inspeções exportadas</div>
               </div>
-              <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
-                <div style="font-weight:700;font-size:12px;color:var(--login-blue);">📊 Condições do Navio</div>
-                <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">Exportação do jacaranda_diagramas.html ou controle_condicoes.html</div>
-              </div>
-              <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
-                <div style="font-weight:700;font-size:12px;color:var(--login-blue);">🗂️ Módulo Departamento</div>
-                <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">Módulos exportados de outro dispositivo ou tripulante</div>
-              </div>
-              <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
-                <div style="font-weight:700;font-size:12px;color:var(--login-blue);">📋 Mestre Consolidado</div>
-                <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">Arquivo mestre gerado na seção de Módulos</div>
-              </div>
-              <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
-                <div style="font-weight:700;font-size:12px;color:var(--login-blue);">⚠️ Desvios / Registros</div>
-                <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">JSON com array de registros, desvios ou serviços de oficina</div>
-              </div>
-            </div>
+              <input type="file" accept=".json" style="display:none" onchange="importInspecaoFile(this)">
+              <span style="background:#7c3aed;color:#fff;font-size:11px;font-weight:700;padding:6px 18px;border-radius:8px;">Selecionar arquivo</span>
+            </label>
           </div>
-
-          <!-- Drop zone -->
-          <div id="imp-dropzone"
-            style="border:2px dashed var(--border2);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;background:var(--login-blue-xlt);transition:all .2s;margin-bottom:16px;"
-            onclick="document.getElementById('imp-file-input').click()"
-            ondragover="event.preventDefault();this.style.borderColor='var(--login-blue)';this.style.background='#dbeafe';"
-            ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--login-blue-xlt)';"
-            ondrop="handleImpDrop(event)">
-            <div style="font-size:44px;margin-bottom:10px;">📥</div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--login-blue);">Arraste arquivos aqui ou clique para selecionar</div>
-            <div style="font-size:12px;color:var(--text-dim);margin-top:6px;">Aceita <strong>.json</strong> de qualquer módulo do sistema Jacarandá</div>
-            <input type="file" id="imp-file-input" accept=".json" multiple style="display:none" onchange="handleImpFiles(this)">
-          </div>
-
           <!-- Preview area -->
-          <div id="imp-preview" style="display:none;">
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--login-blue);margin-bottom:10px;">📋 Arquivos Carregados — Revise antes de importar</div>
-            <div id="imp-cards" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;"></div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;">
-              <button class="btn btn-primary" onclick="executeImports()">✅ Importar Selecionados</button>
-              <button class="btn btn-ghost" onclick="clearImports()">🗑 Limpar</button>
-            </div>
+          <div id="import-preview" style="display:none;margin-top:14px;">
+            <div style="font-size:12px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">📋 Preview da Importação</div>
+            <div id="import-preview-body" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;max-height:280px;overflow-y:auto;font-size:12px;"></div>
+            <div id="import-actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"></div>
           </div>
-
-          <!-- Import log -->
-          <div id="imp-log" style="display:none;margin-top:16px;">
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--login-blue);margin-bottom:8px;">📄 Resultado da Importação</div>
-            <div id="imp-log-content" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:12px;font-family:'IBM Plex Mono',monospace;max-height:200px;overflow-y:auto;line-height:1.8;"></div>
+          <!-- Log -->
+          <div id="import-log" style="display:none;margin-top:12px;">
+            <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Log</div>
+            <div id="import-log-body" style="background:#07182e;border-radius:8px;padding:12px;font-size:11px;font-family:'IBM Plex Mono',monospace;max-height:160px;overflow-y:auto;line-height:1.8;color:#6DB847;"></div>
           </div>
-
         </div>
       </div>
     </div>
+
 
     <!-- ATUALIZAÇÃO DE VERSÃO -->
     <div id="page-update" class="page">
@@ -3360,13 +3492,13 @@ function renderActCard(r, i, showEdit=true){
   const descHtml=desc?`<div class="act-desc">${escHtml(desc)}</div>`:'';
   const fotosHtml=fotos.length?`
     <div class="act-photos">
-      <div class="act-photos-label">📷 ${fotos.length} foto${fotos.length>1?'s':''}</div>
+      <div class="act-photos-label">📷 <span class="act-photo-count">${fotos.length}</span> Foto${fotos.length>1?'s':''}</div>
       <div class="act-photos-grid">
         ${fotos.map((u,fi)=>{
           const cap=(r.fotosCaptions&&r.fotosCaptions[fi])||'';
           return `<div class="act-photo-wrap" onclick="viewP('${u}')">
             <img src="${u}" alt="${escHtml(cap)}" loading="lazy">
-            ${cap?`<div style="font-size:9px;color:var(--text-dim);text-align:center;padding:2px 3px;background:#f9fafb;border-top:1px solid var(--border);line-height:1.2;">${escHtml(cap)}</div>`:''}
+            ${cap?`<div class="act-photo-caption">${escHtml(cap)}</div>`:''}
           </div>`;
         }).join('')}
       </div>
@@ -5938,18 +6070,21 @@ function renderTPWithCaption(ctx){
   if(!grid) return;
   const items = S.tp[ctx]||[];
   if(!items.length){ grid.innerHTML=''; return; }
+  grid.style.cssText='display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;';
   grid.innerHTML = items.map((p,i)=>`
-    <div style="position:relative;display:inline-flex;flex-direction:column;gap:4px;align-items:center;margin:4px;">
-      <div style="position:relative;">
-        <img src="${p.u}" onclick="viewP('${p.u}')" style="width:80px;height:80px;object-fit:cover;border-radius:7px;border:1px solid var(--border);cursor:pointer;display:block;">
-        <button onclick="S.tp['${ctx}'].splice(${i},1);renderTPWithCaption('${ctx}')" style="position:absolute;top:-5px;right:-5px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:1;z-index:2;">✕</button>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px;width:110px;">
+      <div style="position:relative;width:110px;height:110px;">
+        <img src="${p.u}" onclick="viewP('${p.u}')" 
+          style="width:110px;height:110px;object-fit:cover;border-radius:10px;border:2px solid var(--border);cursor:pointer;display:block;box-shadow:var(--shadow-sm);">
+        <button onclick="S.tp['${ctx}'].splice(${i},1);renderTPWithCaption('${ctx}')" 
+          style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;font-weight:700;line-height:1;box-shadow:var(--shadow-sm);">✕</button>
       </div>
-      <input type="text" value="${escHtml(p.caption||'')}" placeholder="Legenda (opcional)" 
+      <input type="text" value="${escHtml(p.caption||'')}" placeholder="Legenda opcional..." 
         oninput="S.tp['${ctx}'][${i}].caption=this.value"
-        style="width:80px;font-size:9px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-family:inherit;text-align:center;">
+        style="width:110px;font-size:10px;border:1.5px solid var(--border);border-radius:6px;padding:4px 7px;font-family:inherit;text-align:center;background:#fff;color:var(--text);"
+        onfocus="this.style.borderColor='var(--login-blue)'" onblur="this.style.borderColor='var(--border)'">
     </div>`).join('');
 }
-
 
 function toggleCustomPorto(){
   const sel=document.getElementById('mc-porto-sel');

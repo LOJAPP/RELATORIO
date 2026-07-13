@@ -1,2 +1,2 @@
-# ⚓ Jacarandá — build 20260713_1931
-Commit: `build 20260713_1931 - tripulacao multi-select + embarque historico + fotos legendas + visual refresh`
+# ⚓ Jacarandá — build 20260713_1954
+Commit: `build 20260713_1954 - fotos melhoradas + visual system 2026 + importar simplificado + tripulacao sem historico`
