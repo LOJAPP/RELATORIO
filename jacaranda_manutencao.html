@@ -567,6 +567,20 @@
     .panel{page-break-before:auto!important;}
     .rpt-header,.panel-header{page-break-after:avoid!important;}
   }
+
+  /* ── VISUAL REFRESH 2026 ── */
+  .crew-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;box-shadow:0 1px 4px rgba(26,95,168,.04);transition:border-color .15s;}
+  .crew-card:hover{border-color:var(--login-blue);box-shadow:0 2px 12px rgba(26,95,168,.1);}
+  .act-card{background:#fff;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;box-shadow:0 1px 6px rgba(26,95,168,.06);}
+  .week-tab{padding:7px 16px;background:#fff;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-dim);transition:all .15s;white-space:nowrap;}
+  .week-tab.active,.week-tab:hover{background:var(--login-blue);color:#fff;border-color:var(--login-blue);}
+  .week-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+  .act-photo-wrap{border-radius:8px;overflow:hidden;border:1px solid var(--border);background:#f9fafb;}
+  .act-photo-wrap img{width:100%;height:90px;object-fit:cover;display:block;}
+  .rpt-header{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#07182e,#0e2540);color:#fff;padding:16px 20px;border-radius:12px;margin-bottom:14px;box-shadow:0 4px 14px rgba(7,24,46,.3);}
+  .export-bar{background:linear-gradient(135deg,var(--login-blue-xlt),#fff);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .export-bar>span{font-size:24px;}
+  .export-bar>p{flex:1;font-size:12px;color:var(--text-dim);min-width:120px;}
 </style>
 </head>
 <body>
@@ -699,9 +713,9 @@
           <div class="sep"></div>
           <div class="section-title">📷 Fotos da Atividade</div>
           <div class="compress-info">⚡ Fotos comprimidas automaticamente (máx. 1024px / JPEG 70%). Reduz 3–5MB para ~150KB.</div>
-          <label class="photo-drop-zone" for="foto-reg">📷 Clique para tirar foto ou selecionar arquivo<br><small>Múltiplos arquivos aceitos — câmera do dispositivo disponível</small></label>
-          <input type="file" id="foto-reg" accept="image/*" multiple style="display:none" onchange="addPhotos(this.files,'reg')">
-          <div class="photo-grid" id="pg-reg"></div>
+          <label class="photo-drop-zone" for="foto-reg">📷 Clique para tirar foto ou selecionar arquivo<br><small>Múltiplos arquivos aceitos — adicione legenda opcional em cada foto</small></label>
+          <input type="file" id="foto-reg" accept="image/*" multiple style="display:none" onchange="addPhotosWithCaption(this.files,'reg')">
+          <div class="photo-grid" id="pg-reg" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
           <div class="sep"></div>
           <button class="btn btn-primary" onclick="saveReg()" style="width:100%;padding:14px;font-size:15px;font-weight:700;">💾 Salvar Registro</button>
         </div>
@@ -872,11 +886,36 @@
 
     <!-- TRIPULANTES -->
     <div id="page-tripulantes" class="page">
-      <div class="export-bar"><span>👥</span><p>Gestão da tripulação a bordo.</p><button class="btn btn-primary btn-sm" onclick="openCrew(null)">➕ Novo</button></div>
-      <div class="form-group" style="max-width:400px;margin-bottom:12px;">
-        <input type="text" class="form-control" id="crew-q" placeholder="🔍 Buscar por nome, função ou matrícula..." oninput="renderCrew()">
+      <div class="export-bar"><span>👥</span><p>Gestão da tripulação a bordo. Selecione múltiplos para atualização em lote.</p><button class="btn btn-primary btn-sm" onclick="openCrew(null)">➕ Novo</button></div>
+      <!-- Tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button id="ctab-list" class="btn btn-sm btn-primary" onclick="switchCrewTab('list')">👥 Tripulação</button>
+        <button id="ctab-hist" class="btn btn-sm btn-ghost" onclick="switchCrewTab('hist')">📋 Histórico de Embarques</button>
       </div>
-      <div id="crew-list"></div>
+      <!-- Crew list tab -->
+      <div id="cpanel-list">
+        <!-- Bulk action bar (hidden by default) -->
+        <div id="crew-bulk-bar" style="display:none;background:var(--login-blue);color:#fff;padding:10px 14px;border-radius:8px;margin-bottom:12px;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span id="crew-bulk-count" style="font-weight:700;font-size:13px;flex:1;">0 selecionado(s)</span>
+          <button onclick="openBulkUpdate()" style="background:#fff;color:var(--login-blue);border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">⚡ Atualizar datas/porto</button>
+          <button onclick="deselectAllCrew()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:7px;padding:7px 12px;font-size:12px;cursor:pointer;">✕ Cancelar</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
+          <input type="text" class="form-control" id="crew-q" placeholder="🔍 Buscar por nome, função ou matrícula..." oninput="renderCrew()" style="flex:1;min-width:200px;">
+          <button class="btn btn-ghost btn-sm" onclick="selectAllCrew()">☑ Todos</button>
+          <button class="btn btn-ghost btn-sm" onclick="deselectAllCrew()">☐ Nenhum</button>
+        </div>
+        <div id="crew-list"></div>
+      </div>
+      <!-- History tab -->
+      <div id="cpanel-hist" style="display:none;">
+        <div class="panel">
+          <div class="panel-header">📋 Histórico de Embarques / Desembarques</div>
+          <div style="padding:10px 14px;" id="emb-history-list">
+            <div style="color:var(--muted);font-size:12px;font-style:italic;">Nenhum histórico ainda.</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- EMBARQUE -->
@@ -2281,7 +2320,7 @@ function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folde
 
 
 // ── STATE ──
-let S={regs:[],crew:[],fotos:[],empresas:[],oficina:[],desvios:[],inspecoes:[],tp:{reg:[],av:[],of:[],insp:[]}};
+let S={regs:[],crew:[],fotos:[],empresas:[],oficina:[],desvios:[],inspecoes:[],embHistory:[],tp:{reg:[],av:[],of:[],insp:[]}};
 let activeDept='Todos', curWeek=null;
 
 // ── TRIPULANTES SEED (Lista Completa do Excel) ──
@@ -2310,13 +2349,13 @@ const CREW_SEED=[
 
 // ── PERSIST ──
 function loadData(){
-  try{const d=JSON.parse(localStorage.getItem('jac_v5')||'{}');S.regs=d.regs||[];S.crew=d.crew||[];S.fotos=d.fotos||[];S.empresas=d.empresas||[];S.oficina=d.oficina||[];S.desvios=d.desvios||[];S.inspecoes=d.inspecoes||[];}catch(e){}
+  try{const d=JSON.parse(localStorage.getItem('jac_v5')||'{}');S.regs=d.regs||[];S.crew=d.crew||[];S.fotos=d.fotos||[];S.empresas=d.empresas||[];S.oficina=d.oficina||[];S.desvios=d.desvios||[];S.inspecoes=d.inspecoes||[];S.embHistory=d.embHistory||[];}catch(e){}
   if(!S.crew.length) seedCrew();
   if(!S.regs.length) seedRegs();
   storStatus();
 }
 function saveData(silent=false){
-  try{localStorage.setItem('jac_v5',JSON.stringify({regs:S.regs,crew:S.crew,fotos:S.fotos,empresas:S.empresas,oficina:S.oficina,desvios:S.desvios,inspecoes:S.inspecoes}));if(!silent)toast('✅ Dados salvos!','ok');storStatus();}
+  try{localStorage.setItem('jac_v5',JSON.stringify({regs:S.regs,crew:S.crew,fotos:S.fotos,empresas:S.empresas,oficina:S.oficina,desvios:S.desvios,inspecoes:S.inspecoes,embHistory:S.embHistory||[]}));if(!silent)toast('✅ Dados salvos!','ok');storStatus();}
   catch(e){toast('⚠️ Erro ao salvar — faça backup JSON','warn');}
 }
 function storStatus(){
@@ -2449,7 +2488,7 @@ function _goPage(id){
   kpis();
   if(id==='dashboard'){renderDash();}
   if(id==='historico'){renderHistorico();}
-  if(id==='tripulantes'){renderCrew();}
+  if(id==='tripulantes'){renderCrew();_crewSel.clear();_updateCrewBulkBar();switchCrewTab('list');}
   if(id==='embarque'){renderEmbarque();}
   if(id==='semanal'){renderSemTabs();}
   if(id==='fotos'){renderGallery();fillFotoAssoc();}
@@ -2562,12 +2601,16 @@ function saveReg(){
   const desc=document.getElementById('r-atv').value.trim();
   if(!s||!titulo){toast('⚠️ Preencha a semana e o título da atividade','warn');return;}
   const eq=document.getElementById('r-eq-hidden')?.value||'';
+  // Save photos with captions
+  const fotosData = (S.tp.reg||[]);
   S.regs.push({id:gid(),s,lb:`SEM ${s}`,d:document.getElementById('r-data').value,
     dp:document.getElementById('r-dept').value,
     titulo, a:desc, q:eq,
     st:document.getElementById('r-st').value,
     l:document.getElementById('r-loc').value,
-    fotos:S.tp.reg.map(p=>p.u),ts:Date.now()});
+    fotos:fotosData.map(p=>p.u),
+    fotosCaptions:fotosData.map(p=>p.caption||''),
+    ts:Date.now()});
   S.tp.reg=[];document.getElementById('pg-reg').innerHTML='';
   saveData(true);clearRegForm();kpis();toast('✅ Registro salvo!','ok');
 }
@@ -3319,7 +3362,13 @@ function renderActCard(r, i, showEdit=true){
     <div class="act-photos">
       <div class="act-photos-label">📷 ${fotos.length} foto${fotos.length>1?'s':''}</div>
       <div class="act-photos-grid">
-        ${fotos.map(u=>`<div class="act-photo-wrap" onclick="viewP('${u}')"><img src="${u}" alt="foto" loading="lazy"></div>`).join('')}
+        ${fotos.map((u,fi)=>{
+          const cap=(r.fotosCaptions&&r.fotosCaptions[fi])||'';
+          return `<div class="act-photo-wrap" onclick="viewP('${u}')">
+            <img src="${u}" alt="${escHtml(cap)}" loading="lazy">
+            ${cap?`<div style="font-size:9px;color:var(--text-dim);text-align:center;padding:2px 3px;background:#f9fafb;border-top:1px solid var(--border);line-height:1.2;">${escHtml(cap)}</div>`:''}
+          </div>`;
+        }).join('')}
       </div>
     </div>`:'';
 
@@ -3806,44 +3855,202 @@ function saveCrew(){
   saveData(true);closeModal('modal-crew');renderCrew();kpis();
   buildCrewCheckList('novo');buildCrewCheckList('edit');
 }
+// ─────────────────────────────────────────────
+// TRIPULAÇÃO — Multi-select + Bulk Update
+// ─────────────────────────────────────────────
+var _crewSel = new Set(); // selected crew IDs
+
+function toggleCrewSel(id){
+  if(_crewSel.has(id)) _crewSel.delete(id); else _crewSel.add(id);
+  renderCrew();
+  _updateCrewBulkBar();
+}
+
+function _updateCrewBulkBar(){
+  const bar = document.getElementById('crew-bulk-bar');
+  const cnt = document.getElementById('crew-bulk-count');
+  if(!bar) return;
+  bar.style.display = _crewSel.size ? 'flex' : 'none';
+  if(cnt) cnt.textContent = _crewSel.size+' selecionado(s)';
+}
+
+function selectAllCrew(){
+  S.crew.forEach(c=>_crewSel.add(c.id));
+  renderCrew(); _updateCrewBulkBar();
+}
+function deselectAllCrew(){
+  _crewSel.clear();
+  renderCrew(); _updateCrewBulkBar();
+}
+
+function openBulkUpdate(){
+  const n = _crewSel.size;
+  if(!n){ toast('⚠️ Selecione tripulantes primeiro','warn'); return; }
+  let modal = document.getElementById('modal-crew-bulk');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'modal-crew-bulk';
+    modal.className = 'modal-overlay';
+    document.body.appendChild(modal);
+  }
+  const portoOpts = ['','Navegantes-SC','Santos-SP','Salvador-BA','Suape-PE','Vitória-ES','Pecém-CE','Manaus-AM','Belém-PA','Fortaleza-CE']
+    .map(p=>`<option value="${p}">${p||'— Manter atual —'}</option>`).join('');
+  const tuOpts = ['','Turma A','Turma B'].map(t=>`<option value="${t}">${t||'— Manter atual —'}</option>`).join('');
+  modal.innerHTML=`
+  <div style="background:#fff;border-radius:14px;max-width:480px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.35);">
+    <div style="background:linear-gradient(135deg,#07182e,#0e2540);color:#fff;padding:16px 20px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:12px;">
+      <div style="flex:1;"><div style="font-size:16px;font-weight:800;">⚡ Atualização em Lote</div>
+      <div style="font-size:11px;opacity:.7;margin-top:2px;">${n} tripulante(s) selecionado(s)</div></div>
+      <button onclick="closeBulkUpdate()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:18px 20px;">
+      <div style="font-size:12px;font-weight:700;color:var(--login-blue);background:var(--login-blue-xlt);border-radius:6px;padding:8px 12px;margin-bottom:14px;">
+        Preencha apenas os campos que deseja alterar — campos vazios manterão o valor atual de cada tripulante.
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>⬆ Data de Embarque</label>
+          <input type="date" class="form-control" id="bulk-em">
+        </div>
+        <div class="form-group">
+          <label>⬇ Data de Desembarque</label>
+          <input type="date" class="form-control" id="bulk-de">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>🚢 Porto de Embarque</label>
+        <select class="form-control" id="bulk-porto">${portoOpts}</select>
+      </div>
+      <div class="form-group">
+        <label>🔄 Turma</label>
+        <select class="form-control" id="bulk-tu">${tuOpts}</select>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="applyBulkUpdate()">⚡ Aplicar a ${n} tripulante(s)</button>
+        <button class="btn btn-ghost" onclick="closeBulkUpdate()">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+  modal.style.display='flex'; modal.style.alignItems='center'; modal.style.justifyContent='center';
+  modal.onclick = e=>{ if(e.target===modal) closeBulkUpdate(); };
+}
+
+function applyBulkUpdate(){
+  const em    = document.getElementById('bulk-em')?.value;
+  const de    = document.getElementById('bulk-de')?.value;
+  const porto = document.getElementById('bulk-porto')?.value;
+  const tu    = document.getElementById('bulk-tu')?.value;
+  let cnt=0;
+  S.crew.forEach(c=>{
+    if(!_crewSel.has(c.id)) return;
+    if(em)    c.em = em;
+    if(de)    c.de = de;
+    if(porto) c.porto = porto;
+    if(tu)    c.tu = tu;
+    // Save to embarkation history
+    if(em||de||porto) logEmbarkHistory(c, em, de, porto);
+    cnt++;
+  });
+  saveData(true);
+  closeBulkUpdate();
+  _crewSel.clear();
+  renderCrew();
+  _updateCrewBulkBar();
+  renderEmbarqueHistory();
+  toast(`✅ ${cnt} tripulante(s) atualizados!`,'ok');
+}
+
+function closeBulkUpdate(){
+  const m = document.getElementById('modal-crew-bulk');
+  if(m) m.style.display='none';
+}
+
+// Embarkation history log
+function logEmbarkHistory(crew, em, de, porto){
+  if(!S.embHistory) S.embHistory = [];
+  // Only log if embarque changed
+  if(!em && !de) return;
+  S.embHistory.push({
+    crewId: crew.id, nm: crew.nm, fn: crew.fn,
+    abbr: crew.abbr||(ROLE_ABBR[crew.fn]||crew.fn.slice(0,3).toUpperCase()),
+    em: em||crew.em||'', de: de||crew.de||'',
+    porto: porto||crew.porto||'', ts: Date.now(),
+    vessel: (getCfg().vessel?.vessel)||'LOG-IN JACARANDÁ'
+  });
+}
+
+function renderEmbarqueHistory(){
+  const el = document.getElementById('emb-history-list');
+  if(!el) return;
+  const hist = (S.embHistory||[]).slice().reverse();
+  if(!hist.length){
+    el.innerHTML='<div style="color:var(--muted);font-size:12px;font-style:italic;padding:10px 0;">Nenhum histórico ainda.</div>';
+    return;
+  }
+  el.innerHTML = hist.slice(0,50).map(h=>{
+    const dias = (h.em&&h.de)?Math.ceil((new Date(h.de+'T12:00')-new Date(h.em+'T12:00'))/864e5):'—';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+      <span style="background:var(--login-blue-xlt);color:var(--login-blue);font-family:monospace;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;flex-shrink:0;">${escHtml(h.abbr)}</span>
+      <div style="flex:1;min-width:120px;">
+        <div style="font-size:13px;font-weight:700;color:var(--text);">${escHtml(h.nm)}</div>
+        <div style="font-size:10px;color:var(--text-dim);">${escHtml(h.fn)}${h.porto?' · 🚢 '+escHtml(h.porto):''}</div>
+      </div>
+      <span style="font-size:11px;background:#eff6ff;color:var(--login-blue);padding:2px 8px;border-radius:6px;white-space:nowrap;">⬆ ${h.em?fd(h.em):'—'}</span>
+      <span style="font-size:11px;background:#f0fdf4;color:#16a34a;padding:2px 8px;border-radius:6px;white-space:nowrap;">${h.de?'⬇ '+fd(h.de):'A bordo'}</span>
+      ${dias!=='—'?`<span style="font-family:monospace;font-size:11px;font-weight:700;color:var(--login-green);white-space:nowrap;">${dias}d</span>`:''}
+    </div>`;
+  }).join('');
+}
+
 function renderCrew(){
   const q=(document.getElementById('crew-q')?.value||'').toLowerCase();
-  const depts=['Todos','Convés','Máquinas','MC Reefer','Hotelaria','Comando'];
   let crew=S.crew.filter(t=>!q||t.nm.toLowerCase().includes(q)||t.fn.toLowerCase().includes(q)||(t.mat||'').includes(q));
   const list=document.getElementById('crew-list');
-  if(!crew.length){list.innerHTML='<div class="empty-state"><div class="ico">👤</div><p>Nenhum tripulante</p></div>';return;}
+  if(!crew.length){ list.innerHTML='<div class="empty-state"><div class="ico">👤</div><p>Nenhum tripulante</p></div>'; return; }
   // Group by dept
   const byDept={};
-  crew.forEach(t=>{byDept[t.dp]=byDept[t.dp]||[];byDept[t.dp].push(t);});
+  crew.forEach(t=>{ byDept[t.dp]=byDept[t.dp]||[]; byDept[t.dp].push(t); });
   list.innerHTML=Object.entries(byDept).map(([dept,members])=>`
     <div style="margin-bottom:16px;">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">${dtg(dept)} ${dept}</div>
-      ${members.map(t=>`
-        <div class="crew-card">
-          <div class="crew-av" style="background:${deptColor(t.dp)}">${t.nm.split(' ').map(w=>w[0]).slice(0,2).join('')}</div>
-          <div style="flex:1">
-            <div class="crew-name">${t.nm}</div>
-            <div class="crew-role">${t.fn}${t.nat?' — '+t.nat:''} &nbsp;<span class="crew-tag-pill" style="font-size:9px;">${t.abbr||(ROLE_ABBR[t.fn]||t.fn.slice(0,3).toUpperCase())}</span></div>
-            <div style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap;">
-              ${t.em?`<span class="emb-b">⬆ ${fd(t.em)}</span>`:''}
-              ${t.de?`<span class="des-b">⬇ ${fd(t.de)}</span>`:''}
-              ${t.porto?`<span style="font-size:10px;color:var(--text-dim)">🚢 ${t.porto}</span>`:''}
-              ${t.co?`<span style="font-size:11px;color:var(--text-dim)">📱 ${t.co}</span>`:''}
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">
+        <span style="font-size:13px;font-weight:700;text-transform:uppercase;color:var(--text-dim);">${dtg(dept)} ${dept}</span>
+        <span style="background:var(--login-blue);color:#fff;font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;">${members.length}</span>
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);margin-left:auto;cursor:pointer;">
+          <input type="checkbox" onchange="members.forEach(c=>{ this.checked?_crewSel.add(c.id):_crewSel.delete(c.id); }); renderCrew(); _updateCrewBulkBar();" ${members.every(c=>_crewSel.has(c.id))?'checked':''}>
+          Selec. todos
+        </label>
+      </div>
+      ${members.map(t=>{
+        const abbr=t.abbr||(ROLE_ABBR[t.fn]||t.fn.slice(0,3).toUpperCase());
+        const sel=_crewSel.has(t.id);
+        return `<div class="crew-card" style="border-left:4px solid ${sel?'var(--login-blue)':'transparent'};background:${sel?'var(--login-blue-xlt)':'#fff'};cursor:pointer;" onclick="toggleCrewSel('${t.id}')">
+          <div style="display:flex;align-items:center;gap:10px;width:100%;">
+            <input type="checkbox" ${sel?'checked':''} onchange="toggleCrewSel('${t.id}')" onclick="event.stopPropagation()" style="flex-shrink:0;width:16px;height:16px;">
+            <div class="crew-av" style="background:${deptColor(t.dp)}">${t.nm.split(' ').map(w=>w[0]).slice(0,2).join('')}</div>
+            <div style="flex:1;min-width:0;">
+              <div class="crew-name">${escHtml(t.nm)}</div>
+              <div class="crew-role">${escHtml(t.fn)} <span class="crew-tag-pill" style="font-size:9px;">${abbr}</span></div>
+              <div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap;">
+                ${t.em?`<span class="emb-b">⬆ ${fd(t.em)}</span>`:''}
+                ${t.de?`<span class="des-b">⬇ ${fd(t.de)}</span>`:t.em?'<span style="font-size:10px;font-weight:700;color:#16a34a;">✅ A bordo</span>':''}
+                ${t.porto?`<span style="font-size:10px;color:var(--text-dim);">🚢 ${escHtml(t.porto)}</span>`:''}
+              </div>
+            </div>
+            <div style="text-align:right;font-size:11px;color:var(--text-dim);flex-shrink:0;">
+              <div class="mono">#${t.mat||'—'}</div>
+              <div>${t.tu}</div>
+              <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end;" onclick="event.stopPropagation()">
+                <button class="btn btn-primary btn-sm" onclick="openCrew('${t.id}')">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="delCrew('${t.id}')">🗑</button>
+              </div>
             </div>
           </div>
-          <div style="text-align:right;font-size:11px;color:var(--text-dim);flex-shrink:0;">
-            <div class="mono">#${t.mat||'—'}</div>
-            <div style="margin-top:2px">${t.tu}</div>
-            <div style="display:flex;gap:4px;margin-top:8px;justify-content:flex-end;">
-              <button class="btn btn-primary btn-sm" onclick="openCrew('${t.id}')">✏️</button>
-              <button class="btn btn-danger btn-sm" onclick="delCrew('${t.id}')">🗑</button>
-            </div>
-          </div>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>`).join('');
 }
-function deptColor(d){const m={Convés:'#1E40AF',Máquinas:'#92400E','MC Reefer':'#065F46',Hotelaria:'#9D174D',Comando:'#1A5FA8'};return m[d]||'#5B21B6';}
-function delCrew(id){if(!confirm('Remover tripulante?'))return;S.crew=S.crew.filter(t=>t.id!==id);saveData(true);renderCrew();kpis();toast('🗑 Removido','warn');}
+function deptColor(d){ const m={Convés:'#1E40AF',Máquinas:'#92400E','MC Reefer':'#065F46',Hotelaria:'#9D174D',Comando:'#1A5FA8'}; return m[d]||'#5B21B6'; }
+function delCrew(id){ if(!confirm('Remover tripulante?'))return; S.crew=S.crew.filter(t=>t.id!==id); saveData(true); renderCrew(); kpis(); toast('🗑 Removido','warn'); }
 
 // ── EMBARQUE ──
 // ── MODAL ──
@@ -5705,20 +5912,45 @@ function filterCrewSearch(ctx){
 }
 
 // ── CREW MODAL: função personalizada + porto + empresa ──
-function toggleCustomFn(){
-  const sel=document.getElementById('mc-fn');
-  const inp=document.getElementById('mc-fn-custom');
-  const abbrEl=document.getElementById('mc-abbr');
-  if(!sel||!inp)return;
-  if(sel.value==='__custom__'){
-    inp.style.display='block';inp.focus();
-    if(abbrEl)abbrEl.value='';
-  } else {
-    inp.style.display='none';
-    // Auto-fill abbreviation
-    if(abbrEl)abbrEl.value=ROLE_ABBR[sel.value]||sel.value.slice(0,3).toUpperCase();
-  }
+function switchCrewTab(tab){
+  ['list','hist'].forEach(t=>{
+    const btn=document.getElementById('ctab-'+t);
+    const pnl=document.getElementById('cpanel-'+t);
+    if(btn) btn.className='btn btn-sm '+(t===tab?'btn-primary':'btn-ghost');
+    if(pnl) pnl.style.display=t===tab?'':'none';
+  });
+  if(tab==='hist') renderEmbarqueHistory();
 }
+
+// ── Photo captions for novo registro ──
+function addPhotosWithCaption(files, ctx){
+  Array.from(files).forEach(f=>{
+    compress(f, u=>{
+      S.tp[ctx]=S.tp[ctx]||[];
+      S.tp[ctx].push({nm:f.name, u, caption:''});
+      renderTPWithCaption(ctx);
+    });
+  });
+}
+
+function renderTPWithCaption(ctx){
+  const grid = document.getElementById('pg-'+ctx);
+  if(!grid) return;
+  const items = S.tp[ctx]||[];
+  if(!items.length){ grid.innerHTML=''; return; }
+  grid.innerHTML = items.map((p,i)=>`
+    <div style="position:relative;display:inline-flex;flex-direction:column;gap:4px;align-items:center;margin:4px;">
+      <div style="position:relative;">
+        <img src="${p.u}" onclick="viewP('${p.u}')" style="width:80px;height:80px;object-fit:cover;border-radius:7px;border:1px solid var(--border);cursor:pointer;display:block;">
+        <button onclick="S.tp['${ctx}'].splice(${i},1);renderTPWithCaption('${ctx}')" style="position:absolute;top:-5px;right:-5px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:1;z-index:2;">✕</button>
+      </div>
+      <input type="text" value="${escHtml(p.caption||'')}" placeholder="Legenda (opcional)" 
+        oninput="S.tp['${ctx}'][${i}].caption=this.value"
+        style="width:80px;font-size:9px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-family:inherit;text-align:center;">
+    </div>`).join('');
+}
+
+
 function toggleCustomPorto(){
   const sel=document.getElementById('mc-porto-sel');
   const inp=document.getElementById('mc-porto');

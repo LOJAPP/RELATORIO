@@ -1,2 +1,2 @@
-# ⚓ Jacarandá — build 20260506_1118
-Commit: `build 20260506_1118 - FIX PDF semanal inspeções fotos ANTES/DEPOIS completo`
+# ⚓ Jacarandá — build 20260713_1931
+Commit: `build 20260713_1931 - tripulacao multi-select + embarque historico + fotos legendas + visual refresh`
