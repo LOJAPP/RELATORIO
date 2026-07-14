@@ -1376,44 +1376,50 @@
         </div>
       </div>
 
-      <!-- Direção -->
+      <!-- ETA por Trecho — unificado com distâncias/waypoints, editável nos pontos-chave -->
       <div class="panel">
-        <div class="panel-header">🧭 Sentido de Navegação</div>
+        <div class="panel-header">🧮 ETA por Trecho — Rota Completa (editável em Pecém · Barra Norte · Macapá · Itacoatiara · Manaus)</div>
         <div style="padding:14px;">
           <div class="form-row">
             <div class="form-group"><label>Sentido</label>
-              <select class="form-control" id="rio-dir" onchange="rioFillStarts();renderRioDistTable();renderRioHorarios();">
+              <select class="form-control" id="rio-dir" onchange="rioFillStarts();rioBuildETA();">
                 <option value="subida">⬆ SUBIDA (Barra Norte → Manaus)</option>
                 <option value="descida">⬇ DESCIDA (Manaus → Barra Norte)</option>
               </select>
             </div>
             <div class="form-group"><label>📍 Ponto de partida</label>
-              <select class="form-control" id="rio-start"></select>
+              <select class="form-control" id="rio-start" onchange="rioBuildETA()"></select>
             </div>
             <div class="form-group"><label>🕐 Data/Hora saída</label>
-              <input type="datetime-local" class="form-control" id="rio-dt">
+              <input type="datetime-local" class="form-control" id="rio-dt" onchange="rioBuildETA()">
             </div>
-            <div class="form-group"><label>🚢 Veloc. média (nós)</label>
-              <input type="number" step="0.1" class="form-control" id="rio-vel" value="15" oninput="rioSaveCfg()">
+            <div class="form-group"><label>🚢 Veloc. média inicial (nós)</label>
+              <input type="number" step="0.1" class="form-control" id="rio-vel" value="15" oninput="rioSaveCfg();rioBuildETA();">
             </div>
           </div>
-          <button class="btn btn-primary" onclick="rioBuildETA()" style="width:100%;">🧮 Calcular ETA por trecho</button>
+          <button class="btn btn-primary" onclick="rioBuildETA()" style="width:100%;">🧮 Calcular ETA por Trecho</button>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.5;">
+            ⭐ Os pontos em destaque (Pecém, Barra Norte, Macapá, Itacoatiara, Manaus) são <strong>editáveis</strong>: ajuste manualmente o <strong>ETA</strong> (chegada real/revisada) ou a <strong>velocidade</strong> a partir daquele ponto — os trechos seguintes recalculam automaticamente. Distâncias e waypoints completos da rota já aparecem juntos na mesma tabela.
+          </div>
           <div id="rio-eta-result" style="margin-top:12px;"></div>
           <div id="rio-eta-notas" style="margin-top:8px;font-size:11px;color:var(--text-dim);"></div>
+          <div style="margin-top:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="rioTrechoReset()">↺ Limpar ajustes manuais deste sentido</button>
+          </div>
         </div>
       </div>
 
-      <!-- Quadro de Horários por Ponto-Chave (editável) -->
+      <!-- ETA entre Portos -->
       <div class="panel">
-        <div class="panel-header">🕐 Quadro de Horários — Pecém · Barra Norte · Macapá · Itacoatiara · Manaus</div>
+        <div class="panel-header">⚓ ETA entre Portos — Planejador de Pernas (PEC · BN · MCP · ITA · MAO · VIX · SSZ · SUA · SSA · NVT)</div>
         <div style="padding:14px;">
           <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
-            Horários previstos calculados a partir da <strong>Data/Hora de saída</strong> e <strong>Velocidade</strong> informadas acima (sentido <span id="rio-hor-dir-tag" style="font-weight:700;"></span>). Após calcular, cada horário fica <strong>editável</strong> — ajuste manualmente e o valor fica salvo automaticamente.
+            Monte a viagem porto a porto: escolha <strong>De → Para</strong>, informe a <strong>data/hora de saída</strong>, a <strong>distância</strong> e a <strong>velocidade</strong> — o <strong>ETA</strong> é calculado na hora. Distâncias conhecidas da Linha Amazonas são sugeridas automaticamente (pode sobrescrever). Se a saída de um trecho ficar vazia, ela é <strong>encadeada</strong> automaticamente ao ETA do trecho anterior. Tudo fica salvo no aparelho.
           </div>
-          <button class="btn btn-primary" onclick="rioPreverHorarios()" style="width:100%;margin-bottom:10px;">🔮 Prever Horários dos Pontos-Chave</button>
-          <div id="rio-horarios-table"></div>
-          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-ghost btn-sm" onclick="rioResetHorarios()">↺ Limpar ajustes manuais</button>
+          <div id="rio-portos-body"></div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="rioPortoAdd()">➕ Adicionar trecho</button>
+            <button class="btn btn-ghost btn-sm" onclick="rioPortosReset()">↺ Limpar planejador</button>
           </div>
         </div>
       </div>
@@ -1480,12 +1486,6 @@
           </div>
           <div id="rio-ukc-result" style="margin-top:12px;"></div>
         </div>
-      </div>
-
-      <!-- Tabela de distâncias -->
-      <div class="panel">
-        <div class="panel-header">📏 Distâncias & Waypoints — Linha Amazonas</div>
-        <div id="rio-dist-table" style="padding:0;"></div>
       </div>
 
       <!-- Informações e regras -->
@@ -3361,8 +3361,8 @@ function initRio(){
   }
   rioFillStarts();
   rioLocChange();
-  renderRioDistTable();
-  renderRioHorarios();
+  rioBuildETA();
+  rioPortosInit();
 }
 
 function rioFillStarts(){
@@ -3449,49 +3449,129 @@ function rioTideAt(t, t1, h1, t2, h2){
   return h1 + (h2-h1) * (1 - Math.cos(Math.PI*x)) / 2;
 }
 
+function rioKeyIdOf(w){
+  if(w.key==='bn') return 'bn';
+  if(w.key==='mcp') return 'mcp';
+  if(w.key==='ita') return 'ita';
+  if(w.key==='mao') return 'mao';
+  if(w.nm.indexOf('Pecém')>=0) return 'pecem';
+  return null;
+}
+function rioTrechoLoad(){
+  try{ return JSON.parse(localStorage.getItem('jac_rio_trechos')||'{}'); }catch(e){ return {}; }
+}
+function rioTrechoSave(all){
+  try{ localStorage.setItem('jac_rio_trechos', JSON.stringify(all)); }catch(e){}
+}
+function rioMsToLocalISO(ms){
+  return new Date(ms - new Date(ms).getTimezoneOffset()*60000).toISOString().slice(0,16);
+}
+
 function rioBuildETA(){
   var dir  = document.getElementById('rio-dir')?.value||'subida';
   var wpts = dir==='subida'?RIO_SUBIDA:RIO_DESCIDA;
   var startIdx = parseInt(document.getElementById('rio-start')?.value)||0;
   var dt   = document.getElementById('rio-dt')?.value;
-  var vel  = parseFloat(document.getElementById('rio-vel')?.value)||15;
+  var vel0 = parseFloat(document.getElementById('rio-vel')?.value)||15;
   var out  = document.getElementById('rio-eta-result');
   if(!out) return;
   if(!dt){ out.innerHTML='<div style="color:var(--warn);font-size:12px;padding:8px;background:#fffbeb;border-radius:6px;">⚠️ Informe a data/hora de saída</div>'; return; }
-  if(vel<=0){ out.innerHTML='<div style="color:var(--danger);font-size:12px;padding:8px;background:#fef2f2;border-radius:6px;">⚠️ Velocidade inválida</div>'; return; }
+  if(vel0<=0){ out.innerHTML='<div style="color:var(--danger);font-size:12px;padding:8px;background:#fef2f2;border-radius:6px;">⚠️ Velocidade inválida</div>'; return; }
 
-  // Filter: navegáveis from startIdx onwards
+  var over = (rioTrechoLoad()[dir])||{};
   var real = wpts.slice(startIdx);
   var t0 = new Date(dt).getTime();
-  var cumT = 0, cumD = 0;
+  var startFuso = wpts[startIdx].fuso;
+
+  var t = t0;            // linha do tempo interna (referida ao fuso do ponto de partida)
+  var curVel = vel0;     // velocidade vigente (pode mudar nos pontos-chave)
+  var branchT = t0;      // tempo no último ponto não-alternativo (base p/ destinos alternativos)
+  var cumD = 0, nEdit = 0;
+  var prevFuso = startFuso;
   var rows = '';
-  var prevFuso = wpts[startIdx].fuso;
+
   for(var i=0;i<real.length;i++){
     var w = real[i];
-    var d = i===0 ? 0 : w.d;
-    cumD += d;
-    var h  = d/vel;
-    cumT  += h;
-    var arriveMs = t0 + cumT*3600*1000;
-    var arrive = new Date(arriveMs);
-    var fusoTag = w.fuso!==prevFuso ? ' <span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">FUSO '+(w.fuso>0?'+':'')+w.fuso+'</span>' : '';
-    prevFuso = w.fuso;
-    var pillClr = w.key?'#0891b2':'var(--text-dim)';
-    rows += '<tr>'
-      + '<td style="font-weight:'+(w.key?'700':'500')+';color:'+pillClr+';">'+escHtml(w.nm)+fusoTag+'</td>'
+    var d = (i===0) ? 0 : w.d;
+    var keyId = (i===0) ? null : rioKeyIdOf(w);
+    var ov = keyId ? over[keyId] : null;
+
+    var h, internalMs;
+    if(w.alt){
+      h = d/curVel;
+      internalMs = branchT + h*3600000;
+    } else {
+      cumD += d;
+      h = d/curVel;
+      internalMs = t + h*3600000;
+    }
+
+    var fusoDelta = (w.fuso - startFuso)*3600000;
+    var edited = false;
+
+    // Override de ETA (o valor editado é interpretado no fuso local do ponto)
+    if(ov && ov.eta){
+      var etaLocalMs = new Date(ov.eta).getTime();
+      internalMs = etaLocalMs - fusoDelta;
+      edited = true;
+      nEdit++;
+    }
+    var displayMs = internalMs + fusoDelta;
+
+    if(!w.alt){ t = internalMs; branchT = internalMs; }
+
+    // Velocidade vigente pode ser sobrescrita a partir deste ponto-chave
+    var velFromHere = curVel;
+    var velEdited = false;
+    if(ov && ov.vel>0 && !w.alt){
+      curVel = ov.vel;
+      velFromHere = ov.vel;
+      velEdited = true;
+    }
+
+    var fusoTag = (!w.alt && w.fuso!==prevFuso) ? ' <span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">FUSO '+(w.fuso>0?'+':'')+w.fuso+'</span>' : '';
+    if(!w.alt) prevFuso = w.fuso;
+
+    var isKey = !!keyId;
+    var rowStyle = isKey
+      ? 'background:linear-gradient(90deg,#ecfeff,#f0fdff 70%);border-left:3px solid #0891b2;'
+      : (w.alt?'opacity:.72;':'');
+    var nameStyle = 'font-weight:'+(isKey?'800':'500')+';color:'+(isKey?'#0e7490':'var(--text)')+';';
+
+    var etaCell, velCell;
+    if(isKey){
+      etaCell = '<input type="datetime-local" class="form-control" style="min-width:168px;font-size:11px;padding:5px 6px;'+(edited?'border-color:#f59e0b;background:#fffbeb;':'')+'" value="'+rioMsToLocalISO(displayMs)+'" onchange="rioEtaOverride(\''+keyId+'\',this.value)">'
+        + (edited?'<div style="font-size:9px;color:#b45309;font-weight:700;margin-top:2px;">✏️ ajustado manualmente</div>':'');
+      velCell = w.alt
+        ? '<span class="mono">'+velFromHere.toFixed(1)+'</span>'
+        : '<input type="number" step="0.1" min="1" class="form-control" style="width:74px;font-size:11px;padding:5px 6px;text-align:right;'+(velEdited?'border-color:#f59e0b;background:#fffbeb;':'')+'" value="'+velFromHere.toFixed(1)+'" onchange="rioVelOverride(\''+keyId+'\',this.value)" title="Velocidade a partir deste ponto">';
+    } else {
+      etaCell = '<span class="mono" style="font-weight:'+(i===0?'800':'600')+';">'+(i===0?'🕐 ':'')+new Date(displayMs).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span>';
+      velCell = '<span class="mono" style="color:var(--text-dim);">'+(i===0?'—':curVel.toFixed(1))+'</span>';
+    }
+
+    rows += '<tr style="'+rowStyle+'">'
+      + '<td style="'+nameStyle+'">'+(isKey?'⭐ ':'')+escHtml(w.nm.replace('⭐ ',''))+fusoTag+(w.alt?' <span style="font-size:9px;color:var(--muted);">(alternativa desde Barra Norte)</span>':'')+'</td>'
       + '<td class="mono" style="text-align:right;">'+(d>0?d.toFixed(1):'—')+'</td>'
-      + '<td class="mono" style="text-align:right;color:var(--text-dim);">'+cumD.toFixed(1)+'</td>'
+      + '<td class="mono" style="text-align:right;color:var(--text-dim);">'+(w.alt?'—':cumD.toFixed(1))+'</td>'
+      + '<td style="text-align:right;">'+velCell+'</td>'
       + '<td class="mono" style="text-align:right;color:var(--login-blue);">'+(i===0?'—':h.toFixed(2))+'</td>'
-      + '<td class="mono" style="text-align:right;font-weight:700;">'+arrive.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</td>'
+      + '<td style="text-align:right;">'+etaCell+'</td>'
+      + '<td class="mono" style="text-align:center;color:var(--muted);font-size:10px;">UTC'+w.fuso+'</td>'
       + '</tr>';
   }
+
+  var totalH = (t - t0)/3600000;
   out.innerHTML = '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;overflow:auto;">'
-    + '<table class="tbl" style="width:100%;font-size:12px;"><thead><tr>'
-    + '<th>Ponto</th><th style="text-align:right;">Trecho (nm)</th><th style="text-align:right;">Acum. (nm)</th><th style="text-align:right;">Tempo (h)</th><th style="text-align:right;">ETA</th></tr></thead>'
+    + '<table class="tbl" style="width:100%;font-size:12px;min-width:760px;"><thead><tr>'
+    + '<th>Ponto / Waypoint</th><th style="text-align:right;">Trecho (nm)</th><th style="text-align:right;">Acum. (nm)</th><th style="text-align:right;">Vel (nós)</th><th style="text-align:right;">Tempo (h)</th><th style="text-align:right;">ETA (hora local)</th><th style="text-align:center;">Fuso</th></tr></thead>'
     + '<tbody>'+rows+'</tbody></table></div>'
-    + '<div style="margin-top:8px;padding:8px 12px;background:var(--login-blue-xlt);border-radius:6px;font-size:12px;">'
-    + '📊 <strong>Total:</strong> '+cumD.toFixed(1)+' NM em '+cumT.toFixed(1)+' h · veloc. média '+vel.toFixed(1)+' nós'
+    + '<div style="margin-top:8px;padding:8px 12px;background:var(--login-blue-xlt);border-radius:6px;font-size:12px;display:flex;gap:14px;flex-wrap:wrap;">'
+    + '<span>📊 <strong>Total (rota principal):</strong> '+cumD.toFixed(1)+' NM em '+totalH.toFixed(1)+' h</span>'
+    + '<span>🚢 Veloc. inicial '+vel0.toFixed(1)+' nós</span>'
+    + (nEdit>0?'<span style="color:#b45309;font-weight:700;">✏️ '+nEdit+' ponto(s) com ETA ajustado manualmente</span>':'')
     + '</div>';
+
   var notas = document.getElementById('rio-eta-notas');
   if(notas){
     notas.innerHTML = dir==='subida'
@@ -3499,6 +3579,42 @@ function rioBuildETA(){
       : '💡 <strong>Descida:</strong> A favor da corrente (Amazonas). Veloc. típica 17–22 nós (rio) e 13–15 nós (litoral). Mudança de fuso -4 → -3 antes de Macapá.';
   }
 }
+
+function rioEtaOverride(keyId, val){
+  var dir = document.getElementById('rio-dir')?.value||'subida';
+  var all = rioTrechoLoad();
+  all[dir] = all[dir]||{};
+  all[dir][keyId] = all[dir][keyId]||{};
+  if(val){ all[dir][keyId].eta = val; } else { delete all[dir][keyId].eta; }
+  if(!all[dir][keyId].eta && !all[dir][keyId].vel) delete all[dir][keyId];
+  rioTrechoSave(all);
+  rioBuildETA();
+  toast('💾 ETA ajustado — trechos seguintes recalculados','ok');
+}
+
+function rioVelOverride(keyId, val){
+  var dir = document.getElementById('rio-dir')?.value||'subida';
+  var v = parseFloat(val);
+  var all = rioTrechoLoad();
+  all[dir] = all[dir]||{};
+  all[dir][keyId] = all[dir][keyId]||{};
+  if(v>0){ all[dir][keyId].vel = v; } else { delete all[dir][keyId].vel; }
+  if(!all[dir][keyId].eta && !all[dir][keyId].vel) delete all[dir][keyId];
+  rioTrechoSave(all);
+  rioBuildETA();
+  toast('💾 Velocidade ajustada a partir do ponto — recalculado','ok');
+}
+
+function rioTrechoReset(){
+  var dir = document.getElementById('rio-dir')?.value||'subida';
+  if(!confirm('Limpar todos os ajustes manuais (ETA e velocidade) do sentido '+(dir==='subida'?'SUBIDA':'DESCIDA')+'?')) return;
+  var all = rioTrechoLoad();
+  delete all[dir];
+  rioTrechoSave(all);
+  rioBuildETA();
+  toast('↺ Ajustes manuais removidos','ok');
+}
+
 
 function rioLocChange(){
   var k = document.getElementById('rio-mare-loc')?.value||'bn';
@@ -3749,159 +3865,141 @@ async function rioFetchMare(){
   if(btn) btn.disabled = false;
 }
 
-function renderRioDistTable(){
-  var el = document.getElementById('rio-dist-table');
-  if(!el) return;
-  var mk = function(wpts, titulo, cor){
-    var cum=0;
-    var h = '<div style="padding:10px 14px 4px;font-size:12px;font-weight:800;text-transform:uppercase;color:'+cor+';">'+titulo+'</div>'
-      + '<table class="tbl" style="width:100%;font-size:11px;"><thead><tr><th>Ponto</th><th>Trecho (nm)</th><th>Acum. (nm)</th><th>Fuso</th></tr></thead><tbody>';
-    wpts.forEach(function(w){
-      if(!w.alt) cum+=w.d;
-      var hl = w.key?'background:#ecfeff;font-weight:700;':'';
-      h += '<tr style="'+hl+(w.alt?'opacity:.65;':'')+'"><td>'+escHtml(w.nm)+'</td>'
-        + '<td class="mono">'+(w.d?w.d.toFixed(1):'—')+'</td>'
-        + '<td class="mono">'+(w.alt?'—':cum.toFixed(1))+'</td>'
-        + '<td class="mono">UTC'+w.fuso+'</td></tr>';
-    });
-    return h+'</tbody></table>';
-  };
-  el.innerHTML = mk(RIO_SUBIDA,'⬆️ Subida — Pecém → Barra Norte → Manaus','var(--login-blue)')
-    + mk(RIO_DESCIDA,'⬇️ Descida — Manaus → Barra Norte → Costa','var(--login-green-dk)');
-}
-
 // ─────────────────────────────────────────────
-// QUADRO DE HORÁRIOS — Pontos-chave (editável)
-// Pecém · Barra Norte · Macapá · Itacoatiara · Manaus
+// ETA ENTRE PORTOS — planejador de pernas
 // ─────────────────────────────────────────────
-var RIO_PONTOS_5 = {
-  subida: [
-    {id:'pecem', label:'📍 Pecém (saída)',   match:function(w,i){return i===0;}},
-    {id:'bn',    label:'⭐ Barra Norte',      match:function(w){return w.key==='bn';}},
-    {id:'mcp',   label:'⭐ Macapá',           match:function(w){return w.key==='mcp';}},
-    {id:'ita',   label:'⭐ Itacoatiara',      match:function(w){return w.key==='ita';}},
-    {id:'mao',   label:'🏁 Manaus',           match:function(w){return w.key==='mao';}}
-  ],
-  descida: [
-    {id:'mao',   label:'📍 Manaus (saída)',   match:function(w,i){return i===0;}},
-    {id:'ita',   label:'⭐ Itacoatiara',      match:function(w){return w.key==='ita';}},
-    {id:'mcp',   label:'⭐ Macapá',           match:function(w){return w.key==='mcp';}},
-    {id:'bn',    label:'⭐ Barra Norte',      match:function(w){return w.key==='bn';}},
-    {id:'pecem', label:'🏁 Pecém',            match:function(w){return w.alt && w.nm.indexOf('Pecém')>=0;}}
-  ]
+var RIO_PORTOS = [
+  {id:'PEC', nm:'Pecém - CE'},
+  {id:'BN',  nm:'Barra Norte (P. Espera)'},
+  {id:'MCP', nm:'Macapá - AP'},
+  {id:'ITA', nm:'Itacoatiara - AM'},
+  {id:'MAO', nm:'Manaus - AM'},
+  {id:'VIX', nm:'Vitória - ES'},
+  {id:'SSZ', nm:'Santos - SP'},
+  {id:'SUA', nm:'Suape - PE'},
+  {id:'SSA', nm:'Salvador - BA'},
+  {id:'NVT', nm:'Navegantes - SC'}
+];
+// Distâncias conhecidas (nm), derivadas da tabela de waypoints da Linha Amazonas.
+// Chave 'ORIGEM>DESTINO'; se não encontrada, tenta o sentido inverso; se ainda assim
+// não houver, o campo fica para preenchimento manual.
+var RIO_PORT_DIST = {
+  'PEC>BN':684.1,  'BN>PEC':684.1,
+  'BN>MCP':169.9,  'MCP>BN':159.7,
+  'MCP>ITA':617.4, 'ITA>MCP':618.6,
+  'ITA>MAO':108.0, 'MAO>ITA':93.2,
+  'BN>MAO':895.3,  'MAO>BN':871.5,
+  'PEC>MCP':854.0, 'MCP>PEC':843.8,
+  'PEC>ITA':1471.4,'ITA>PEC':1462.4,
+  'PEC>MAO':1579.4,'MAO>PEC':1555.6,
+  'BN>VIX':1923.6, 'VIX>BN':1923.6,
+  'BN>SSZ':2372.3, 'SSZ>BN':2372.3,
+  'MCP>VIX':2083.3,'MCP>SSZ':2532.0,
+  'ITA>VIX':2701.9,'ITA>SSZ':3150.6,
+  'MAO>VIX':2795.1,'MAO>SSZ':3243.8,
+  'VIX>SSZ':448.7, 'SSZ>VIX':448.7
 };
-
-function rioCumTo(wpts, idx){
-  var cum = 0;
-  for(var i=0;i<=idx;i++){
-    var w = wpts[i];
-    if(i===idx){ return w.alt ? (cum + w.d) : (cum + w.d); }
-    if(!w.alt) cum += w.d;
+function rioPortDist(a,b){
+  if(!a||!b||a===b) return null;
+  if(RIO_PORT_DIST[a+'>'+b]!=null) return RIO_PORT_DIST[a+'>'+b];
+  if(RIO_PORT_DIST[b+'>'+a]!=null) return RIO_PORT_DIST[b+'>'+a];
+  return null;
+}
+function rioPortosLoad(){
+  try{ return JSON.parse(localStorage.getItem('jac_rio_portos')||'[]'); }catch(e){ return []; }
+}
+function rioPortosSave(legs){
+  try{ localStorage.setItem('jac_rio_portos', JSON.stringify(legs)); }catch(e){}
+}
+function rioPortosInit(){
+  var legs = rioPortosLoad();
+  if(!legs.length){
+    legs = [{de:'PEC', para:'BN', saida:'', dist:684.1, vel:15}];
+    rioPortosSave(legs);
   }
-  return cum;
+  rioPortosRender();
 }
-
-function rioHorLoadSaved(){
-  try{ return JSON.parse(localStorage.getItem('jac_rio_horarios')||'{}'); }catch(e){ return {}; }
+function rioPortoAdd(){
+  var legs = rioPortosLoad();
+  var last = legs[legs.length-1];
+  var novoDe = last ? last.para : 'PEC';
+  var novo = {de:novoDe, para:'', saida:'', dist:'', vel:(last&&last.vel)||15};
+  legs.push(novo);
+  rioPortosSave(legs);
+  rioPortosRender();
 }
-function rioHorSave(all){
-  try{ localStorage.setItem('jac_rio_horarios', JSON.stringify(all)); }catch(e){}
+function rioPortoDel(i){
+  var legs = rioPortosLoad();
+  legs.splice(i,1);
+  rioPortosSave(legs);
+  rioPortosRender();
 }
-
-function renderRioHorarios(){
-  var el = document.getElementById('rio-horarios-table');
+function rioPortoUpd(i, field, val){
+  var legs = rioPortosLoad();
+  if(!legs[i]) return;
+  if(field==='dist'||field==='vel'){ legs[i][field] = val===''?'':parseFloat(val); }
+  else { legs[i][field] = val; }
+  // Ao trocar portos, sugere distância conhecida se o campo estiver vazio ou se veio de sugestão anterior
+  if(field==='de'||field==='para'){
+    var sug = rioPortDist(legs[i].de, legs[i].para);
+    if(sug!=null && (legs[i].dist===''||legs[i].dist==null||legs[i]._sug)){ legs[i].dist = sug; legs[i]._sug = true; }
+  }
+  if(field==='dist'){ legs[i]._sug = false; }
+  rioPortosSave(legs);
+  rioPortosRender();
+}
+function rioPortosRender(){
+  var el = document.getElementById('rio-portos-body');
   if(!el) return;
-  var dir = document.getElementById('rio-dir')?.value||'subida';
-  var tag = document.getElementById('rio-hor-dir-tag');
-  if(tag) tag.textContent = dir==='subida' ? '⬆ SUBIDA' : '⬇ DESCIDA';
-  var saved = rioHorLoadSaved();
-  var savedDir = saved[dir]||{};
-  var pontos = RIO_PONTOS_5[dir];
-
-  var rows = pontos.map(function(p){
-    var manual = savedDir[p.id];
+  var legs = rioPortosLoad();
+  var prevEta = null;
+  var totalNm = 0, totalH = 0;
+  var opts = function(sel){
+    return '<option value="">—</option>'+RIO_PORTOS.map(function(p){
+      return '<option value="'+p.id+'"'+(p.id===sel?' selected':'')+'>'+p.id+' · '+p.nm+'</option>';
+    }).join('');
+  };
+  var rows = legs.map(function(l, i){
+    var saidaMs = l.saida ? new Date(l.saida).getTime() : (prevEta!=null ? prevEta : null);
+    var usouEncadeado = !l.saida && prevEta!=null;
+    var dist = (l.dist===''||l.dist==null)?null:parseFloat(l.dist);
+    var vel  = parseFloat(l.vel)||0;
+    var etaMs = (saidaMs!=null && dist!=null && vel>0) ? saidaMs + (dist/vel)*3600000 : null;
+    var etaTxt = etaMs!=null
+      ? '<span class="mono" style="font-weight:800;color:var(--login-blue);">'+new Date(etaMs).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span>'
+      : '<span style="color:var(--muted);font-size:11px;">preencha os dados</span>';
+    if(etaMs!=null){ prevEta = etaMs; }
+    if(dist!=null) totalNm += dist;
+    if(etaMs!=null && saidaMs!=null) totalH += (etaMs-saidaMs)/3600000;
+    var distKnown = rioPortDist(l.de, l.para);
     return '<tr>'
-      + '<td style="font-weight:700;">'+p.label+'</td>'
-      + '<td class="mono" id="rio-hor-prev-'+p.id+'" style="color:var(--text-dim);">'+(window._rioHorPrev && window._rioHorPrev[dir] && window._rioHorPrev[dir][p.id] ? fmtDT(window._rioHorPrev[dir][p.id]) : '—')+'</td>'
-      + '<td><input type="datetime-local" class="form-control" style="min-width:170px;" id="rio-hor-edit-'+p.id+'" value="'+(manual||'')+'" onchange="rioHorInputChange(\''+dir+'\',\''+p.id+'\')"></td>'
+      + '<td class="mono" style="color:var(--muted);">'+(i+1)+'</td>'
+      + '<td><select class="form-control" style="font-size:11px;padding:5px 4px;min-width:120px;" onchange="rioPortoUpd('+i+',\'de\',this.value)">'+opts(l.de)+'</select></td>'
+      + '<td><select class="form-control" style="font-size:11px;padding:5px 4px;min-width:120px;" onchange="rioPortoUpd('+i+',\'para\',this.value)">'+opts(l.para)+'</select></td>'
+      + '<td><input type="datetime-local" class="form-control" style="font-size:11px;padding:5px 4px;min-width:160px;" value="'+(l.saida||'')+'" onchange="rioPortoUpd('+i+',\'saida\',this.value)">'
+      + (usouEncadeado?'<div style="font-size:9px;color:#0e7490;font-weight:700;margin-top:2px;">↪ encadeado do ETA anterior</div>':'')+'</td>'
+      + '<td><input type="number" step="0.1" min="0" class="form-control" style="width:88px;font-size:11px;padding:5px 4px;text-align:right;" value="'+(l.dist===''||l.dist==null?'':l.dist)+'" placeholder="'+(distKnown!=null?distKnown:'manual')+'" onchange="rioPortoUpd('+i+',\'dist\',this.value)"></td>'
+      + '<td><input type="number" step="0.1" min="1" class="form-control" style="width:70px;font-size:11px;padding:5px 4px;text-align:right;" value="'+(l.vel||'')+'" onchange="rioPortoUpd('+i+',\'vel\',this.value)"></td>'
+      + '<td style="text-align:right;">'+etaTxt+'</td>'
+      + '<td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="padding:3px 8px;color:var(--danger);" onclick="rioPortoDel('+i+')" title="Remover trecho">✕</button></td>'
       + '</tr>';
   }).join('');
-
-  el.innerHTML = '<div style="overflow-x:auto;"><table class="tbl" style="width:100%;font-size:12px;">'
-    + '<thead><tr><th>Ponto</th><th>🔮 Previsão (calculada)</th><th>✏️ Horário Editado</th></tr></thead>'
-    + '<tbody>'+rows+'</tbody></table></div>';
+  el.innerHTML = '<div style="overflow-x:auto;"><table class="tbl" style="width:100%;font-size:12px;min-width:820px;">'
+    + '<thead><tr><th>#</th><th>De (porto)</th><th>Para (porto)</th><th>🕐 Saída</th><th style="text-align:right;">Dist (nm)</th><th style="text-align:right;">Vel (nós)</th><th style="text-align:right;">📅 ETA</th><th></th></tr></thead>'
+    + '<tbody>'+rows+'</tbody></table></div>'
+    + (legs.length?('<div style="margin-top:8px;padding:8px 12px;background:var(--login-blue-xlt);border-radius:6px;font-size:12px;">📊 <strong>Total planejado:</strong> '+totalNm.toFixed(1)+' NM · '+totalH.toFixed(1)+' h de navegação'+(totalH>0?' ('+Math.floor(totalH/24)+'d '+Math.round(totalH%24)+'h)':'')+'</div>'):'');
+}
+function rioPortosReset(){
+  if(!confirm('Limpar todos os trechos do planejador ETA entre Portos?')) return;
+  rioPortosSave([]);
+  rioPortosInit();
+  toast('↺ Planejador limpo','ok');
 }
 
 function fmtDT(iso){
   if(!iso) return '—';
   var d = new Date(iso);
   return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-}
-
-function rioPreverHorarios(){
-  var dir  = document.getElementById('rio-dir')?.value||'subida';
-  var dtv  = document.getElementById('rio-dt')?.value;
-  var vel  = parseFloat(document.getElementById('rio-vel')?.value)||15;
-  if(!dtv){ toast('⚠️ Informe a Data/Hora de saída','warn'); return; }
-  if(vel<=0){ toast('⚠️ Velocidade inválida','warn'); return; }
-
-  var wpts = dir==='subida' ? RIO_SUBIDA : RIO_DESCIDA;
-  var pontos = RIO_PONTOS_5[dir];
-  var t0 = new Date(dtv).getTime();
-  var startFuso = wpts[0].fuso;
-
-  window._rioHorPrev = window._rioHorPrev || {};
-  window._rioHorPrev[dir] = {};
-
-  var saved = rioHorLoadSaved();
-  saved[dir] = saved[dir] || {};
-
-  pontos.forEach(function(p){
-    var idx = wpts.findIndex(p.match);
-    if(idx<0) return;
-    var cum = rioCumTo(wpts, idx);
-    var horas = cum/vel;
-    var arriveMs = t0 + horas*3600000;
-    // ajusta fuso local do ponto em relação ao ponto de partida
-    var arriveLocalMs = arriveMs + (wpts[idx].fuso - startFuso)*3600000;
-    var iso = new Date(arriveLocalMs - new Date(arriveLocalMs).getTimezoneOffset()*60000).toISOString().slice(0,16);
-    window._rioHorPrev[dir][p.id] = iso;
-    // só preenche o campo editável automaticamente se o usuário ainda não tiver ajustado manualmente
-    if(!saved[dir][p.id]){
-      var inp = document.getElementById('rio-hor-edit-'+p.id);
-      if(inp) inp.value = iso;
-    }
-  });
-
-  renderRioHorarios();
-  // reaplica os valores editáveis (renderRioHorarios recria os inputs)
-  pontos.forEach(function(p){
-    var inp = document.getElementById('rio-hor-edit-'+p.id);
-    if(inp && !inp.value){
-      inp.value = (saved[dir][p.id]) || (window._rioHorPrev[dir][p.id]||'');
-    }
-  });
-  toast('🔮 Previsão de horários calculada!','ok');
-}
-
-function rioHorInputChange(dir, id){
-  var inp = document.getElementById('rio-hor-edit-'+id);
-  if(!inp) return;
-  var all = rioHorLoadSaved();
-  all[dir] = all[dir]||{};
-  if(inp.value){ all[dir][id] = inp.value; } else { delete all[dir][id]; }
-  rioHorSave(all);
-  toast('💾 Horário ajustado salvo','ok');
-}
-
-function rioResetHorarios(){
-  var dir = document.getElementById('rio-dir')?.value||'subida';
-  if(!confirm('Limpar todos os ajustes manuais do sentido '+(dir==='subida'?'SUBIDA':'DESCIDA')+'?')) return;
-  var all = rioHorLoadSaved();
-  delete all[dir];
-  rioHorSave(all);
-  renderRioHorarios();
-  toast('↺ Ajustes manuais removidos','ok');
 }
 
 function printRioETA(){
@@ -7923,7 +8021,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data

@@ -1,6 +1,7 @@
-# ⚓ Jacarandá — build 20260714_1930
-Commit: `build 20260714_1930 - Quadro de Horarios editavel (Pecem/Barra Norte/Macapa/Itacoatiara/Manaus) + Painel visual de Mare com cartoes BM/PM e grafico SVG`
+# ⚓ Jacarandá — build 20260714_2100
+Commit: `build 20260714_2100 - ETA por Trecho unificado (waypoints+distancias+ETA/vel editaveis nos 5 pontos-chave com recalculo em cascata) + novo planejador ETA entre Portos`
 
 ## Histórico
+- **20260714_2100** — "ETA por Trecho" reformulado: tabela única juntando waypoints, distâncias, velocidade por trecho e ETA. Os 5 pontos-chave (Pecém, Barra Norte, Macapá, Itacoatiara, Manaus) destacados e **editáveis** — ajustar o ETA ou a velocidade em um ponto recalcula automaticamente todos os trechos seguintes (subida e descida, com fusos -3/-4). Novo painel **ETA entre Portos**: planejador de pernas porto a porto (PEC, BN, MCP, ITA, MAO, VIX, SSZ, SUA, SSA, NVT) com data de saída, distância (sugerida automaticamente quando conhecida), velocidade e ETA, com encadeamento automático entre trechos. App version interna: v1.2.0.
 - **20260714_1930** — Novo painel "🌊 Maré" na aba Médias Rio Amazonas: cartões de resumo (Baixa-mar / Preamar / Maré agora, com fase Enchente/Vazante) e gráfico SVG redesenhado diferenciando baixa-mar e preamar em Barra Norte. Novo "Quadro de Horários" editável e previsível para os 5 pontos-chave (Pecém, Barra Norte, Macapá, Itacoatiara, Manaus), tanto subida quanto descida, com ajuste manual salvo automaticamente. App version interna: v1.1.0.
 - **20260714_1750** — Nova seção Médias Rio Amazonas: ETA, UKC, maré via Open-Meteo Marine API.
