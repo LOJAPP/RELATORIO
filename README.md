@@ -1,2 +1,2 @@
-# ⚓ Jacarandá — build 20260714_1245
-Commit: `build 20260714_1245 - FIX unificado botoes + novo relatorio tecnico com itens fotos planos`
+# ⚓ Jacarandá — build 20260714_1750
+Commit: `build 20260714_1750 - NOVA Medias Rio Amazonas ETA UKC mare API Open-Meteo`

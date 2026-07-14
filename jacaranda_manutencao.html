@@ -787,6 +787,10 @@
     <div class="nav-item" onclick="showPage('embarque')"><span class="ico">🚢</span> Rel. de Embarque</div>
   </div>
   <div class="nav-section">
+    <div class="nav-label">Navegação</div>
+    <div class="nav-item" onclick="showPage('rio')" style="background:linear-gradient(90deg,rgba(26,95,168,.12),transparent);border-left:3px solid #1A5FA8;"><span class="ico">🌊</span> Médias Rio Amazonas</div>
+  </div>
+  <div class="nav-section">
     <div class="nav-label">Arquivos & Dados</div>
     <div class="nav-item" onclick="showPage('fotos')"><span class="ico">📷</span> Fotos & Anexos</div>
     <div class="nav-item" onclick="showPage('storage')"><span class="ico">🗄️</span> Arquivos & Backups</div>
@@ -1356,6 +1360,117 @@
             <div style="margin-top:12px;">
               <button class="btn btn-ghost btn-sm" onclick="copyGasCode()" style="width:100%;font-size:11px;">📋 Copiar código GAS</button>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- MÉDIAS RIO AMAZONAS -->
+    <div id="page-rio" class="page">
+      <div class="rpt-header" style="background:linear-gradient(135deg,#064e63 0%,#0e7490 60%,#0891b2 100%);">
+        <div class="rpt-logo">🌊<span class="dot">·</span></div>
+        <div style="flex:1;min-width:0;">
+          <div class="rpt-title">Médias Rio Amazonas — Linha Amazonas</div>
+          <div class="rpt-sub">ETA · Distâncias · Maré (curva senoidal PM/BM) · Profundidade · UKC — dados históricos + Open-Meteo Marine API</div>
+        </div>
+      </div>
+
+      <!-- Direção -->
+      <div class="panel">
+        <div class="panel-header">🧭 Sentido de Navegação</div>
+        <div style="padding:14px;">
+          <div class="form-row">
+            <div class="form-group"><label>Sentido</label>
+              <select class="form-control" id="rio-dir" onchange="rioFillStarts();renderRioDistTable();">
+                <option value="subida">⬆ SUBIDA (Barra Norte → Manaus)</option>
+                <option value="descida">⬇ DESCIDA (Manaus → Barra Norte)</option>
+              </select>
+            </div>
+            <div class="form-group"><label>📍 Ponto de partida</label>
+              <select class="form-control" id="rio-start"></select>
+            </div>
+            <div class="form-group"><label>🕐 Data/Hora saída</label>
+              <input type="datetime-local" class="form-control" id="rio-dt">
+            </div>
+            <div class="form-group"><label>🚢 Veloc. média (nós)</label>
+              <input type="number" step="0.1" class="form-control" id="rio-vel" value="15" oninput="rioSaveCfg()">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="rioBuildETA()" style="width:100%;">🧮 Calcular ETA por trecho</button>
+          <div id="rio-eta-result" style="margin-top:12px;"></div>
+          <div id="rio-eta-notas" style="margin-top:8px;font-size:11px;color:var(--text-dim);"></div>
+        </div>
+      </div>
+
+      <!-- Cálculo UKC + Maré -->
+      <div class="panel">
+        <div class="panel-header">⚓ UKC / Profundidade (FAQ) — com Interpolação de Maré</div>
+        <div style="padding:14px;">
+          <div class="form-row">
+            <div class="form-group"><label>📍 Ponto crítico</label>
+              <select class="form-control" id="rio-mare-loc" onchange="rioLocChange()">
+                <option value="bn">Barra Norte (NR 8.80 m)</option>
+                <option value="curua">Canal do Curuá (NR 7.10 m)</option>
+                <option value="lamoso">Arco Lamoso (NR 1.70 m)</option>
+                <option value="tabocal">Pta do Tabocal (NR 12.20 m)</option>
+                <option value="madeira">Barra do Madeira (NR 14.00 m)</option>
+              </select>
+            </div>
+            <div class="form-group"><label>🕐 Data/Hora da passagem</label>
+              <input type="datetime-local" class="form-control" id="rio-pass-dt" onchange="calcUKC()">
+            </div>
+            <div class="form-group"><label>📏 NR carta (m)</label>
+              <input type="number" step="0.01" class="form-control" id="rio-nr" value="8.80" oninput="calcUKC()">
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+            <button class="btn btn-green btn-sm" id="rio-fetch-btn" onclick="rioFetchMare()">🌐 Buscar Maré na Internet (Open-Meteo)</button>
+            <div id="rio-fetch-status" style="flex:1;font-size:11px;color:var(--text-dim);min-width:200px;"></div>
+          </div>
+          <div class="section-title">🌊 Baixamar / Preamar (que cercam a passagem)</div>
+          <div class="form-row">
+            <div class="form-group"><label>BM — Hora</label><input type="datetime-local" class="form-control" id="rio-bm-t" oninput="calcUKC()"></div>
+            <div class="form-group"><label>BM — Altura (m)</label><input type="number" step="0.01" class="form-control" id="rio-bm-h" oninput="calcUKC()"></div>
+            <div class="form-group"><label>PM — Hora</label><input type="datetime-local" class="form-control" id="rio-pm-t" oninput="calcUKC()"></div>
+            <div class="form-group"><label>PM — Altura (m)</label><input type="number" step="0.01" class="form-control" id="rio-pm-h" oninput="calcUKC()"></div>
+          </div>
+          <div class="sep"></div>
+          <div class="section-title">🚢 Dados do Navio</div>
+          <div class="form-row">
+            <div class="form-group"><label>Calado (m)</label><input type="number" step="0.01" class="form-control" id="rio-calado" value="8.80" oninput="rioSaveCfg();calcUKC()"></div>
+            <div class="form-group"><label>Squat (m)</label><input type="number" step="0.01" class="form-control" id="rio-squat" value="0.30" oninput="rioSaveCfg();calcUKC()"></div>
+            <div class="form-group"><label>Margem segurança (m)</label><input type="number" step="0.01" class="form-control" id="rio-margem" value="0.60" oninput="rioSaveCfg();calcUKC()"></div>
+            <div class="form-group"><label>Veloc. de referência (nós)</label><input type="number" step="0.1" class="form-control" id="rio-vel2" value="15" oninput="rioSaveCfg()"></div>
+          </div>
+          <div id="rio-ukc-result" style="margin-top:12px;"></div>
+        </div>
+      </div>
+
+      <!-- Tabela de distâncias -->
+      <div class="panel">
+        <div class="panel-header">📏 Distâncias & Waypoints — Linha Amazonas</div>
+        <div id="rio-dist-table" style="padding:0;"></div>
+      </div>
+
+      <!-- Informações e regras -->
+      <div class="panel" style="background:#fffbeb;border:1px solid #fde68a;">
+        <div class="panel-header" style="background:#fef3c7;color:#92400e;">⚠️ Regras Operacionais</div>
+        <div style="padding:14px;font-size:12px;color:#78350f;line-height:1.6;">
+          <ul style="margin:0;padding-left:20px;">
+            <li>Se chegar na <strong>Barra Norte na BM</strong> → atrasa <strong>2h</strong> a chegada em Fazendinha/Macapá</li>
+            <li>Se chegar na <strong>Barra Norte na PM</strong> → adianta <strong>2h</strong> a chegada em Fazendinha/Macapá</li>
+            <li>Menor profundidade <strong>Arco Lamoso: 1.70 m FAQ</strong></li>
+            <li>Menor profundidade <strong>Canal do Curuá: 7.10 m</strong></li>
+            <li>Menor profundidade <strong>Pta do Tabocal: 12.2 m</strong> · <strong>Barra do Madeira: 14.0 m</strong></li>
+            <li>Óbidos, Juruti e Parintins: <strong>reduzir 6 nós</strong> na superfície</li>
+            <li>Da Barra Norte até Ponta do Céu: navegar com <strong>55 RPM (~16 nós)</strong></li>
+            <li>Enchente: até 6 nós · <strong>3–4 h após PM (vazante)</strong> · <strong>2–3 h após BM (enchente)</strong></li>
+            <li><strong>Chegar 1h antes ou depois da PM/BM</strong> na Barra Norte para melhor janela</li>
+          </ul>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid #fde68a;font-size:11px;">
+            ℹ️ Tábua oficial: <a href="https://www.marinha.mil.br/chm/dados-do-smm-tabua-de-mares" target="_blank" style="color:#1A5FA8;font-weight:700;">CHM Marinha do Brasil</a> · alternativa: <a href="https://tabuademares.com/br/amapa/porto-santana" target="_blank" style="color:#1A5FA8;font-weight:700;">tabuademares.com</a>
           </div>
         </div>
       </div>
@@ -2185,7 +2300,7 @@
 
 
 // ── STATE ──
-let S={regs:[],crew:[],fotos:[],empresas:[],oficina:[],desvios:[],inspecoes:[],embHistory:[],relatorios:[],tp:{reg:[],av:[],of:[],insp:[]}};
+let S={regs:[],crew:[],fotos:[],empresas:[],oficina:[],desvios:[],inspecoes:[],embHistory:[],relatorios:[],rioCfg:{},tp:{reg:[],av:[],of:[],insp:[]}};
 let activeDept='Todos', curWeek=null;
 
 // ── TRIPULANTES SEED (Lista Completa do Excel) ──
@@ -2214,13 +2329,13 @@ const CREW_SEED=[
 
 // ── PERSIST ──
 function loadData(){
-  try{const d=JSON.parse(localStorage.getItem('jac_v5')||'{}');S.regs=d.regs||[];S.crew=d.crew||[];S.fotos=d.fotos||[];S.empresas=d.empresas||[];S.oficina=d.oficina||[];S.desvios=d.desvios||[];S.inspecoes=d.inspecoes||[];S.embHistory=d.embHistory||[];S.relatorios=d.relatorios||[];}catch(e){}
+  try{const d=JSON.parse(localStorage.getItem('jac_v5')||'{}');S.regs=d.regs||[];S.crew=d.crew||[];S.fotos=d.fotos||[];S.empresas=d.empresas||[];S.oficina=d.oficina||[];S.desvios=d.desvios||[];S.inspecoes=d.inspecoes||[];S.embHistory=d.embHistory||[];S.relatorios=d.relatorios||[];S.rioCfg=d.rioCfg||{};}catch(e){}
   if(!S.crew.length) seedCrew();
   if(!S.regs.length) seedRegs();
   storStatus();
 }
 function saveData(silent=false){
-  try{localStorage.setItem('jac_v5',JSON.stringify({regs:S.regs,crew:S.crew,fotos:S.fotos,empresas:S.empresas,oficina:S.oficina,desvios:S.desvios,inspecoes:S.inspecoes,embHistory:S.embHistory||[],relatorios:S.relatorios||[]}));if(!silent)toast('✅ Dados salvos!','ok');storStatus();}
+  try{localStorage.setItem('jac_v5',JSON.stringify({regs:S.regs,crew:S.crew,fotos:S.fotos,empresas:S.empresas,oficina:S.oficina,desvios:S.desvios,inspecoes:S.inspecoes,embHistory:S.embHistory||[],relatorios:S.relatorios||[],rioCfg:S.rioCfg||{}}));if(!silent)toast('✅ Dados salvos!','ok');storStatus();}
   catch(e){toast('⚠️ Erro ao salvar — faça backup JSON','warn');}
 }
 function storStatus(){
@@ -2299,7 +2414,7 @@ function toast(msg,t='ok'){document.querySelectorAll('.toast').forEach(x=>x.remo
 setInterval(()=>{const n=new Date();const el=document.getElementById('clock-el');if(el)el.textContent=[n.getHours(),n.getMinutes(),n.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');},1000);
 
 // ── NAV ──
-const PT={dashboard:'📊 Painel Geral',novo:'✏️ Novo Registro de Trabalho',semanal:'📅 Relatório Semanal de Trabalhos',mensal:'📆 Relatório Mensal de Trabalhos',historico:'🗂️ Histórico de Trabalhos',oficina:'🏭 Bloco / Oficina — Empresas Terceirizadas',desvios:'⚠️ Cartões de Desvio',inspecao:'🔍 Relatório de Inspeção','insp-edit':'✏️ Editar Inspeção',mobile:'📱 Modo Celular / Tablet',tripulantes:'👥 Tripulantes',embarque:'🚢 Relatório de Embarque',fotos:'📷 Fotos & Anexos',storage:'💾 Armazenamento',import:'📥 Importar Arquivos de Manutenção',config:'⚙️ Configurações',update:'🔄 Atualização de Versão',importar:'📥 Importar Dados'};
+const PT={dashboard:'📊 Painel Geral',rio:'🌊 Médias Rio Amazonas — ETA · Maré · UKC',novo:'✏️ Novo Registro de Trabalho',semanal:'📅 Relatório Semanal de Trabalhos',mensal:'📆 Relatório Mensal de Trabalhos',historico:'🗂️ Histórico de Trabalhos',oficina:'🏭 Bloco / Oficina — Empresas Terceirizadas',desvios:'⚠️ Cartões de Desvio',inspecao:'🔍 Relatório de Inspeção','insp-edit':'✏️ Editar Inspeção',mobile:'📱 Modo Celular / Tablet',tripulantes:'👥 Tripulantes',embarque:'🚢 Relatório de Embarque',fotos:'📷 Fotos & Anexos',storage:'💾 Armazenamento',import:'📥 Importar Arquivos de Manutenção',config:'⚙️ Configurações',update:'🔄 Atualização de Versão',importar:'📥 Importar Dados',rioamazonas:'🌊 Médias Rio Amazonas — ETA · Maré · UKC'};
 
 // ── PIN / SENHA ──
 let _pinBuf='', _pinTarget=null;
@@ -2366,7 +2481,10 @@ function _goPage(id){
   if(id==='inspecao'){renderInspecao();}
   if(id==='insp-edit'){renderInspEdit();}
   if(id==='unificado'){initUnificado();}
+  if(id==='rio'){initRio();}
   if(id==='mobile'){renderMobile();}
+  // rioamazonas → redirected to rio
+  if(id==='rioamazonas'){showPage('rio');return;}
   if(id==='update'){showPage('storage');return;}
   if(id==='importar'){showPage('storage');return;}
 }
@@ -3125,6 +3243,400 @@ body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;backgr
 // ── Novo Registro: Bloco/Oficina tab ──
 var _novoTab = 'atividade';
 
+// ─────────────────────────────────────────────
+// MÉDIAS RIO AMAZONAS — ETA · Maré · UKC
+// ─────────────────────────────────────────────
+// Distâncias (nm) extraídas da planilha de bordo LOG-IN Jacarandá (Linha Amazonas)
+var RIO_SUBIDA = [
+  {nm:'Saída Pecém',           d:0,     fuso:-3},
+  {nm:'⭐ BARRA NORTE (01°29.8N 048°59.8W)', d:684.1, fuso:-3, key:'bn'},
+  {nm:'⭐ PONTA DO CÉU / Canal do Curuá', d:81.4, fuso:-3, key:'curua'},
+  {nm:'MACAPÁ (Fazendinha)',   d:88.5,  fuso:-3, key:'mcp'},
+  {nm:'Foz do Rio Jari',       d:104.2, fuso:-4},
+  {nm:'Almeirim',              d:54.6,  fuso:-4},
+  {nm:'Prainha',               d:60.6,  fuso:-4},
+  {nm:'Monte Alegre',          d:36.1,  fuso:-4},
+  {nm:'Santarém',              d:60.5,  fuso:-4},
+  {nm:'Prox. Marrecas',        d:12.6,  fuso:-4},
+  {nm:'Óbidos',                d:54.4,  fuso:-4},
+  {nm:'Jurutí',                d:39.1,  fuso:-4},
+  {nm:'Parintins',             d:47.9,  fuso:-4},
+  {nm:'V. Montenegro',         d:73.0,  fuso:-4},
+  {nm:'ITACOATIARA (Prático)', d:74.4,  fuso:-4, key:'ita'},
+  {nm:'Pta do Tabocal',        d:80.0,  fuso:-4, key:'tabocal'},
+  {nm:'Encontro das Águas',    d:21.0,  fuso:-4},
+  {nm:'MANAUS',                d:7.0,   fuso:-4, key:'mao'}
+];
+var RIO_DESCIDA = [
+  {nm:'Saída Manaus',          d:0,     fuso:-4},
+  {nm:'Encontro das Águas',    d:6.9,   fuso:-4},
+  {nm:'Pta do Tabocal',        d:22.3,  fuso:-4, key:'tabocal'},
+  {nm:'ITACOATIARA (Prático)', d:64.0,  fuso:-4, key:'ita'},
+  {nm:'V. Montenegro',         d:59.0,  fuso:-4},
+  {nm:'Parintins',             d:84.2,  fuso:-4},
+  {nm:'Jurutí',                d:48.8,  fuso:-4},
+  {nm:'Óbidos',                d:42.2,  fuso:-4},
+  {nm:'Prox. Marrecas',        d:55.6,  fuso:-4},
+  {nm:'Santarém',              d:10.8,  fuso:-4},
+  {nm:'Monte Alegre',          d:59.7,  fuso:-4},
+  {nm:'Prainha',               d:37.6,  fuso:-4},
+  {nm:'Almeirim',              d:61.6,  fuso:-4},
+  {nm:'Foz do Rio Jari',       d:54.9,  fuso:-4},
+  {nm:'MACAPÁ (Fazendinha)',   d:104.2, fuso:-3, key:'mcp'},
+  {nm:'⭐ PONTA DO CÉU / Canal do Curuá', d:76.5, fuso:-3, key:'curua'},
+  {nm:'⭐ BARRA NORTE',        d:83.2,  fuso:-3, key:'bn'},
+  {nm:'→ Vitória (VIX)',       d:1923.6,fuso:-3},
+  {nm:'→ Santos (SSZ) [alt.]', d:2372.3,fuso:-3, alt:true},
+  {nm:'→ Pecém (PEC) [alt.]',  d:684.1, fuso:-3, alt:true}
+];
+// NR de carta e coordenadas para busca de maré online
+var RIO_LOCS = {
+  bn:     {nm:'Barra Norte',       nr:8.80,  lat:1.4967,  lon:-48.9967, z0:1.60},
+  curua:  {nm:'Canal do Curuá',    nr:7.10,  lat:0.7500,  lon:-50.1000, z0:1.50},
+  lamoso: {nm:'Arco Lamoso',       nr:1.70,  lat:0.9000,  lon:-49.9000, z0:1.55},
+  tabocal:{nm:'Pta do Tabocal',    nr:12.20, lat:-3.2000, lon:-58.7500, z0:0},
+  madeira:{nm:'Barra do Madeira',  nr:14.00, lat:-3.4200, lon:-58.8000, z0:0}
+};
+
+function rioSaveCfg(){
+  try{ localStorage.setItem('jac_rio', JSON.stringify({
+    calado: document.getElementById('rio-calado')?.value,
+    squat:  document.getElementById('rio-squat')?.value,
+    margem: document.getElementById('rio-margem')?.value,
+    vel:    document.getElementById('rio-vel')?.value
+  })); }catch(e){}
+}
+
+function initRio(){
+  try{
+    var c = JSON.parse(localStorage.getItem('jac_rio')||'{}');
+    if(c.calado) document.getElementById('rio-calado').value = c.calado;
+    if(c.squat)  document.getElementById('rio-squat').value  = c.squat;
+    if(c.margem) document.getElementById('rio-margem').value = c.margem;
+    if(c.vel){ document.getElementById('rio-vel').value = c.vel; document.getElementById('rio-vel2').value = c.vel; }
+  }catch(e){}
+  var dt = document.getElementById('rio-dt');
+  if(dt && !dt.value){
+    var n = new Date(); n.setMinutes(n.getMinutes()-n.getTimezoneOffset());
+    dt.value = n.toISOString().slice(0,16);
+  }
+  var pdt = document.getElementById('rio-pass-dt');
+  if(pdt && !pdt.value){
+    var n2 = new Date(); n2.setMinutes(n2.getMinutes()-n2.getTimezoneOffset());
+    pdt.value = n2.toISOString().slice(0,16);
+  }
+  rioFillStarts();
+  rioLocChange();
+  renderRioDistTable();
+}
+
+function rioFillStarts(){
+  var dir = document.getElementById('rio-dir')?.value||'subida';
+  var wpts = dir==='subida'?RIO_SUBIDA:RIO_DESCIDA;
+  var sel = document.getElementById('rio-start');
+  if(!sel) return;
+  sel.innerHTML = wpts.filter(function(w){return !w.alt;}).map(function(w,i){
+    return '<option value="'+i+'">'+escHtml(w.nm.replace('⭐ ',''))+'</option>';
+  }).join('');
+}
+
+function calcRioETA(){
+  var dir  = document.getElementById('rio-dir')?.value||'subida';
+  var wpts = (dir==='subida'?RIO_SUBIDA:RIO_DESCIDA).filter(function(w){return !w.alt;});
+  var si   = parseInt(document.getElementById('rio-start')?.value||'0');
+  var dtv  = document.getElementById('rio-dt')?.value;
+  var vel  = parseFloat(document.getElementById('rio-vel2')?.value||'12.5');
+  if(!dtv || !vel){ toast('⚠️ Preencha data/hora e velocidade','warn'); return; }
+  var t0 = new Date(dtv);
+  var startFuso = wpts[si].fuso;
+  var rows = [];
+  var cum = 0, tCur = new Date(t0);
+  for(var i=si; i<wpts.length; i++){
+    var w = wpts[i];
+    if(i>si){
+      cum += w.d;
+      tCur = new Date(tCur.getTime() + (w.d/vel)*3600000);
+    }
+    // Hora local: ajusta fuso relativo ao ponto de partida
+    var tLocal = new Date(tCur.getTime() + (w.fuso - startFuso)*3600000);
+    rows.push({w:w, dist:i>si?w.d:0, cum:cum, eta:tCur, etaLocal:tLocal, horas:i>si?(w.d/vel):0});
+  }
+  window._rioEtaRows = rows; window._rioEtaMeta = {dir:dir, vel:vel, saida:t0, startNm:wpts[si].nm};
+
+  var fmt = function(d){ return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); };
+  var html = '<div style="overflow-x:auto;"><table class="tbl" style="width:100%;font-size:12px;">'
+    + '<thead><tr><th>Ponto</th><th>Dist. Trecho</th><th>Dist. Acum.</th><th>Tempo</th><th>ETA (fuso partida)</th><th>Hora Local</th></tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    var hl = r.w.key ? 'background:#ecfeff;font-weight:700;' : '';
+    var fusoTag = r.w.fuso===-4?' <span style="font-size:9px;background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;">UTC-4</span>':'';
+    html += '<tr style="'+hl+'">'
+      + '<td>'+escHtml(r.w.nm)+fusoTag+'</td>'
+      + '<td class="mono">'+(r.dist?r.dist.toFixed(1)+' nm':'—')+'</td>'
+      + '<td class="mono">'+r.cum.toFixed(1)+' nm</td>'
+      + '<td class="mono">'+(r.horas?r.horas.toFixed(1)+' h':'—')+'</td>'
+      + '<td class="mono" style="white-space:nowrap;">'+fmt(r.eta)+'</td>'
+      + '<td class="mono" style="white-space:nowrap;font-weight:700;color:var(--login-blue);">'+fmt(r.etaLocal)+'</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('rio-eta-result').innerHTML = html;
+
+  // Notas de praticagem
+  var notas = '';
+  var bnRow = rows.find(function(r){return r.w.key==='bn';});
+  var itaRow = rows.find(function(r){return r.w.key==='ita';});
+  var fmt2 = function(d){ return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); };
+  if(bnRow && dir==='subida'){
+    var marcar = new Date(bnRow.eta.getTime()-48*3600000);
+    var alterar= new Date(bnRow.eta.getTime()-10*3600000);
+    notas += '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:9px 12px;font-size:12px;color:#1e40af;margin-bottom:6px;">'
+      + '🧑‍✈️ <strong>PRÁTICO MACAPÁ:</strong> enviar mensagem p/ agência e marcar até <strong>'+fmt2(marcar)+'</strong> · alterar até <strong>'+fmt2(alterar)+'</strong> (ETA B.Norte '+fmt2(bnRow.eta)+')</div>';
+  }
+  if(itaRow){
+    var marcar2 = new Date(itaRow.eta.getTime()-48*3600000);
+    var alterar2= new Date(itaRow.eta.getTime()-12*3600000);
+    notas += '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:9px 12px;font-size:12px;color:#14532d;margin-bottom:6px;">'
+      + '🧑‍✈️ <strong>PRÁTICO ITACOATIARA:</strong> marcar até <strong>'+fmt2(marcar2)+'</strong> · alterar até <strong>'+fmt2(alterar2)+'</strong></div>';
+  }
+  notas += '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 12px;font-size:11px;color:#78350f;line-height:1.6;">'
+    + '⚠️ <strong>Profundidades mínimas:</strong> Arco Lamoso 1,70 m · Canal do Curuá 7,10 m · Tabocal 12,20 m · Madeira 14,00 m (ref. calado 9,80 m)<br>'
+    + '🕐 <strong>Fuso:</strong> após Macapá (subida) atrasar relógios 1 h (UTC-4) · na descida adiantar 1 h ao passar Macapá<br>'
+    + '📊 <strong>Referência da planilha:</strong> subida MCP→ITA ~12,6 nós · descida ITA→MCP ~18,4 nós (corrente a favor)</div>';
+  document.getElementById('rio-eta-notas').innerHTML = notas;
+  toast('🧮 ETAs calculados!','ok');
+}
+
+// ── Interpolação de maré (curva senoidal ≈ regra dos duodécimos) ──
+function rioTideAt(t, t1, h1, t2, h2){
+  // t1 < t < t2 : h(t) = h1 + (h2-h1) * (1 - cos(π·x)) / 2
+  var x = (t - t1) / (t2 - t1);
+  if(x<0) x=0; if(x>1) x=1;
+  return h1 + (h2-h1) * (1 - Math.cos(Math.PI*x)) / 2;
+}
+
+function rioBuildETA(){
+  var dir  = document.getElementById('rio-dir')?.value||'subida';
+  var wpts = dir==='subida'?RIO_SUBIDA:RIO_DESCIDA;
+  var startIdx = parseInt(document.getElementById('rio-start')?.value)||0;
+  var dt   = document.getElementById('rio-dt')?.value;
+  var vel  = parseFloat(document.getElementById('rio-vel')?.value)||15;
+  var out  = document.getElementById('rio-eta-result');
+  if(!out) return;
+  if(!dt){ out.innerHTML='<div style="color:var(--warn);font-size:12px;padding:8px;background:#fffbeb;border-radius:6px;">⚠️ Informe a data/hora de saída</div>'; return; }
+  if(vel<=0){ out.innerHTML='<div style="color:var(--danger);font-size:12px;padding:8px;background:#fef2f2;border-radius:6px;">⚠️ Velocidade inválida</div>'; return; }
+
+  // Filter: navegáveis from startIdx onwards
+  var real = wpts.slice(startIdx);
+  var t0 = new Date(dt).getTime();
+  var cumT = 0, cumD = 0;
+  var rows = '';
+  var prevFuso = wpts[startIdx].fuso;
+  for(var i=0;i<real.length;i++){
+    var w = real[i];
+    var d = i===0 ? 0 : w.d;
+    cumD += d;
+    var h  = d/vel;
+    cumT  += h;
+    var arriveMs = t0 + cumT*3600*1000;
+    var arrive = new Date(arriveMs);
+    var fusoTag = w.fuso!==prevFuso ? ' <span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">FUSO '+(w.fuso>0?'+':'')+w.fuso+'</span>' : '';
+    prevFuso = w.fuso;
+    var pillClr = w.key?'#0891b2':'var(--text-dim)';
+    rows += '<tr>'
+      + '<td style="font-weight:'+(w.key?'700':'500')+';color:'+pillClr+';">'+escHtml(w.nm)+fusoTag+'</td>'
+      + '<td class="mono" style="text-align:right;">'+(d>0?d.toFixed(1):'—')+'</td>'
+      + '<td class="mono" style="text-align:right;color:var(--text-dim);">'+cumD.toFixed(1)+'</td>'
+      + '<td class="mono" style="text-align:right;color:var(--login-blue);">'+(i===0?'—':h.toFixed(2))+'</td>'
+      + '<td class="mono" style="text-align:right;font-weight:700;">'+arrive.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</td>'
+      + '</tr>';
+  }
+  out.innerHTML = '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;overflow:auto;">'
+    + '<table class="tbl" style="width:100%;font-size:12px;"><thead><tr>'
+    + '<th>Ponto</th><th style="text-align:right;">Trecho (nm)</th><th style="text-align:right;">Acum. (nm)</th><th style="text-align:right;">Tempo (h)</th><th style="text-align:right;">ETA</th></tr></thead>'
+    + '<tbody>'+rows+'</tbody></table></div>'
+    + '<div style="margin-top:8px;padding:8px 12px;background:var(--login-blue-xlt);border-radius:6px;font-size:12px;">'
+    + '📊 <strong>Total:</strong> '+cumD.toFixed(1)+' NM em '+cumT.toFixed(1)+' h · veloc. média '+vel.toFixed(1)+' nós'
+    + '</div>';
+  var notas = document.getElementById('rio-eta-notas');
+  if(notas){
+    notas.innerHTML = dir==='subida'
+      ? '💡 <strong>Subida:</strong> Da BN até P. Céu com 55 RPM (~16 nós). Reduzir 6 nós em Óbidos/Juruti/Parintins. Mudança de fuso -3 → -4 após Macapá.'
+      : '💡 <strong>Descida:</strong> A favor da corrente (Amazonas). Veloc. típica 17–22 nós (rio) e 13–15 nós (litoral). Mudança de fuso -4 → -3 antes de Macapá.';
+  }
+}
+
+function rioLocChange(){
+  var k = document.getElementById('rio-mare-loc')?.value||'bn';
+  var loc = RIO_LOCS[k];
+  if(loc) document.getElementById('rio-nr').value = loc.nr.toFixed(2);
+  calcUKC();
+}
+
+function calcUKC(){
+  var out = document.getElementById('rio-ukc-result');
+  if(!out) return;
+  var nr     = parseFloat(document.getElementById('rio-nr')?.value||'0');
+  var calado = parseFloat(document.getElementById('rio-calado')?.value||'0');
+  var squat  = parseFloat(document.getElementById('rio-squat')?.value||'0');
+  var margem = parseFloat(document.getElementById('rio-margem')?.value||'0');
+  var passDt = document.getElementById('rio-pass-dt')?.value;
+  var bmT = document.getElementById('rio-bm-t')?.value, bmH = parseFloat(document.getElementById('rio-bm-h')?.value);
+  var pmT = document.getElementById('rio-pm-t')?.value, pmH = parseFloat(document.getElementById('rio-pm-h')?.value);
+  if(!passDt || !bmT || !pmT || isNaN(bmH) || isNaN(pmH)){
+    out.innerHTML = '<div style="color:var(--muted);font-size:12px;font-style:italic;padding:6px 0;">Preencha BM, PM e hora da passagem — ou use 🌐 Buscar Maré na Internet.</div>';
+    return;
+  }
+  var tp = new Date(passDt).getTime();
+  var t1 = new Date(bmT).getTime(), t2 = new Date(pmT).getTime();
+  var h1 = bmH, h2 = pmH;
+  if(t1 > t2){ var tt=t1;t1=t2;t2=tt; var hh=h1;h1=h2;h2=hh; }
+  var mare = rioTideAt(tp, t1, h1, t2, h2);
+  var amplitude = Math.abs(pmH - bmH);
+  var profReal = nr + mare;
+  var faq = profReal - calado - squat - margem;
+  var faqSemMargem = profReal - calado - squat;
+  var status, cor, bg;
+  if(faq >= 1.0){ status='✅ SEGURO'; cor='#15803d'; bg='#f0fdf4'; }
+  else if(faq >= 0){ status='⚠️ CRÍTICO — atenção máxima'; cor='#b45309'; bg='#fffbeb'; }
+  else { status='❌ INSUFICIENTE — NÃO PASSAR'; cor='#b91c1c'; bg='#fef2f2'; }
+
+  var cell = function(l,v,extra){ return '<div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:9px 12px;'+(extra||'')+'"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted);">'+l+'</div><div class="mono" style="font-size:19px;font-weight:800;color:var(--text);">'+v+'</div></div>'; };
+  out.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px;">'
+    + cell('🌊 Altura da Maré', mare.toFixed(2)+' m')
+    + cell('↕️ Amplitude', amplitude.toFixed(2)+' m')
+    + cell('📏 Prof. Disponível', profReal.toFixed(2)+' m')
+    + cell('⚓ Calado + Squat', (calado+squat).toFixed(2)+' m')
+    + cell('🛟 FAQ s/ margem', faqSemMargem.toFixed(2)+' m')
+    + '</div>'
+    + '<div style="background:'+bg+';border:2px solid '+cor+';border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">'
+    + '<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:'+cor+';">UKC / FAQ (com margem '+margem.toFixed(2)+' m)</div>'
+    + '<div class="mono" style="font-size:32px;font-weight:900;color:'+cor+';line-height:1;">'+faq.toFixed(2)+' m</div></div>'
+    + '<div style="flex:1;font-size:14px;font-weight:800;color:'+cor+';">'+status+'</div>'
+    + '</div>'
+    + '<div style="font-size:10px;color:var(--muted);margin-top:6px;">Fórmula: FAQ = (NR carta '+nr.toFixed(2)+' + maré '+mare.toFixed(2)+') − calado '+calado.toFixed(2)+' − squat '+squat.toFixed(2)+' − margem '+margem.toFixed(2)+' · Interpolação senoidal entre BM/PM (≈ regra dos duodécimos, conforme curva da tábua)</div>';
+}
+
+// ── Busca de maré na internet (Open-Meteo Marine API — grátis, sem chave) ──
+async function rioFetchMare(){
+  var st  = document.getElementById('rio-fetch-status');
+  var btn = document.getElementById('rio-fetch-btn');
+  var k   = document.getElementById('rio-mare-loc')?.value||'bn';
+  var loc = RIO_LOCS[k];
+  var passDt = document.getElementById('rio-pass-dt')?.value;
+  if(!passDt){ toast('⚠️ Informe a data/hora da passagem primeiro','warn'); return; }
+  var d0 = passDt.slice(0,10);
+  var dPrev = new Date(new Date(d0+'T12:00:00').getTime()-86400000).toISOString().slice(0,10);
+  var dNext = new Date(new Date(d0+'T12:00:00').getTime()+86400000).toISOString().slice(0,10);
+  st.textContent = '⏳ Buscando níveis do mar (Open-Meteo Marine)...';
+  if(btn) btn.disabled = true;
+  try{
+    var url = 'https://marine-api.open-meteo.com/v1/marine?latitude='+loc.lat+'&longitude='+loc.lon
+      + '&hourly=sea_level_height_msl&timezone=America%2FBelem&start_date='+dPrev+'&end_date='+dNext;
+    var r = await fetch(url);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var j = await r.json();
+    var times = j.hourly?.time||[], hs = j.hourly?.sea_level_height_msl||[];
+    if(!times.length) throw new Error('sem dados para este ponto');
+    // Detectar extremos locais (BM/PM) na série horária
+    var ext = [];
+    for(var i=1;i<hs.length-1;i++){
+      if(hs[i]===null) continue;
+      if(hs[i]>=hs[i-1] && hs[i]>hs[i+1]) ext.push({t:times[i], h:hs[i], tipo:'PM'});
+      if(hs[i]<=hs[i-1] && hs[i]<hs[i+1]) ext.push({t:times[i], h:hs[i], tipo:'BM'});
+    }
+    if(ext.length<2) throw new Error('extremos não detectados');
+    // Encontrar BM e PM que cercam a hora da passagem
+    var tp = new Date(passDt).getTime();
+    var before=null, after=null;
+    ext.forEach(function(e){
+      var te = new Date(e.t).getTime();
+      if(te<=tp && (!before || te>new Date(before.t).getTime())) before=e;
+      if(te>tp  && (!after  || te<new Date(after.t).getTime()))  after=e;
+    });
+    if(!before) before=ext[0];
+    if(!after)  after=ext[ext.length-1];
+    // Aplicar Z0 (NM sobre o NR da carta) para converter MSL → altura sobre NR
+    var z0 = loc.z0||0;
+    var bm = before.tipo==='BM'?before:after;
+    var pm = before.tipo==='PM'?before:after;
+    document.getElementById('rio-bm-t').value = bm.t.slice(0,16);
+    document.getElementById('rio-bm-h').value = (bm.h+z0).toFixed(2);
+    document.getElementById('rio-pm-t').value = pm.t.slice(0,16);
+    document.getElementById('rio-pm-h').value = (pm.h+z0).toFixed(2);
+    st.innerHTML = '✅ Maré obtida via <strong>Open-Meteo Marine</strong> para '+escHtml(loc.nm)
+      +' ('+loc.lat.toFixed(2)+', '+loc.lon.toFixed(2)+') · Z0 aplicado: +'+z0.toFixed(2)
+      +' m sobre o NR · <strong>Estimativa por modelo — confirme com a Tábua DHN antes da passagem.</strong>';
+    calcUKC();
+    toast('🌐 Maré carregada da internet!','ok');
+  }catch(e){
+    st.innerHTML = '❌ Falha na busca ('+escHtml(e.message)+'). Sem internet ou ponto sem cobertura — insira BM/PM manualmente da Tábua DHN.';
+    toast('⚠️ Não foi possível buscar — use entrada manual','warn');
+  }
+  if(btn) btn.disabled = false;
+}
+
+function renderRioDistTable(){
+  var el = document.getElementById('rio-dist-table');
+  if(!el) return;
+  var mk = function(wpts, titulo, cor){
+    var cum=0;
+    var h = '<div style="padding:10px 14px 4px;font-size:12px;font-weight:800;text-transform:uppercase;color:'+cor+';">'+titulo+'</div>'
+      + '<table class="tbl" style="width:100%;font-size:11px;"><thead><tr><th>Ponto</th><th>Trecho (nm)</th><th>Acum. (nm)</th><th>Fuso</th></tr></thead><tbody>';
+    wpts.forEach(function(w){
+      if(!w.alt) cum+=w.d;
+      var hl = w.key?'background:#ecfeff;font-weight:700;':'';
+      h += '<tr style="'+hl+(w.alt?'opacity:.65;':'')+'"><td>'+escHtml(w.nm)+'</td>'
+        + '<td class="mono">'+(w.d?w.d.toFixed(1):'—')+'</td>'
+        + '<td class="mono">'+(w.alt?'—':cum.toFixed(1))+'</td>'
+        + '<td class="mono">UTC'+w.fuso+'</td></tr>';
+    });
+    return h+'</tbody></table>';
+  };
+  el.innerHTML = mk(RIO_SUBIDA,'⬆️ Subida — Pecém → Barra Norte → Manaus','var(--login-blue)')
+    + mk(RIO_DESCIDA,'⬇️ Descida — Manaus → Barra Norte → Costa','var(--login-green-dk)');
+}
+
+function printRioETA(){
+  var rows = window._rioEtaRows, meta = window._rioEtaMeta;
+  if(!rows){ toast('⚠️ Calcule os ETAs primeiro','warn'); return; }
+  var vcfg = getCfg().vessel||{};
+  var vessel = vcfg.vessel||'LOG-IN JACARANDÁ';
+  var fmt = function(d){ return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); };
+  var trs = '';
+  rows.forEach(function(r){
+    var hl = r.w.key?'background:#ecfeff;font-weight:700;':'';
+    trs += '<tr style="'+hl+'"><td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;">'+escHtml(r.w.nm)+'</td>'
+      + '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right;font-family:monospace;">'+(r.dist?r.dist.toFixed(1):'—')+'</td>'
+      + '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right;font-family:monospace;">'+r.cum.toFixed(1)+'</td>'
+      + '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-family:monospace;white-space:nowrap;">'+fmt(r.eta)+'</td>'
+      + '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-family:monospace;white-space:nowrap;font-weight:700;color:#1A5FA8;">'+fmt(r.etaLocal)+' (UTC'+r.w.fuso+')</td></tr>';
+  });
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>ETA Rio Amazonas — '+vessel+'</title>'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0;}@page{margin:12mm;size:A4;}body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.wrap{max-width:800px;margin:0 auto;}@media print{.no-print{display:none!important;}}</style></head><body>'
+    + '<div class="no-print" style="background:#064e63;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;"><span style="color:#fff;font-weight:700;font-size:13px;">🌊 ETA Rio Amazonas</span>'
+    + '<div><button onclick="window.print()" style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">🖨 Imprimir / PDF</button> '
+    + '<button onclick="window.close()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:7px;padding:8px 14px;cursor:pointer;">✕</button></div></div>'
+    + '<div class="wrap">'
+    + '<div style="background:linear-gradient(135deg,#064e63,#0891b2);color:#fff;padding:16px 22px;">'
+    + '<div style="font-size:18px;font-weight:900;">🌊 MÉDIAS RIO AMAZONAS — Plano de ETAs</div>'
+    + '<div style="font-size:11px;opacity:.85;margin-top:4px;">'+escHtml(vessel)+' · '+(meta.dir==='subida'?'⬆️ Subida':'⬇️ Descida')+' · Partida: '+escHtml(meta.startNm)+' '+fmt(meta.saida)+' · Veloc. média '+meta.vel+' nós · Gerado '+new Date().toLocaleString('pt-BR')+'</div></div>'
+    + '<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:11px;">'
+    + '<thead><tr style="background:#f3f4f6;"><th style="padding:7px 10px;text-align:left;">Ponto</th><th style="padding:7px 10px;text-align:right;">Trecho (nm)</th><th style="padding:7px 10px;text-align:right;">Acum. (nm)</th><th style="padding:7px 10px;text-align:left;">ETA (fuso partida)</th><th style="padding:7px 10px;text-align:left;">Hora Local</th></tr></thead><tbody>'
+    + trs + '</tbody></table>'
+    + '<div style="margin-top:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:10px;color:#78350f;line-height:1.7;">'
+    + '⚠️ Prof. mínimas: Arco Lamoso 1,70 m · Canal do Curuá 7,10 m · Tabocal 12,20 m · Madeira 14,00 m &nbsp;·&nbsp; 🌀 Vazante forte 3–4 h após PM · Enchente 2–3 h após BM (até 6 nós) &nbsp;·&nbsp; ⚓ B.Norte na BM: +2 h p/ Macapá · na PM: −2 h</div>'
+    + '<div style="margin-top:18px;display:flex;justify-content:space-around;">'
+    + '<div style="text-align:center;width:240px;"><div style="border-bottom:1.5px solid #374151;height:40px;"></div><div style="font-size:12px;font-weight:700;margin-top:5px;">'+escHtml(vcfg.cmte||'Jose Moncada')+'</div><div style="font-size:10px;color:#9ca3af;">Comandante</div></div>'
+    + '</div></div></body></html>';
+  var w = window.open('','_blank','width=980,height=1100');
+  if(!w){ toast('⚠️ Permita pop-ups','warn'); return; }
+  w.document.write(html); w.document.close();
+  toast('🖨 Plano de ETAs aberto!','ok');
+}
+
+
+// ─────────────────────────────────────────────
 function switchNovoTab(tab){
   _novoTab = tab;
   ['atividade','bloco','relatorio'].forEach(t=>{
