@@ -1247,6 +1247,67 @@
     </div>
 
 
+    <!-- CONFIGURAÇÕES -->
+    <div id="page-config" class="page">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+
+        <!-- Navio -->
+        <div class="panel" style="margin-bottom:0;border-top:3px solid var(--login-blue);">
+          <div class="panel-header">🚢 Informações do Navio</div>
+          <div style="padding:14px;">
+            <div class="form-group"><label>Nome do Navio</label><input type="text" class="form-control" id="cfg-vessel" placeholder="LOG-IN JACARANDÁ"></div>
+            <div class="form-group"><label>Linha / Rota</label><input type="text" class="form-control" id="cfg-route" placeholder="Linha Amazonas"></div>
+            <div class="sep"></div>
+            <div class="form-group"><label>Comandante</label><input type="text" class="form-control" id="cfg-cmte" placeholder="Jose Moncada"></div>
+            <div class="form-group"><label>Imediato</label><input type="text" class="form-control" id="cfg-imo" placeholder="Robson Freitas"></div>
+            <div class="form-group"><label>Ch. de Máquinas</label><input type="text" class="form-control" id="cfg-cmaq" placeholder="Jorge Murrieta"></div>
+            <div class="form-group"><label>Sub-Chefe de Máquinas</label><input type="text" class="form-control" id="cfg-scmaq" placeholder="Cesar Diaz"></div>
+            <button class="btn btn-primary" onclick="saveVesselConfig()" style="width:100%;">💾 Salvar Informações</button>
+          </div>
+        </div>
+
+        <!-- Google Drive / Web App -->
+        <div class="panel" style="margin-bottom:0;border-top:3px solid var(--login-green);">
+          <div class="panel-header">☁️ Integração Google Drive</div>
+          <div style="padding:14px;">
+            <div id="drive-config-status" style="margin-bottom:12px;"></div>
+            <div class="form-group"><label>URL do Web App (Google Apps Script)</label><input type="text" class="form-control" id="cfg-webapp-url" placeholder="https://script.google.com/macros/s/..."></div>
+            <div class="form-group"><label>URL da Pasta no Drive</label><input type="text" class="form-control" id="cfg-drive-folder-url" placeholder="https://drive.google.com/drive/folders/..."></div>
+            <div class="form-group"><label>Auto-sync (minutos, 0 = desativado)</label><input type="number" class="form-control" id="cfg-auto-interval" placeholder="0" min="0" max="60"></div>
+            <button class="btn btn-green" onclick="saveDriveConfig()" style="width:100%;margin-bottom:8px;">💾 Salvar Configuração Drive</button>
+            <div id="drive-links-cfg-panel" style="margin-top:10px;"></div>
+            <div style="display:flex;gap:8px;margin-top:10px;">
+              <input type="text" class="form-control" id="drive-link-url-cfg" placeholder="URL do arquivo/pasta" style="flex:1;font-size:11px;">
+              <input type="text" class="form-control" id="drive-link-nm-cfg" placeholder="Nome" style="max-width:120px;font-size:11px;">
+              <button class="btn btn-ghost btn-sm" onclick="addDriveLinkFromConfig()">➕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Departamentos e Funções -->
+        <div class="panel" style="margin-bottom:0;">
+          <div class="panel-header">🗂️ Departamentos & Funções</div>
+          <div style="padding:14px;">
+            <div class="section-title">Departamentos</div>
+            <div id="dept-list-cfg" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:30px;"></div>
+            <div style="display:flex;gap:8px;margin-bottom:14px;">
+              <input type="text" class="form-control" id="new-dept-inp" placeholder="Novo departamento" style="flex:1;">
+              <button class="btn btn-primary btn-sm" onclick="addDept()">➕ Adicionar</button>
+            </div>
+            <div class="section-title">Funções / Cargos</div>
+            <div id="role-list-cfg" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:30px;"></div>
+            <div style="display:flex;gap:8px;">
+              <input type="text" class="form-control" id="new-role-inp" placeholder="Nova função" style="flex:1;">
+              <button class="btn btn-primary btn-sm" onclick="addRole()">➕ Adicionar</button>
+            </div>
+            <div style="margin-top:12px;">
+              <button class="btn btn-ghost btn-sm" onclick="copyGasCode()" style="width:100%;font-size:11px;">📋 Copiar código GAS</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- RELATÓRIO DE INSPEÇÃO -->
     <div id="page-inspecao" class="page">
       <div class="export-bar"><span>🔍</span><p>Relatórios de inspeção de área, equipamentos e conformidade.</p>
@@ -2248,13 +2309,13 @@ function _goPage(id){
   if(id==='config'){renderConfigPage();}
   if(id==='oficina'){renderOficina();}
   if(id==='desvios'){renderDesvios();}
-  if(id==='import'){renderImportPage();}
+  if(id==='import'){showPage('storage');return;}
   if(id==='inspecao'){renderInspecao();}
   if(id==='insp-edit'){renderInspEdit();}
   if(id==='unificado'){initUnificado();}
   if(id==='mobile'){renderMobile();}
-  if(id==='update'){renderUpdatePage();}
-  if(id==='importar'){renderImportPage();}
+  if(id==='update'){showPage('storage');return;}
+  if(id==='importar'){showPage('storage');return;}
 }
 
 // ── KPIs ──
@@ -2282,8 +2343,8 @@ function renderDash(){
     recent.map(r=>`<tr>
       <td class="mono" style="font-size:11px;color:var(--text-dim)">SEM ${r.s}</td>
       <td>${dtg(r.dp)}</td>
-      <td style="max-width:280px">${r.a}</td>
-      <td style="font-size:11px;color:var(--text-dim)">${r.q}</td>
+      <td style="max-width:280px">${escHtml(r.titulo||r.a||'—')}</td>
+      <td style="font-size:11px;color:var(--text-dim)">${escHtml(r.q||'—')}</td>
       <td>${stg(r.st)}</td>
       <td style="font-size:11px;white-space:nowrap">${fd(r.d)}</td>
     </tr>`).join('');
