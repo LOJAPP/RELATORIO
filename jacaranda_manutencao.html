@@ -783,16 +783,13 @@
     <div class="nav-item" onclick="showPage('embarque')"><span class="ico">🚢</span> Rel. de Embarque</div>
   </div>
   <div class="nav-section">
-    <div class="nav-label">Arquivos</div>
+    <div class="nav-label">Arquivos & Dados</div>
     <div class="nav-item" onclick="showPage('fotos')"><span class="ico">📷</span> Fotos & Anexos</div>
-    <div class="nav-item" onclick="showPage('storage')"><span class="ico">💾</span> Armazenamento</div>
-    <div class="nav-item" onclick="showPage('import')"><span class="ico">📥</span> Importar Arquivos</div>
+    <div class="nav-item" onclick="showPage('storage')"><span class="ico">🗄️</span> Arquivos & Backups</div>
     <div class="nav-item" onclick="showPage('inspecao')"><span class="ico">🔍</span> Inspeções</div>
     <div class="nav-item" onclick="showPage('unificado')" style="background:linear-gradient(90deg,rgba(109,184,71,.15),transparent);border-left:3px solid #6DB847;"><span class="ico">📊</span> Relatório Unificado</div>
     <div class="nav-item" onclick="showPage('mobile')"><span class="ico">📱</span> Modo Celular / Tablet</div>
     <div class="nav-item" onclick="showPage('config')"><span class="ico">⚙️</span> Configurações</div>
-    <div class="nav-item" onclick="showPage('importar')" id="nav-importar"><span class="ico">📥</span> Importar Dados</div>
-    <div class="nav-item" onclick="showPage('update')"><span class="ico">🔄</span> Atualização</div>
   </div>
 </nav>
 
@@ -816,24 +813,68 @@
 
     <!-- DASHBOARD -->
     <div id="page-dashboard" class="page active">
-      <div class="cards-row">
-        <div class="kpi-card c-blue"><div class="kpi-label">Semana Atual</div><div class="kpi-val" id="kv-reg">0</div><div class="kpi-sub">SEM <span id="kv-wn">—</span>/2026</div></div>
-        <div class="kpi-card c-green"><div class="kpi-label">Total Histórico</div><div class="kpi-val gv" id="kv-tot">0</div><div class="kpi-sub">registros</div></div>
-        <div class="kpi-card c-gold"><div class="kpi-label">Tripulantes</div><div class="kpi-val" id="kv-crew">0</div><div class="kpi-sub">cadastrados</div></div>
-        <div class="kpi-card c-warn"><div class="kpi-label">Fotos</div><div class="kpi-val" id="kv-fotos">0</div><div class="kpi-sub">arquivos</div></div>
-      </div>
-      <div class="panel">
-        <div class="panel-header">🗒️ Últimos Registros <span class="badge" id="badge-rec">0</span></div>
-        <div style="padding:0;overflow-x:auto;">
-          <table class="tbl">
-            <thead><tr><th>Sem.</th><th>Dept.</th><th>Atividade</th><th>Equipe</th><th>Status</th><th>Data</th></tr></thead>
-            <tbody id="tbl-recent"><tr><td colspan="6" class="empty-state">Nenhum registro</td></tr></tbody>
-          </table>
+      <!-- Hero KPI bar -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;">
+        <div class="kpi-card" style="border-top:3px solid var(--login-blue);padding:14px 16px;">
+          <div class="kpi-label">Semana Atual</div>
+          <div class="kpi-val" id="kv-reg" style="font-size:36px;">0</div>
+          <div class="kpi-sub">SEM <span id="kv-wn">—</span>/2026</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid var(--login-green);padding:14px 16px;">
+          <div class="kpi-label">Total Histórico</div>
+          <div class="kpi-val gv" id="kv-tot" style="font-size:36px;">0</div>
+          <div class="kpi-sub">registros</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid #7c3aed;padding:14px 16px;">
+          <div class="kpi-label">Inspeções</div>
+          <div class="kpi-val" id="kv-insp" style="font-size:36px;color:#7c3aed;">0</div>
+          <div class="kpi-sub">registradas</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid var(--warn);padding:14px 16px;">
+          <div class="kpi-label">Desvios Abertos</div>
+          <div class="kpi-val" id="kv-desvios" style="font-size:36px;color:var(--warn);">0</div>
+          <div class="kpi-sub">em aberto</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid var(--muted);padding:14px 16px;">
+          <div class="kpi-label">Tripulantes</div>
+          <div class="kpi-val" id="kv-crew" style="font-size:36px;color:var(--text-dim);">0</div>
+          <div class="kpi-sub">cadastrados</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid var(--login-blue-lt);padding:14px 16px;">
+          <div class="kpi-label">Fotos</div>
+          <div class="kpi-val" id="kv-fotos" style="font-size:36px;color:var(--login-blue-lt);">0</div>
+          <div class="kpi-sub">arquivos</div>
         </div>
       </div>
-      <div class="panel">
-        <div class="panel-header">🚢 Líderes de Bordo</div>
-        <div style="padding:12px 14px;"><div style="display:flex;gap:10px;flex-wrap:wrap;" id="dash-crew"></div></div>
+
+      <!-- Quick actions -->
+      <div class="panel" style="margin-bottom:14px;">
+        <div class="panel-header">⚡ Ações Rápidas</div>
+        <div style="padding:12px 14px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="showPage('novo')">✏️ Novo Registro</button>
+          <button class="btn btn-ghost" onclick="showPage('semanal')">📅 Rel. Semanal</button>
+          <button class="btn btn-ghost" onclick="showPage('inspecao')">🔍 Inspeções</button>
+          <button class="btn btn-ghost" onclick="showPage('unificado')">📊 Rel. Unificado</button>
+          <button class="btn btn-ghost" onclick="saveData()">💾 Salvar</button>
+          <button class="btn btn-ghost" onclick="exportJSON()">⬇ Backup</button>
+        </div>
+      </div>
+
+      <!-- Líderes + Últimos Registros -->
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;">
+        <div class="panel" style="margin-bottom:0;">
+          <div class="panel-header">🚢 Líderes de Bordo</div>
+          <div style="padding:12px 14px;"><div style="display:flex;flex-direction:column;gap:8px;" id="dash-crew"></div></div>
+        </div>
+        <div class="panel" style="margin-bottom:0;">
+          <div class="panel-header">🗒️ Últimos Registros <span class="badge" id="badge-rec">0</span></div>
+          <div style="padding:0;overflow-x:auto;">
+            <table class="tbl">
+              <thead><tr><th>Sem.</th><th>Dept.</th><th>Atividade</th><th>Equipe</th><th>Status</th><th>Data</th></tr></thead>
+              <tbody id="tbl-recent"><tr><td colspan="6" class="empty-state">Nenhum registro</td></tr></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1127,506 +1168,84 @@
       </div>
     </div>
 
-    <!-- ARMAZENAMENTO -->
+
+    <!-- ARQUIVOS -->
     <div id="page-storage" class="page">
-      <div class="cards-row" style="margin-bottom:16px;">
-        <div class="kpi-card c-blue"><div class="kpi-label">Registros</div><div class="kpi-val" id="st-regs">0</div></div>
-        <div class="kpi-card c-green"><div class="kpi-label">Tripulantes</div><div class="kpi-val gv" id="st-crew">0</div></div>
-        <div class="kpi-card c-warn"><div class="kpi-label">Inspeções</div><div class="kpi-val" id="st-insp">0</div></div>
-        <div class="kpi-card c-gold"><div class="kpi-label">Desvios</div><div class="kpi-val" id="st-dv">0</div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:16px;">
+        <div class="kpi-card" style="border-top:3px solid var(--login-blue);text-align:center;padding:12px;"><div class="kpi-val" id="st-regs" style="font-size:28px;">0</div><div class="kpi-label">Registros</div></div>
+        <div class="kpi-card" style="border-top:3px solid var(--login-green);text-align:center;padding:12px;"><div class="kpi-val gv" id="st-crew" style="font-size:28px;">0</div><div class="kpi-label">Tripulantes</div></div>
+        <div class="kpi-card" style="border-top:3px solid #7c3aed;text-align:center;padding:12px;"><div class="kpi-val" id="st-insp" style="font-size:28px;color:#7c3aed;">0</div><div class="kpi-label">Inspeções</div></div>
+        <div class="kpi-card" style="border-top:3px solid var(--warn);text-align:center;padding:12px;"><div class="kpi-val" id="st-dv" style="font-size:28px;color:var(--warn);">0</div><div class="kpi-label">Desvios</div></div>
       </div>
-
-      <!-- 3-column grid on desktop, stack on mobile -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:14px;">
-
-        <!-- COL 1: PASTA LOCAL/REDE -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:14px;">
         <div class="panel" style="margin-bottom:0;border-top:3px solid var(--login-blue);">
           <div class="panel-header" style="font-size:13px;">💽 Pasta Local / Rede</div>
           <div style="padding:12px;">
-            <!-- Folder status -->
-            <div id="fs-status-box" style="border-radius:7px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--border2);background:var(--surface2);">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <div id="fs-status-icon" style="font-size:20px;flex-shrink:0;">📂</div>
-                <div style="flex:1;min-width:0;">
-                  <div id="fs-status-title" style="font-weight:700;font-size:12px;color:var(--login-blue);">Nenhuma pasta vinculada</div>
-                  <div id="fs-status-path" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
-                </div>
-              </div>
+            <div id="fs-status-box" style="border-radius:8px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--border2);background:var(--surface2);">
+              <div style="display:flex;align-items:center;gap:8px;"><div id="fs-status-icon" style="font-size:20px;">📂</div><div style="flex:1;min-width:0;"><div id="fs-status-title" style="font-weight:700;font-size:12px;color:var(--login-blue);">Nenhuma pasta vinculada</div><div id="fs-status-path" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div></div></div>
             </div>
-            <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
-              <button class="btn btn-primary btn-sm" onclick="pickFolder()" id="btn-pick-folder" style="flex:1;">📂 Escolher Pasta</button>
-              <button class="btn btn-green btn-sm" onclick="saveToFolder()" style="flex:1;">💾 Salvar na Pasta</button>
-            </div>
-            <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
-              <button class="btn btn-ghost btn-sm" onclick="loadFromFolder()" style="flex:1;">📥 Carregar da Pasta</button>
-              <button class="btn btn-ghost btn-sm" onclick="exportJSON()" style="flex:1;">⬇️ Download JSON</button>
-            </div>
-            <!-- Name config -->
-            <div style="display:flex;gap:6px;margin-bottom:8px;">
-              <input type="text" class="form-control" id="cfg-net-filename" placeholder="jacaranda_backup" style="font-family:monospace;font-size:11px;flex:1;">
-              <select class="form-control" id="cfg-net-date" style="font-size:11px;max-width:110px;">
-                <option value="daily">+data</option>
-                <option value="weekly">+semana</option>
-                <option value="none">fixo</option>
-              </select>
-            </div>
-            <button class="btn btn-ghost btn-sm" onclick="saveNetConfig()" style="width:100%;margin-bottom:8px;">💾 Salvar configuração</button>
-            <div id="fs-api-note" style="display:none;background:#FEF3C7;border:1px solid #FDE68A;border-radius:5px;padding:6px 8px;font-size:10px;color:#92400E;line-height:1.5;">
-              ⚠️ Use Chrome ou Edge para salvar diretamente em pasta. No Firefox use Download JSON.
-            </div>
-            <!-- Backup history compact -->
-            <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px;">🕐 Últimos backups</div>
-            <div id="backup-history" style="max-height:100px;overflow-y:auto;font-size:10px;color:var(--text-dim);">—</div>
+            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="pickFolder()" id="btn-pick-folder" style="flex:1;">📂 Escolher Pasta</button><button class="btn btn-green btn-sm" onclick="saveToFolder()" style="flex:1;">💾 Salvar</button></div>
+            <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" onclick="loadFromFolder()" style="flex:1;">📥 Carregar</button><button class="btn btn-ghost btn-sm" onclick="exportJSON()" style="flex:1;">⬇️ Download JSON</button></div>
+            <div style="display:flex;gap:6px;margin-bottom:8px;"><input type="text" class="form-control" id="cfg-net-filename" placeholder="jacaranda_backup" style="font-size:11px;flex:1;"><select class="form-control" id="cfg-net-date" style="font-size:11px;max-width:100px;"><option value="daily">+data</option><option value="weekly">+semana</option><option value="none">fixo</option></select></div>
+            <button class="btn btn-ghost btn-sm" onclick="saveNetConfig()" style="width:100%;margin-bottom:8px;">💾 Salvar config</button>
+            <div id="fs-api-note" style="display:none;background:#FEF3C7;border:1px solid #FDE68A;border-radius:6px;padding:6px 8px;font-size:10px;color:#92400E;">⚠️ Use Chrome/Edge para salvar em pasta.</div>
+            <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin:8px 0 4px;">🕐 Últimos backups</div>
+            <div id="backup-history" style="max-height:90px;overflow-y:auto;font-size:10px;color:var(--text-dim);">—</div>
           </div>
         </div>
-
-        <!-- COL 2: GOOGLE DRIVE -->
         <div class="panel" style="margin-bottom:0;border-top:3px solid var(--login-green);">
           <div class="panel-header" style="font-size:13px;">☁️ Google Drive</div>
           <div style="padding:12px;">
-            <!-- Drive status -->
-            <div id="drive-conn-status" style="border-radius:7px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--border2);background:var(--surface2);font-size:11px;">
-              <div id="drive-conn-icon" style="font-size:18px;margin-bottom:4px;">☁️</div>
-              <div id="drive-conn-title" style="font-weight:700;color:var(--text-dim);">Não configurado</div>
-              <div id="drive-conn-url" style="font-size:10px;color:var(--muted);font-family:monospace;word-break:break-all;margin-top:2px;"></div>
-            </div>
-            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-              <button class="btn btn-green btn-sm" onclick="sendToDrive()" style="flex:1;">☁️ Salvar no Drive</button>
-              <button class="btn btn-ghost btn-sm" onclick="loadFromDrive()" style="flex:1;">⬇️ Carregar do Drive</button>
-            </div>
-            <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
-              <button class="btn btn-ghost btn-sm" onclick="testDriveConnection()" style="flex:1;">🔗 Testar</button>
-              <button class="btn btn-ghost btn-sm" onclick="openDriveLink()" style="flex:1;">🌐 Abrir Drive</button>
-            </div>
-            <!-- Drive links -->
+            <div id="drive-conn-status" style="border-radius:8px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--border2);background:var(--surface2);font-size:11px;"><div id="drive-conn-icon" style="font-size:18px;margin-bottom:4px;">☁️</div><div id="drive-conn-title" style="font-weight:700;color:var(--text-dim);">Não configurado</div><div id="drive-conn-url" style="font-size:10px;color:var(--muted);font-family:monospace;word-break:break-all;margin-top:2px;"></div></div>
+            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;"><button class="btn btn-green btn-sm" onclick="sendToDrive()" style="flex:1;">☁️ Salvar</button><button class="btn btn-ghost btn-sm" onclick="loadFromDrive()" style="flex:1;">⬇️ Carregar</button></div>
+            <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" onclick="testDriveConnection()" style="flex:1;">🔗 Testar</button><button class="btn btn-ghost btn-sm" onclick="openDriveLink()" style="flex:1;">🌐 Abrir Drive</button></div>
             <div id="drive-links-panel" style="margin-bottom:8px;"></div>
-            <!-- Status msg -->
             <div id="drive-status" style="font-size:11px;padding:6px 8px;border-radius:5px;display:none;"></div>
-            <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;">
-              <button class="btn btn-ghost btn-sm" onclick="showPage('config')" style="width:100%;font-size:11px;">⚙️ Configurar Web App / URL</button>
-            </div>
+            <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;"><button class="btn btn-ghost btn-sm" onclick="showPage('config')" style="width:100%;font-size:11px;">⚙️ Configurar Web App</button></div>
           </div>
         </div>
-
-        <!-- COL 3: COMPARTILHAR -->
         <div class="panel" style="margin-bottom:0;border-top:3px solid var(--gold);">
-          <div class="panel-header" style="font-size:13px;">📤 Compartilhar</div>
-          <div style="padding:12px;">
-            <div style="display:flex;flex-direction:column;gap:8px;">
-              <button class="btn btn-primary btn-sm" onclick="saveHTMLLocal()" style="text-align:left;justify-content:flex-start;gap:10px;">
-                📄 <div><div style="font-weight:700;">App Editável</div><div style="font-size:10px;opacity:.8;">Com dados · destinatário pode editar</div></div>
-              </button>
-              <button class="btn btn-green btn-sm" onclick="exportSnapshot()" style="text-align:left;justify-content:flex-start;gap:10px;background:var(--login-green);">
-                🔒 <div><div style="font-weight:700;">Snapshot Somente Leitura</div><div style="font-size:10px;opacity:.8;">Ninguém pode editar ou apagar</div></div>
-              </button>
-              <button class="btn btn-ghost btn-sm" onclick="whatsappSummary()" style="text-align:left;justify-content:flex-start;gap:10px;">
-                📲 <div><div style="font-weight:700;">Resumo WhatsApp</div><div style="font-size:10px;opacity:.8;">Copia resumo semanal formatado</div></div>
-              </button>
-              <button class="btn btn-ghost btn-sm" onclick="exportJSON()" style="text-align:left;justify-content:flex-start;gap:10px;">
-                💾 <div><div style="font-weight:700;">Backup JSON</div><div style="font-size:10px;opacity:.8;">Todos os dados em arquivo JSON</div></div>
-              </button>
-              <button class="btn btn-ghost btn-sm" onclick="importJSON()" style="text-align:left;justify-content:flex-start;gap:10px;">
-                📂 <div><div style="font-weight:700;">Restaurar Backup</div><div style="font-size:10px;opacity:.8;">Carrega arquivo JSON salvo</div></div>
-              </button>
-              <button class="btn btn-ghost btn-sm" onclick="exportPDF()" style="text-align:left;justify-content:flex-start;gap:10px;">
-                📄 <div><div style="font-weight:700;">Exportar PDF</div><div style="font-size:10px;opacity:.8;">Imprime relatório atual</div></div>
-              </button>
+          <div class="panel-header" style="font-size:13px;">📤 Compartilhar & Exportar</div>
+          <div style="padding:12px;display:flex;flex-direction:column;gap:7px;">
+            <button class="btn btn-primary btn-sm" onclick="saveHTMLLocal()" style="justify-content:flex-start;gap:10px;">📄 <div style="text-align:left;"><div style="font-weight:700;">App Editável</div><div style="font-size:10px;opacity:.8;">Compartilhar com outro dispositivo</div></div></button>
+            <button class="btn btn-green btn-sm" onclick="exportSnapshot()" style="justify-content:flex-start;gap:10px;background:var(--login-green);">🔒 <div style="text-align:left;"><div style="font-weight:700;">Snapshot Read-Only</div><div style="font-size:10px;opacity:.8;">Ninguém pode editar</div></div></button>
+            <button class="btn btn-ghost btn-sm" onclick="whatsappSummary()" style="justify-content:flex-start;gap:10px;">📲 <div style="text-align:left;"><div style="font-weight:700;">Resumo WhatsApp</div><div style="font-size:10px;opacity:.8;">Copia resumo semanal</div></div></button>
+            <button class="btn btn-ghost btn-sm" onclick="exportJSON()" style="justify-content:flex-start;gap:10px;">💾 <div style="text-align:left;"><div style="font-weight:700;">Backup JSON</div><div style="font-size:10px;opacity:.8;">Download dos dados</div></div></button>
+            <button class="btn btn-ghost btn-sm" onclick="importJSON()" style="justify-content:flex-start;gap:10px;">📂 <div style="text-align:left;"><div style="font-weight:700;">Restaurar Backup</div><div style="font-size:10px;opacity:.8;">Carregar arquivo JSON</div></div></button>
+            <div style="border-top:1px solid var(--border);padding-top:8px;">
+              <div id="stor-status" class="mono" style="font-size:11px;color:var(--login-green);margin-bottom:8px;"></div>
+              <div style="display:flex;gap:6px;"><button class="btn btn-primary btn-sm" onclick="saveData()" style="flex:1;">💾 Salvar Agora</button><button class="btn btn-danger btn-sm" onclick="clearAll()" style="flex:1;">🗑 Limpar</button></div>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- MÓDULOS + AUTO-SAVE row -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
-
-        <!-- Módulos -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;">
+        <div class="panel" style="margin-bottom:0;border-top:3px solid #7c3aed;">
+          <div class="panel-header" style="font-size:13px;">📥 Importar Dados</div>
+          <div style="padding:12px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+              <label style="display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--login-blue-xlt);border:2px dashed var(--border2);border-radius:10px;padding:14px 8px;cursor:pointer;text-align:center;" onmouseover="this.style.borderColor='var(--login-blue)'" onmouseout="this.style.borderColor='var(--border2)'"><span style="font-size:28px;">💾</span><div style="font-size:12px;font-weight:700;color:var(--login-blue);">Backup JSON</div><div style="font-size:10px;color:var(--text-dim);">Restaurar dados</div><input type="file" accept=".json" style="display:none" onchange="importBackupJSON(this)"><span class="btn btn-primary btn-sm" style="pointer-events:none;font-size:10px;">Selecionar</span></label>
+              <label style="display:flex;flex-direction:column;align-items:center;gap:8px;background:#f5f3ff;border:2px dashed #ddd6fe;border-radius:10px;padding:14px 8px;cursor:pointer;text-align:center;" onmouseover="this.style.borderColor='#7c3aed'" onmouseout="this.style.borderColor='#ddd6fe'"><span style="font-size:28px;">🔍</span><div style="font-size:12px;font-weight:700;color:#7c3aed;">Inspeções</div><div style="font-size:10px;color:var(--text-dim);">Importar inspeções</div><input type="file" accept=".json" style="display:none" onchange="importInspecaoFile(this)"><span class="btn btn-sm" style="pointer-events:none;background:#7c3aed;color:#fff;border-color:#7c3aed;font-size:10px;">Selecionar</span></label>
+            </div>
+            <div id="import-preview" style="display:none;"><div id="import-preview-body" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:180px;overflow-y:auto;font-size:12px;margin-bottom:8px;"></div><div id="import-actions" style="display:flex;gap:8px;flex-wrap:wrap;"></div></div>
+            <div id="import-log" style="display:none;margin-top:8px;"><div id="import-log-body" style="background:#07182e;border-radius:8px;padding:10px;font-size:10px;font-family:monospace;max-height:80px;overflow-y:auto;line-height:1.6;color:#6DB847;"></div></div>
+          </div>
+        </div>
         <div class="panel" style="margin-bottom:0;">
           <div class="panel-header" style="font-size:13px;">🗂️ Módulos por Departamento</div>
           <div style="padding:12px;">
             <div id="modulos-status" style="margin-bottom:10px;"></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;" id="dept-export-btns"></div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-              <select class="form-control" id="mod-dept-sel" style="font-size:12px;flex:1;"></select>
-              <button class="btn btn-primary btn-sm" onclick="exportModulo()">📤 Exportar</button>
-            </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;" id="modulos-importados"></div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <label class="btn btn-ghost btn-sm" style="cursor:pointer;flex:1;">
-                📂 Importar módulo<input type="file" id="mod-import-file" accept=".json" multiple style="display:none" onchange="importModulos(this)">
-              </label>
-              <button class="btn btn-green btn-sm" onclick="consolidarModulos()" id="btn-consolidar" style="display:none;flex:1;">🔗 Consolidar</button>
-            </div>
-            <div style="margin-top:8px;display:flex;gap:6px;">
-              <button class="btn btn-primary btn-sm" onclick="exportMestre()" style="flex:1;">💾 Arquivo Mestre</button>
-              <button class="btn btn-ghost btn-sm" onclick="exportTodosDepts()" style="flex:1;">📦 Todos depts.</button>
-            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"><select class="form-control" id="mod-dept-sel" style="font-size:12px;flex:1;"></select><button class="btn btn-primary btn-sm" onclick="exportModulo()">📤 Exportar</button></div>
+            <div id="modulos-importados" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;min-height:24px;"></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"><label class="btn btn-ghost btn-sm" style="cursor:pointer;flex:1;">📂 Importar módulo<input type="file" id="mod-import-file" accept=".json" multiple style="display:none" onchange="importModulos(this)"></label><button class="btn btn-green btn-sm" onclick="consolidarModulos()" id="btn-consolidar" style="display:none;flex:1;">🔗 Consolidar</button></div>
+            <div style="display:flex;gap:6px;"><button class="btn btn-primary btn-sm" onclick="exportMestre()" style="flex:1;">💾 Mestre</button><button class="btn btn-ghost btn-sm" onclick="exportTodosDepts()" style="flex:1;">📦 Todos</button></div>
           </div>
         </div>
-
-        <!-- Auto-save -->
-        <div class="panel" style="margin-bottom:0;">
-          <div class="panel-header" style="font-size:13px;">🔄 Auto-Save</div>
-          <div style="padding:12px;">
-            <p style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Dados salvos no navegador local (localStorage).</p>
-            <div id="stor-status" class="mono" style="font-size:11px;color:var(--login-green);margin-bottom:12px;"></div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn btn-primary btn-sm" onclick="saveData()" style="flex:1;">💾 Salvar Agora</button>
-              <button class="btn btn-danger btn-sm" onclick="clearAll()" style="flex:1;">🗑 Limpar Tudo</button>
-            </div>
-          </div>
-        </div>
-
       </div>
       <input type="file" id="json-import" accept=".json" style="display:none" onchange="loadJSON(this)">
     </div>
 
-    <!-- IMPORTAR ARQUIVOS DE MANUTENÇÃO -->
-    <div id="page-import" class="page">
-      <div class="panel">
-        <div class="panel-header" style="background:linear-gradient(90deg,var(--login-blue-dk),var(--login-blue));">
-          📥 Importar Arquivos de Manutenção
-          <span style="margin-left:auto;font-size:11px;font-weight:400;opacity:.8;">Todos os formatos aceitos pelo Jacarandá</span>
-        </div>
-        <div style="padding:16px;">
-
-          <!-- Drop zone -->
-          <div id="import-drop-zone"
-            style="border:2px dashed var(--border2);border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--login-blue-xlt);margin-bottom:16px;"
-            onclick="document.getElementById('import-multi-file').click()"
-            ondragover="event.preventDefault();this.style.borderColor='var(--login-blue)';this.style.background='#d4e6f7';"
-            ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--login-blue-xlt)';"
-            ondrop="handleImportDrop(event)">
-            <div style="font-size:40px;margin-bottom:8px;">📥</div>
-            <div style="font-size:15px;font-weight:700;color:var(--login-blue);margin-bottom:4px;">Arraste arquivos aqui ou clique para selecionar</div>
-            <div style="font-size:12px;color:var(--text-dim);">
-              Aceita: <strong>.json</strong> (backup, inspeção, condições, diagramas) &nbsp;·&nbsp;
-              <strong>.csv</strong> (planilha de manutenção) &nbsp;·&nbsp;
-              <strong>.xlsx</strong> (Excel de manutenção)
-            </div>
-            <input type="file" id="import-multi-file" accept=".json,.csv,.xlsx,.xls" multiple style="display:none" onchange="handleImportFiles(this)">
-          </div>
-
-          <!-- Tipos suportados -->
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px;">
-            <div style="background:var(--login-blue-xlt);border:1px solid var(--border2);border-radius:8px;padding:12px;">
-              <div style="font-size:13px;font-weight:700;color:var(--login-blue);margin-bottom:6px;">📦 Backup Jacarandá</div>
-              <div style="font-size:11px;color:var(--text-dim);line-height:1.6;">Arquivo <code>.json</code> exportado pelo próprio app. Importa registros, tripulantes, desvios, inspeções e oficina.</div>
-              <label class="btn btn-primary btn-sm" style="margin-top:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
-                📂 Carregar backup
-                <input type="file" accept=".json" style="display:none" onchange="importBackupJSON(this)">
-              </label>
-            </div>
-            <div style="background:var(--login-green-xlt);border:1px solid #A7F3D0;border-radius:8px;padding:12px;">
-              <div style="font-size:13px;font-weight:700;color:var(--login-green-dk);margin-bottom:6px;">🔍 Inspeção</div>
-              <div style="font-size:11px;color:var(--text-dim);line-height:1.6;">Arquivo de inspeção exportado da aba Inspeções. Importa como novo registro de inspeção.</div>
-              <label class="btn btn-green btn-sm" style="margin-top:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
-                📂 Carregar inspeção
-                <input type="file" accept=".json" style="display:none" onchange="importInspecaoFile(this)">
-              </label>
-            </div>
-            <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:12px;">
-              <div style="font-size:13px;font-weight:700;color:#92400E;margin-bottom:6px;">📊 Condições do Navio</div>
-              <div style="font-size:11px;color:var(--text-dim);line-height:1.6;">Exportação do <em>jacaranda_controle_condicoes.html</em>. Importa pendências como cartões de desvio.</div>
-              <label class="btn btn-sm" style="margin-top:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:var(--warn);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-weight:700;font-size:12px;">
-                📂 Carregar condições
-                <input type="file" accept=".json" style="display:none" onchange="importCondicoesFile(this)">
-              </label>
-            </div>
-            <div style="background:#F3E8FF;border:1px solid #DDD6FE;border-radius:8px;padding:12px;">
-              <div style="font-size:13px;font-weight:700;color:#5B21B6;margin-bottom:6px;">📐 Diagramas</div>
-              <div style="font-size:11px;color:var(--text-dim);line-height:1.6;">Exportação do <em>jacaranda_diagramas.html</em>. Importa itens críticos como desvios e registros de trabalho.</div>
-              <label class="btn btn-sm" style="margin-top:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;background:#7C3AED;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-weight:700;font-size:12px;">
-                📂 Carregar diagramas
-                <input type="file" accept=".json" style="display:none" onchange="importDiagramasFile(this)">
-              </label>
-            </div>
-            <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;">
-              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;">📋 Planilha CSV</div>
-              <div style="font-size:11px;color:var(--text-dim);line-height:1.6;">Planilha simples com colunas: <code>data,departamento,titulo,descricao,status,local</code></div>
-              <label class="btn btn-ghost btn-sm" style="margin-top:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
-                📂 Carregar CSV
-                <input type="file" accept=".csv,.txt" style="display:none" onchange="importCSVFile(this)">
-              </label>
-            </div>
-            <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;">
-              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;">📄 Gerar CSV Modelo</div>
-              <div style="font-size:11px;color:var(--text-dim);line-height:1.6;">Baixe um arquivo CSV de exemplo para preencher no Excel e reimportar.</div>
-              <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="downloadCSVTemplate()">⬇️ Baixar modelo CSV</button>
-            </div>
-          </div>
-
-          <!-- Preview / resultado do import -->
-          <div id="import-preview" style="display:none;">
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--login-blue);margin-bottom:10px;">📋 Preview da Importação</div>
-            <div id="import-preview-body" style="max-height:320px;overflow-y:auto;"></div>
-            <div style="display:flex;gap:10px;margin-top:12px;" id="import-actions"></div>
-          </div>
-
-          <!-- Log -->
-          <div id="import-log" style="margin-top:12px;display:none;">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);margin-bottom:6px;">📋 Log de Importação</div>
-            <div id="import-log-body" style="background:var(--bg);border-radius:6px;padding:10px;font-size:11px;font-family:monospace;max-height:160px;overflow-y:auto;line-height:1.7;"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- CONFIGURAÇÕES -->
-    <div id="page-config" class="page">
-      <div class="panel">
-        <div class="panel-header">☁️ Google Drive — Configuração via Web App</div>
-        <div style="padding:16px;">
-
-          <!-- Instruções -->
-          <div style="background:var(--login-blue-xlt);border:1px solid var(--border2);border-radius:var(--radius);padding:14px;margin-bottom:18px;font-size:12px;color:var(--login-blue);line-height:1.8;">
-            <strong style="font-size:13px;">📋 Como configurar em 4 passos:</strong><br>
-            <span style="color:var(--text-dim);">
-            <strong style="color:var(--login-blue);">1.</strong> Acesse <a href="https://script.google.com" target="_blank" style="color:var(--login-blue);font-weight:700;">script.google.com</a> → <strong>Novo projeto</strong><br>
-            <strong style="color:var(--login-blue);">2.</strong> Cole o código do servidor (veja abaixo) → clique <strong>Implantar → Aplicativo da Web</strong><br>
-            &nbsp;&nbsp;&nbsp;&nbsp;→ "Executar como: <strong>Eu mesmo</strong>" · "Quem tem acesso: <strong>Qualquer pessoa</strong>"<br>
-            <strong style="color:var(--login-blue);">3.</strong> Copie a <strong>URL do Web App</strong> (formato: script.google.com/macros/s/.../exec)<br>
-            <strong style="color:var(--login-blue);">4.</strong> Cole abaixo e clique <strong>💾 Salvar</strong> — pronto!
-            </span>
-          </div>
-
-          <!-- Código do servidor -->
-          <div style="margin-bottom:18px;">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);margin-bottom:6px;">📄 Código para colar no Apps Script</div>
-            <div style="position:relative;">
-              <textarea id="gas-code-display" readonly style="width:100%;height:140px;font-family:'IBM Plex Mono',monospace;font-size:10px;background:#1a2a3a;color:#6DB847;border:1px solid var(--border);border-radius:6px;padding:10px;resize:none;line-height:1.5;">const FOLDER_NAME='Jacaranda_App_Data';const FILE_NAME='jacaranda_dados.json';
-function getOrCreateFolder(){const f=DriveApp.getFoldersByName(FOLDER_NAME);return f.hasNext()?f.next():DriveApp.createFolder(FOLDER_NAME);}
-function getOrCreateFile(folder){const f=folder.getFilesByName(FILE_NAME);return f.hasNext()?f.next():folder.createFile(FILE_NAME,'{}',MimeType.PLAIN_TEXT);}
-function doGet(e){try{const folder=getOrCreateFolder();const file=getOrCreateFile(folder);return ContentService.createTextOutput(file.getBlob().getDataAsString()).setMimeType(ContentService.MimeType.JSON);}catch(err){return ContentService.createTextOutput(JSON.stringify({error:err.message})).setMimeType(ContentService.MimeType.JSON);}}
-function doPost(e){try{const payload=JSON.parse(e.postData.contents);const folder=getOrCreateFolder();const files=folder.getFilesByName(FILE_NAME);if(files.hasNext()){files.next().setContent(JSON.stringify(payload));}else{folder.createFile(FILE_NAME,JSON.stringify(payload),MimeType.PLAIN_TEXT);}return ContentService.createTextOutput(JSON.stringify({ok:true,saved:new Date().toISOString()})).setMimeType(ContentService.MimeType.JSON);}catch(err){return ContentService.createTextOutput(JSON.stringify({ok:false,error:err.message})).setMimeType(ContentService.MimeType.JSON);}}</textarea>
-              <button class="btn btn-ghost btn-sm" style="position:absolute;top:6px;right:6px;font-size:10px;" onclick="copyGasCode()">📋 Copiar</button>
-            </div>
-          </div>
-
-          <!-- Campos de configuração -->
-          <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;">
-            <div style="font-size:12px;font-weight:700;color:var(--login-blue);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">⚙️ Suas Configurações</div>
-            <div class="form-group" style="margin-bottom:12px;">
-              <label>🔗 URL do Web App (Apps Script) <span style="color:var(--danger)">*</span></label>
-              <input type="text" class="form-control" id="cfg-webapp-url"
-                placeholder="https://script.google.com/macros/s/AKfycb.../exec"
-                style="font-family:'IBM Plex Mono',monospace;font-size:12px;">
-              <div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Cole a URL gerada após implantar o Web App</div>
-            </div>
-            <div class="form-group" style="margin-bottom:12px;">
-              <label>📁 Link da Pasta no Drive (opcional)</label>
-              <input type="text" class="form-control" id="cfg-drive-folder-url"
-                placeholder="https://drive.google.com/drive/folders/1ABC...XYZ"
-                style="font-family:'IBM Plex Mono',monospace;font-size:12px;">
-              <div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Após publicar, procure a pasta <strong>Jacaranda_App_Data</strong> no Drive e cole o link aqui</div>
-            </div>
-            <div class="form-row" style="margin-bottom:0;">
-              <div class="form-group" style="max-width:240px;margin-bottom:0;">
-                <label>🔄 Auto-sincronização</label>
-                <select class="form-control" id="cfg-auto-interval">
-                  <option value="0">Desativada</option>
-                  <option value="5">A cada 5 minutos</option>
-                  <option value="15">A cada 15 minutos</option>
-                  <option value="30">A cada 30 minutos</option>
-                  <option value="60">A cada hora</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
-            <button class="btn btn-primary" onclick="saveDriveConfig()">💾 Salvar Configuração</button>
-            <button class="btn btn-green" onclick="sendToDrive()">☁️ Enviar ao Drive Agora</button>
-            <button class="btn btn-ghost" onclick="loadFromDrive()">⬇️ Carregar do Drive</button>
-            <button class="btn btn-ghost" onclick="testDriveConnection()">🔗 Testar Conexão</button>
-          </div>
-          <div id="drive-status" style="font-size:12px;padding:8px 12px;border-radius:5px;display:none;"></div>
-
-          <!-- Status da configuração -->
-          <div id="drive-config-status" style="margin-top:12px;"></div>
-
-          <!-- Links rápidos do Drive -->
-          <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--login-blue);text-transform:uppercase;margin-bottom:10px;">🔗 Links Rápidos — Pastas do Drive</div>
-            <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Salve atalhos para suas pastas no Drive. Aparecem em Armazenamento e são incluídos ao compartilhar o app.</p>
-            <div id="drive-links-cfg-panel" style="margin-bottom:10px;"></div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <input type="text" class="form-control" id="new-link-name" placeholder="Nome (ex: Pasta Jacarandá 2026)" style="max-width:280px;">
-              <input type="text" class="form-control" id="new-link-url" placeholder="https://drive.google.com/drive/folders/..." style="flex:2;min-width:220px;">
-              <button class="btn btn-green btn-sm" onclick="addDriveLinkFromConfig()">+ Salvar Link</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-header">🏢 Departamentos — Editar Lista</div>
-        <div style="padding:16px;">
-          <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Adicione ou remova departamentos usados nos registros e perfis de tripulantes.</p>
-          <div id="dept-list-cfg" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
-          <div style="display:flex;gap:8px;">
-            <input type="text" class="form-control" id="new-dept-input" placeholder="Novo departamento..." style="max-width:260px;">
-            <button class="btn btn-green btn-sm" onclick="addDept()">+ Adicionar</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-header">🎖️ Funções / Postos — Editar Lista</div>
-        <div style="padding:16px;">
-          <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Funções disponíveis para cadastro de tripulantes. Baseadas na Lista de Tripulação (STCW).</p>
-          <div id="role-list-cfg" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
-          <div style="display:flex;gap:8px;">
-            <input type="text" class="form-control" id="new-role-input" placeholder="Nova função..." style="max-width:260px;">
-            <button class="btn btn-green btn-sm" onclick="addRole()">+ Adicionar</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-header">🔐 Senha de Acesso às Configurações</div>
-        <div style="padding:16px;">
-          <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:6px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#92400E;">
-            ⚠️ A senha protege esta página de configurações. Senha padrão: <strong>1234</strong>
-          </div>
-          <div class="form-row">
-            <div class="form-group" style="max-width:160px;">
-              <label>Senha Atual</label>
-              <input type="password" class="form-control" id="pin-old" maxlength="4" placeholder="••••">
-            </div>
-            <div class="form-group" style="max-width:160px;">
-              <label>Nova Senha (4 dígitos)</label>
-              <input type="password" class="form-control" id="pin-new" maxlength="4" placeholder="••••">
-            </div>
-            <div class="form-group" style="max-width:160px;">
-              <label>Confirmar Nova Senha</label>
-              <input type="password" class="form-control" id="pin-confirm" maxlength="4" placeholder="••••">
-            </div>
-          </div>
-          <button class="btn btn-warn btn-sm" onclick="changePin()">🔐 Alterar Senha</button>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-header">🚢 Informações do Navio</div>
-        <div style="padding:16px;">
-          <div class="form-row">
-            <div class="form-group"><label>Nome do Navio</label><input type="text" class="form-control" id="cfg-vessel" value="LOG-IN JACARANDÁ"></div>
-            <div class="form-group"><label>Linha / Rota</label><input type="text" class="form-control" id="cfg-route" value="Linha Amazonas"></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>Comandante</label><input type="text" class="form-control" id="cfg-cmte" value="Jose Moncada"></div>
-            <div class="form-group"><label>Imediato</label><input type="text" class="form-control" id="cfg-imo" value="Robson Freitas"></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>Chefe de Máquinas</label><input type="text" class="form-control" id="cfg-cmaq" value="Jorge Murrieta"></div>
-            <div class="form-group"><label>Sub-Chefe de Máquinas</label><input type="text" class="form-control" id="cfg-scmaq" value="Cesar Diaz"></div>
-          </div>
-          <button class="btn btn-primary" onclick="saveVesselConfig()">💾 Salvar Configurações do Navio</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- IMPORTAR DADOS -->
-    <div id="page-importar" class="page">
-      <div class="panel">
-        <div class="panel-header">📥 Importar Dados</div>
-        <div style="padding:16px;">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-            <label style="display:flex;flex-direction:column;align-items:center;gap:10px;background:var(--login-blue-xlt);border:2px dashed var(--border2);border-radius:12px;padding:24px 16px;cursor:pointer;transition:border-color .2s;" 
-              onmouseover="this.style.borderColor='var(--login-blue)'" onmouseout="this.style.borderColor='var(--border2)'">
-              <span style="font-size:36px;">💾</span>
-              <div style="text-align:center;">
-                <div style="font-size:14px;font-weight:700;color:var(--login-blue);">Backup JSON</div>
-                <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Restaurar ou mesclar dados do app</div>
-              </div>
-              <input type="file" accept=".json" style="display:none" onchange="importBackupJSON(this)">
-              <span style="background:var(--login-blue);color:#fff;font-size:11px;font-weight:700;padding:6px 18px;border-radius:8px;">Selecionar arquivo</span>
-            </label>
-            <label style="display:flex;flex-direction:column;align-items:center;gap:10px;background:#f5f3ff;border:2px dashed #ddd6fe;border-radius:12px;padding:24px 16px;cursor:pointer;transition:border-color .2s;"
-              onmouseover="this.style.borderColor='#7c3aed'" onmouseout="this.style.borderColor='#ddd6fe'">
-              <span style="font-size:36px;">🔍</span>
-              <div style="text-align:center;">
-                <div style="font-size:14px;font-weight:700;color:#7c3aed;">Inspeções JSON</div>
-                <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Importar inspeções exportadas</div>
-              </div>
-              <input type="file" accept=".json" style="display:none" onchange="importInspecaoFile(this)">
-              <span style="background:#7c3aed;color:#fff;font-size:11px;font-weight:700;padding:6px 18px;border-radius:8px;">Selecionar arquivo</span>
-            </label>
-          </div>
-          <!-- Preview area -->
-          <div id="import-preview" style="display:none;margin-top:14px;">
-            <div style="font-size:12px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">📋 Preview da Importação</div>
-            <div id="import-preview-body" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;max-height:280px;overflow-y:auto;font-size:12px;"></div>
-            <div id="import-actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"></div>
-          </div>
-          <!-- Log -->
-          <div id="import-log" style="display:none;margin-top:12px;">
-            <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;">Log</div>
-            <div id="import-log-body" style="background:#07182e;border-radius:8px;padding:12px;font-size:11px;font-family:'IBM Plex Mono',monospace;max-height:160px;overflow-y:auto;line-height:1.8;color:#6DB847;"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-
-    <!-- ATUALIZAÇÃO DE VERSÃO -->
-    <div id="page-update" class="page">
-      <div class="panel">
-        <div class="panel-header">🔄 Atualização de Versão</div>
-        <div style="padding:16px;">
-
-          <!-- Versão atual -->
-          <div style="display:flex;align-items:center;gap:14px;background:var(--login-blue-xlt);border:1px solid var(--border2);border-radius:8px;padding:14px 16px;margin-bottom:18px;">
-            <div style="font-size:32px;">⚓</div>
-            <div>
-              <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--login-blue);">LOG-IN JACARANDÁ — Sistema de Relatórios de Trabalhos a Bordo</div>
-              <div style="font-size:12px;color:var(--text-dim);margin-top:3px;">Versão atual: <strong id="current-version-display" style="font-family:monospace;color:var(--login-blue);">—</strong> &nbsp;·&nbsp; Instalada em: <span id="install-date-display">—</span></div>
-            </div>
-            <div id="update-badge" style="margin-left:auto;display:none;">
-              <span style="background:var(--login-green);color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:12px;animation:pulse 2s infinite;">✨ Atualização disponível</span>
-            </div>
-          </div>
-
-          <!-- Como funciona -->
-          <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:12px 14px;margin-bottom:18px;font-size:12px;color:#92400E;line-height:1.7;">
-            <strong>💡 Como atualizar:</strong><br>
-            1. Receba o arquivo <code style="background:rgba(0,0,0,.08);padding:1px 5px;border-radius:3px;">PATCH_vX.X.json</code> (enviado pelo desenvolvedor via WhatsApp, email ou Drive)<br>
-            2. Clique em <strong>📂 Carregar arquivo de atualização</strong> abaixo<br>
-            3. O sistema aplica a atualização <strong>automaticamente preservando todos os seus dados</strong><br>
-            4. Nenhum dado é perdido — só o código do app é atualizado
-          </div>
-
-          <!-- Carregar patch -->
-          <div style="background:#fff;border:2px dashed var(--border2);border-radius:8px;padding:20px;text-align:center;margin-bottom:16px;" id="update-drop-zone">
-            <div style="font-size:36px;margin-bottom:8px;">📦</div>
-            <div style="font-size:14px;font-weight:600;color:var(--login-blue);margin-bottom:4px;">Arraste o arquivo PATCH aqui ou clique para selecionar</div>
-            <div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">Aceita arquivos <code>.json</code> (PATCH) ou <code>.html</code> (versão completa)</div>
-            <label class="btn btn-primary" style="cursor:pointer;">
-              📂 Carregar arquivo de atualização
-              <input type="file" id="update-file-input" accept=".json,.html" style="display:none" onchange="loadUpdateFile(this)">
-            </label>
-          </div>
-
-          <!-- Preview do patch -->
-          <div id="update-preview" style="display:none;">
-            <div style="background:var(--login-green-xlt);border:1px solid #A7F3D0;border-radius:8px;padding:14px;margin-bottom:14px;">
-              <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--login-green-dk);margin-bottom:10px;">📋 Detalhes da Atualização</div>
-              <div id="update-details" style="font-size:12px;color:var(--text);line-height:1.8;"></div>
-            </div>
-            <div style="display:flex;gap:10px;">
-              <button class="btn btn-green" id="btn-apply-update" onclick="applyUpdate()">✅ Aplicar Atualização</button>
-              <button class="btn btn-ghost" onclick="cancelUpdate()">✕ Cancelar</button>
-            </div>
-          </div>
-
-          <!-- Histórico de versões -->
-          <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--login-blue);text-transform:uppercase;margin-bottom:10px;">📋 Histórico de Versões</div>
-            <div id="version-history" style="font-size:12px;color:var(--text-dim);">Nenhuma atualização aplicada ainda.</div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- RELATÓRIO DE INSPEÇÃO -->
     <div id="page-inspecao" class="page">
@@ -2625,7 +2244,7 @@ function _goPage(id){
   if(id==='semanal'){renderSemTabs();}
   if(id==='fotos'){renderGallery();fillFotoAssoc();}
   if(id==='novo'){fillWeekSel();buildCrewCheckList('novo');fillDeptSelect('r-dept');initNovoBlocoSelects();switchNovoTab('atividade');}
-  if(id==='storage'){storStatus();renderDriveLinks();renderModulosStatus();renderNetPaths();renderBackupHistory();renderNetConfigFields();updateDriveConnStatus();updateStorageKpis();}
+  if(id==='storage'){storStatus();renderDriveLinks();renderModulosStatus();renderNetConfigFields();updateDriveConnStatus();updateStorageKpis();renderImportPage();}
   if(id==='config'){renderConfigPage();}
   if(id==='oficina'){renderOficina();}
   if(id==='desvios'){renderDesvios();}
@@ -2643,12 +2262,14 @@ function kpis(){
   const w=wn();
   const wr=S.regs.filter(r=>parseInt(r.s)===w);
   const el=id=>document.getElementById(id);
-  el('kv-reg').textContent=wr.length;
-  el('kv-wn').textContent=String(w).padStart(2,'0');
-  el('kv-tot').textContent=S.regs.length;
-  el('kv-crew').textContent=S.crew.length;
+  if(el('kv-reg')) el('kv-reg').textContent=wr.length;
+  if(el('kv-wn'))  el('kv-wn').textContent=String(w).padStart(2,'0');
+  if(el('kv-tot')) el('kv-tot').textContent=S.regs.length;
+  if(el('kv-crew'))el('kv-crew').textContent=S.crew.length;
   const tp=S.fotos.length+S.regs.reduce((a,r)=>a+(r.fotos||[]).length,0);
-  el('kv-fotos').textContent=tp;
+  if(el('kv-fotos')) el('kv-fotos').textContent=tp;
+  if(el('kv-insp'))  el('kv-insp').textContent=S.inspecoes.length;
+  if(el('kv-desvios')) el('kv-desvios').textContent=(S.desvios||[]).filter(d=>d.status==='aberto').length;
   const gc=el('gal-cnt');if(gc)gc.textContent=tp;
 }
 
@@ -3079,9 +2700,10 @@ body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;backgr
 .act-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:#6b7280;}
 .st-badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;white-space:nowrap;flex-shrink:0;}
 /* Photo grid — activities */
-.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:6px 24px 10px;background:#fafafa;border-bottom:1px solid #f3f4f6;}
-.pgrid-cell{border-radius:5px;overflow:hidden;border:1px solid #e5e7eb;height:100px;}
-.pgrid-cell img{width:100%;height:100%;object-fit:cover;display:block;}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;padding:10px 24px 14px;background:linear-gradient(180deg,#f5f9ff,#eef4fb);border-bottom:1px solid #f3f4f6;}
+.pgrid-cell{border-radius:10px;overflow:hidden;border:2px solid #e5e7eb;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.pgrid-cell img{width:100%;height:110px;object-fit:cover;display:block;}
+.pgrid-cap{font-size:8px;color:#6b7280;text-align:center;padding:3px 6px;background:#f9fafb;border-top:1px solid #f3f4f6;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}
 /* Inspection card */
 .insp-card{border:1px solid #e5e7eb;border-radius:8px;margin:10px 24px;overflow:hidden;}
 .insp-hdr{padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
@@ -3163,7 +2785,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;backgr
           <span class="st-badge" style="${stStyle(r.st)}">${r.st}</span>
         </div>`;
         if((r.fotos||[]).length){
-          actsHtml += `<div class="pgrid">${r.fotos.map(u=>`<div class="pgrid-cell"><img src="${u}" alt=""></div>`).join('')}</div>`;
+          actsHtml += `<div class="pgrid">${r.fotos.map((u,fi)=>{const cap=(r.fotosCaptions&&r.fotosCaptions[fi])||'';return `<div class="pgrid-cell"><img src="${u}" alt="${cap}">${cap?`<div class="pgrid-cap">${escHtml(cap)}</div>`:''}</div>`;}).join('')}</div>`;
         }
       });
     });
@@ -4393,11 +4015,10 @@ function buildUnifiedHTML(f, vcfg, opts){
         if(opts.incFotos && (r.fotos||[]).length){
           h += '<div style="padding:6px 12px 10px;border-top:1px solid #f3f4f6;">'
              + '<div style="font-size:9px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:5px;">FOTOS</div>'
-             + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;">';
-          r.fotos.slice(0,8).forEach(function(u){
-            h += '<div style="border-radius:5px;overflow:hidden;border:1px solid #e5e7eb;height:80px;">'
-               + '<img src="'+u+'" style="width:100%;height:100%;object-fit:cover;display:block;">'
-               + '</div>';
+             + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px;margin-top:8px;">';
+          r.fotos.forEach(function(u,fi){
+            var cap=(r.fotosCaptions&&r.fotosCaptions[fi])||'';
+            h += '<div style="border-radius:8px;overflow:hidden;border:1.5px solid #e5e7eb;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);">'               + '<img src="'+u+'" style="width:100%;height:100px;object-fit:cover;display:block;">'               + (cap?'<div style="font-size:8px;color:#6b7280;text-align:center;padding:3px 6px;background:#f9fafb;border-top:1px solid #f3f4f6;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escHtml(cap)+'</div>':'')               + '</div>';
           });
           h += '</div></div>';
         }
@@ -10337,7 +9958,6 @@ if(clnovo&&clnovo.parentNode)clnovo.parentNode.insertBefore(csnovo,clnovo);
     <div class="drawer-item" onclick="navTo('storage')"><span class="di">💾</span>Arquivos</div>
     <div class="drawer-item" onclick="navTo('mobile')"><span class="di">📱</span>Celular</div>
     <div class="drawer-item" onclick="navTo('config')"><span class="di">⚙️</span>Config.</div>
-    <div class="drawer-item" onclick="navTo('update')"><span class="di">🔄</span>Update</div>
     <div class="drawer-item" onclick="saveData();closeDrawer();toast('✅ Salvo!','ok')"><span class="di">💾</span>Salvar</div>
   </div>
 </div>
