@@ -1399,7 +1399,7 @@
           </div>
           <button class="btn btn-primary" onclick="rioBuildETA()" style="width:100%;">🧮 Calcular ETA por Trecho</button>
           <div style="font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.5;">
-            ⭐ Os pontos em destaque (Pecém, Barra Norte, Macapá, Itacoatiara, Manaus) são <strong>editáveis</strong>: ajuste manualmente o <strong>ETA</strong> (chegada real/revisada) ou a <strong>velocidade</strong> a partir daquele ponto — os trechos seguintes recalculam automaticamente. Distâncias e waypoints completos da rota já aparecem juntos na mesma tabela.
+            ⭐ Os pontos em destaque (Pecém, Barra Norte, Macapá, Itacoatiara, Manaus) são <strong>totalmente editáveis</strong>: ajuste a <strong>distância</strong>, a <strong>velocidade</strong>, o <strong>tempo</strong> ou o <strong>ETA</strong> — ao editar qualquer campo, todos os trechos seguintes recalculam automaticamente. A velocidade editada passa a valer daquele trecho em diante; editar o ETA ou o tempo ajusta a chegada real do ponto. Distâncias e waypoints completos da rota já aparecem juntos na mesma tabela.
           </div>
           <div id="rio-eta-result" style="margin-top:12px;"></div>
           <div id="rio-eta-notas" style="margin-top:8px;font-size:11px;color:var(--text-dim);"></div>
@@ -1468,6 +1468,34 @@
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
             <button class="btn btn-green btn-sm" id="rio-fetch-btn" onclick="rioFetchMare()">🌐 Buscar Maré na Internet (Open-Meteo)</button>
             <div id="rio-fetch-status" style="flex:1;font-size:11px;color:var(--text-dim);min-width:200px;"></div>
+          </div>
+
+          <!-- Tábua CHM / Marinha do Brasil (fonte oficial) -->
+          <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #7dd3fc;border-radius:10px;padding:12px;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="font-weight:800;font-size:12px;color:#075985;">⚓ Tábua de Marés CHM — Marinha do Brasil (fonte oficial)</span>
+              <a href="https://www.marinha.mil.br/chm/tabuas-de-mare" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="font-size:11px;padding:4px 10px;">📖 Abrir Tábuas CHM/DHN</a>
+            </div>
+            <div style="font-size:10.5px;color:#0c4a6e;line-height:1.5;margin-bottom:8px;">
+              Consulte a tábua oficial da estação (ex.: <strong>Barra Norte — Canal Grande do Curuá / Ponta do Céu</strong>) e insira abaixo os eventos de maré do dia (hora local e altura). O app identifica automaticamente a <strong>baixa-mar e a preamar que cercam a passagem</strong> e aplica ao cálculo. A tábua CHM/DHN prevalece sobre a busca automática.
+            </div>
+            <div class="form-row" style="margin-bottom:6px;">
+              <div class="form-group"><label style="font-size:10px;">Evento 1 — Hora</label><input type="datetime-local" class="form-control" id="rio-chm-t1" onchange="rioChmSaveInputs()"></div>
+              <div class="form-group"><label style="font-size:10px;">Alt. (m)</label><input type="number" step="0.01" class="form-control" id="rio-chm-h1" onchange="rioChmSaveInputs()"></div>
+              <div class="form-group"><label style="font-size:10px;">Evento 2 — Hora</label><input type="datetime-local" class="form-control" id="rio-chm-t2" onchange="rioChmSaveInputs()"></div>
+              <div class="form-group"><label style="font-size:10px;">Alt. (m)</label><input type="number" step="0.01" class="form-control" id="rio-chm-h2" onchange="rioChmSaveInputs()"></div>
+            </div>
+            <div class="form-row" style="margin-bottom:8px;">
+              <div class="form-group"><label style="font-size:10px;">Evento 3 — Hora</label><input type="datetime-local" class="form-control" id="rio-chm-t3" onchange="rioChmSaveInputs()"></div>
+              <div class="form-group"><label style="font-size:10px;">Alt. (m)</label><input type="number" step="0.01" class="form-control" id="rio-chm-h3" onchange="rioChmSaveInputs()"></div>
+              <div class="form-group"><label style="font-size:10px;">Evento 4 — Hora</label><input type="datetime-local" class="form-control" id="rio-chm-t4" onchange="rioChmSaveInputs()"></div>
+              <div class="form-group"><label style="font-size:10px;">Alt. (m)</label><input type="number" step="0.01" class="form-control" id="rio-chm-h4" onchange="rioChmSaveInputs()"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm" onclick="rioChmApply()">✔ Aplicar Tábua CHM à passagem</button>
+              <button class="btn btn-ghost btn-sm" onclick="rioChmClear()">✕ Limpar eventos</button>
+              <div id="rio-chm-status" style="flex:1;font-size:11px;font-weight:600;min-width:180px;"></div>
+            </div>
           </div>
           <div class="section-title">🌊 Baixamar / Preamar (que cercam a passagem)</div>
           <div class="form-row">
@@ -3361,6 +3389,7 @@ function initRio(){
   }
   rioFillStarts();
   rioLocChange();
+  rioChmRestore();
   rioBuildETA();
   rioPortosInit();
 }
@@ -3492,42 +3521,46 @@ function rioBuildETA(){
 
   for(var i=0;i<real.length;i++){
     var w = real[i];
-    var d = (i===0) ? 0 : w.d;
     var keyId = (i===0) ? null : rioKeyIdOf(w);
-    var ov = keyId ? over[keyId] : null;
+    var ov = keyId ? (over[keyId]||{}) : {};
 
-    var h, internalMs;
-    if(w.alt){
-      h = d/curVel;
-      internalMs = branchT + h*3600000;
-    } else {
-      cumD += d;
-      h = d/curVel;
-      internalMs = t + h*3600000;
-    }
+    // Distância do trecho (editável nos pontos-chave)
+    var d = (i===0) ? 0 : ((ov.dist>0) ? ov.dist : w.d);
+    var distEdited = (ov.dist>0);
+
+    // Velocidade: override no ponto-chave passa a valer deste trecho em diante
+    var velEdited = (ov.vel>0);
+    if(velEdited && !w.alt){ curVel = ov.vel; }
+    var legVel = (w.alt && ov.vel>0) ? ov.vel : curVel;
+
+    // Tempo do trecho (editável): prioridade tempo manual > d/vel
+    var tempoEdited = (ov.tempo>0);
+    var h = tempoEdited ? ov.tempo : d/legVel;
+
+    var prevT = w.alt ? branchT : t;
+    var internalMs;
+    if(w.alt){ internalMs = branchT + h*3600000; }
+    else { cumD += d; internalMs = t + h*3600000; }
 
     var fusoDelta = (w.fuso - startFuso)*3600000;
     var edited = false;
 
-    // Override de ETA (o valor editado é interpretado no fuso local do ponto)
-    if(ov && ov.eta){
+    // Override de ETA tem prioridade máxima (o valor editado é interpretado no fuso local do ponto)
+    if(ov.eta){
       var etaLocalMs = new Date(ov.eta).getTime();
       internalMs = etaLocalMs - fusoDelta;
       edited = true;
-      nEdit++;
     }
+    if(edited || tempoEdited || distEdited || velEdited) nEdit++;
+
+    // Tempo efetivo do trecho (reflete ETA editado, se houver)
+    var hShown = (i===0) ? 0 : (internalMs - prevT)/3600000;
+    // Velocidade efetiva do trecho (derivada de d / tempo efetivo)
+    var velShown = (i===0 || hShown<=0) ? legVel : d/hShown;
+
     var displayMs = internalMs + fusoDelta;
 
     if(!w.alt){ t = internalMs; branchT = internalMs; }
-
-    // Velocidade vigente pode ser sobrescrita a partir deste ponto-chave
-    var velFromHere = curVel;
-    var velEdited = false;
-    if(ov && ov.vel>0 && !w.alt){
-      curVel = ov.vel;
-      velFromHere = ov.vel;
-      velEdited = true;
-    }
 
     var fusoTag = (!w.alt && w.fuso!==prevFuso) ? ' <span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">FUSO '+(w.fuso>0?'+':'')+w.fuso+'</span>' : '';
     if(!w.alt) prevFuso = w.fuso;
@@ -3538,24 +3571,27 @@ function rioBuildETA(){
       : (w.alt?'opacity:.72;':'');
     var nameStyle = 'font-weight:'+(isKey?'800':'500')+';color:'+(isKey?'#0e7490':'var(--text)')+';';
 
-    var etaCell, velCell;
+    var edStyle = function(on){ return on ? 'border-color:#f59e0b;background:#fffbeb;' : ''; };
+    var distCell, velCell, tempoCell, etaCell;
     if(isKey){
-      etaCell = '<input type="datetime-local" class="form-control" style="min-width:168px;font-size:11px;padding:5px 6px;'+(edited?'border-color:#f59e0b;background:#fffbeb;':'')+'" value="'+rioMsToLocalISO(displayMs)+'" onchange="rioEtaOverride(\''+keyId+'\',this.value)">'
-        + (edited?'<div style="font-size:9px;color:#b45309;font-weight:700;margin-top:2px;">✏️ ajustado manualmente</div>':'');
-      velCell = w.alt
-        ? '<span class="mono">'+velFromHere.toFixed(1)+'</span>'
-        : '<input type="number" step="0.1" min="1" class="form-control" style="width:74px;font-size:11px;padding:5px 6px;text-align:right;'+(velEdited?'border-color:#f59e0b;background:#fffbeb;':'')+'" value="'+velFromHere.toFixed(1)+'" onchange="rioVelOverride(\''+keyId+'\',this.value)" title="Velocidade a partir deste ponto">';
+      distCell = '<input type="number" step="0.1" min="0" class="form-control" style="width:80px;font-size:11px;padding:5px 6px;text-align:right;'+edStyle(distEdited)+'" value="'+d.toFixed(1)+'" onchange="rioOvr(\''+keyId+'\',\'dist\',this.value)" title="Distância do trecho até este ponto (nm)">';
+      velCell = '<input type="number" step="0.1" min="1" class="form-control" style="width:70px;font-size:11px;padding:5px 6px;text-align:right;'+edStyle(velEdited)+'" value="'+velShown.toFixed(1)+'" onchange="rioOvr(\''+keyId+'\',\'vel\',this.value)" title="Velocidade neste trecho e nos seguintes (nós)">';
+      tempoCell = '<input type="number" step="0.1" min="0" class="form-control" style="width:74px;font-size:11px;padding:5px 6px;text-align:right;'+edStyle(tempoEdited)+'" value="'+hShown.toFixed(2)+'" onchange="rioOvr(\''+keyId+'\',\'tempo\',this.value)" title="Tempo do trecho (horas)">';
+      etaCell = '<input type="datetime-local" class="form-control" style="min-width:168px;font-size:11px;padding:5px 6px;'+edStyle(edited)+'" value="'+rioMsToLocalISO(displayMs)+'" onchange="rioOvr(\''+keyId+'\',\'eta\',this.value)">'
+        + ((edited||tempoEdited||distEdited||velEdited)?'<div style="font-size:9px;color:#b45309;font-weight:700;margin-top:2px;">✏️ ajustado manualmente</div>':'');
     } else {
+      distCell = '<span class="mono">'+(d>0?d.toFixed(1):'—')+'</span>';
+      velCell = '<span class="mono" style="color:var(--text-dim);">'+(i===0?'—':velShown.toFixed(1))+'</span>';
+      tempoCell = '<span class="mono" style="color:var(--login-blue);">'+(i===0?'—':hShown.toFixed(2))+'</span>';
       etaCell = '<span class="mono" style="font-weight:'+(i===0?'800':'600')+';">'+(i===0?'🕐 ':'')+new Date(displayMs).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span>';
-      velCell = '<span class="mono" style="color:var(--text-dim);">'+(i===0?'—':curVel.toFixed(1))+'</span>';
     }
 
     rows += '<tr style="'+rowStyle+'">'
       + '<td style="'+nameStyle+'">'+(isKey?'⭐ ':'')+escHtml(w.nm.replace('⭐ ',''))+fusoTag+(w.alt?' <span style="font-size:9px;color:var(--muted);">(alternativa desde Barra Norte)</span>':'')+'</td>'
-      + '<td class="mono" style="text-align:right;">'+(d>0?d.toFixed(1):'—')+'</td>'
+      + '<td style="text-align:right;">'+distCell+'</td>'
       + '<td class="mono" style="text-align:right;color:var(--text-dim);">'+(w.alt?'—':cumD.toFixed(1))+'</td>'
       + '<td style="text-align:right;">'+velCell+'</td>'
-      + '<td class="mono" style="text-align:right;color:var(--login-blue);">'+(i===0?'—':h.toFixed(2))+'</td>'
+      + '<td style="text-align:right;">'+tempoCell+'</td>'
       + '<td style="text-align:right;">'+etaCell+'</td>'
       + '<td class="mono" style="text-align:center;color:var(--muted);font-size:10px;">UTC'+w.fuso+'</td>'
       + '</tr>';
@@ -3580,29 +3616,28 @@ function rioBuildETA(){
   }
 }
 
-function rioEtaOverride(keyId, val){
+function rioOvr(keyId, field, val){
   var dir = document.getElementById('rio-dir')?.value||'subida';
   var all = rioTrechoLoad();
   all[dir] = all[dir]||{};
   all[dir][keyId] = all[dir][keyId]||{};
-  if(val){ all[dir][keyId].eta = val; } else { delete all[dir][keyId].eta; }
-  if(!all[dir][keyId].eta && !all[dir][keyId].vel) delete all[dir][keyId];
+  var ov = all[dir][keyId];
+  if(field==='eta'){
+    if(val){ ov.eta = val; delete ov.tempo; } // ETA manual substitui tempo manual
+    else { delete ov.eta; }
+  } else {
+    var v = parseFloat(val);
+    if(v>0){
+      ov[field] = v;
+      if(field==='tempo'){ delete ov.eta; } // tempo manual substitui ETA manual
+    } else {
+      delete ov[field];
+    }
+  }
+  if(!ov.eta && !ov.vel && !ov.dist && !ov.tempo) delete all[dir][keyId];
   rioTrechoSave(all);
   rioBuildETA();
-  toast('💾 ETA ajustado — trechos seguintes recalculados','ok');
-}
-
-function rioVelOverride(keyId, val){
-  var dir = document.getElementById('rio-dir')?.value||'subida';
-  var v = parseFloat(val);
-  var all = rioTrechoLoad();
-  all[dir] = all[dir]||{};
-  all[dir][keyId] = all[dir][keyId]||{};
-  if(v>0){ all[dir][keyId].vel = v; } else { delete all[dir][keyId].vel; }
-  if(!all[dir][keyId].eta && !all[dir][keyId].vel) delete all[dir][keyId];
-  rioTrechoSave(all);
-  rioBuildETA();
-  toast('💾 Velocidade ajustada a partir do ponto — recalculado','ok');
+  toast('💾 Ajuste salvo — trechos seguintes recalculados','ok');
 }
 
 function rioTrechoReset(){
@@ -4000,6 +4035,92 @@ function fmtDT(iso){
   if(!iso) return '—';
   var d = new Date(iso);
   return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ─────────────────────────────────────────────
+// TÁBUA CHM — Marinha do Brasil (fonte oficial)
+// ─────────────────────────────────────────────
+function rioChmSaveInputs(){
+  var data = {};
+  for(var i=1;i<=4;i++){
+    data['t'+i] = document.getElementById('rio-chm-t'+i)?.value||'';
+    data['h'+i] = document.getElementById('rio-chm-h'+i)?.value||'';
+  }
+  try{ localStorage.setItem('jac_rio_chm', JSON.stringify(data)); }catch(e){}
+}
+function rioChmRestore(){
+  var data;
+  try{ data = JSON.parse(localStorage.getItem('jac_rio_chm')||'{}'); }catch(e){ data = {}; }
+  for(var i=1;i<=4;i++){
+    var t = document.getElementById('rio-chm-t'+i), h = document.getElementById('rio-chm-h'+i);
+    if(t && data['t'+i]) t.value = data['t'+i];
+    if(h && data['h'+i]!=='' && data['h'+i]!=null) h.value = data['h'+i];
+  }
+}
+function rioChmEvents(){
+  var evs = [];
+  for(var i=1;i<=4;i++){
+    var t = document.getElementById('rio-chm-t'+i)?.value;
+    var h = parseFloat(document.getElementById('rio-chm-h'+i)?.value);
+    if(t && !isNaN(h)) evs.push({t:new Date(t).getTime(), iso:t, h:h});
+  }
+  evs.sort(function(a,b){ return a.t-b.t; });
+  return evs;
+}
+function rioChmApply(){
+  var st = document.getElementById('rio-chm-status');
+  var evs = rioChmEvents();
+  if(evs.length<2){
+    if(st){ st.style.color='var(--danger)'; st.textContent='⚠️ Insira pelo menos 2 eventos (hora + altura) da tábua CHM.'; }
+    return;
+  }
+  var passV = document.getElementById('rio-pass-dt')?.value;
+  if(!passV){
+    if(st){ st.style.color='var(--danger)'; st.textContent='⚠️ Informe a Data/Hora da passagem no topo do painel.'; }
+    return;
+  }
+  var tp = new Date(passV).getTime();
+
+  // Par de eventos que cerca a passagem; se estiver fora do intervalo, usa o par mais próximo
+  var e1=null, e2=null;
+  for(var i=0;i<evs.length-1;i++){
+    if(tp>=evs[i].t && tp<=evs[i+1].t){ e1=evs[i]; e2=evs[i+1]; break; }
+  }
+  var fora = false;
+  if(!e1){
+    fora = true;
+    if(tp < evs[0].t){ e1=evs[0]; e2=evs[1]; }
+    else { e1=evs[evs.length-2]; e2=evs[evs.length-1]; }
+  }
+
+  // Menor altura = baixa-mar, maior = preamar
+  var bm = e1.h<=e2.h ? e1 : e2;
+  var pm = e1.h<=e2.h ? e2 : e1;
+
+  document.getElementById('rio-bm-t').value = bm.iso;
+  document.getElementById('rio-bm-h').value = bm.h.toFixed(2);
+  document.getElementById('rio-pm-t').value = pm.iso;
+  document.getElementById('rio-pm-h').value = pm.h.toFixed(2);
+
+  var fs = document.getElementById('rio-fetch-status');
+  if(fs){ fs.innerHTML = '<span style="color:#075985;font-weight:800;">⚓ Fonte: Tábua CHM — Marinha do Brasil (oficial)</span>'; }
+  if(st){
+    st.style.color = fora ? 'var(--warn)' : 'var(--login-green-dk)';
+    st.textContent = (fora?'⚠️ Passagem fora do intervalo dos eventos — usado o par mais próximo. ':'✔ ')
+      + 'BM '+fmtDT(bm.iso)+' ('+bm.h.toFixed(2)+' m) · PM '+fmtDT(pm.iso)+' ('+pm.h.toFixed(2)+' m) aplicados.';
+  }
+  rioChmSaveInputs();
+  calcUKC();
+  toast('⚓ Tábua CHM aplicada — BM/PM atualizados','ok');
+}
+function rioChmClear(){
+  for(var i=1;i<=4;i++){
+    var t = document.getElementById('rio-chm-t'+i), h = document.getElementById('rio-chm-h'+i);
+    if(t) t.value=''; if(h) h.value='';
+  }
+  var st = document.getElementById('rio-chm-status');
+  if(st){ st.textContent=''; }
+  rioChmSaveInputs();
 }
 
 function printRioETA(){
@@ -8021,7 +8142,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
