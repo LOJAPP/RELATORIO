@@ -1382,7 +1382,7 @@
         <div style="padding:14px;">
           <div class="form-row">
             <div class="form-group"><label>Sentido</label>
-              <select class="form-control" id="rio-dir" onchange="rioFillStarts();renderRioDistTable();">
+              <select class="form-control" id="rio-dir" onchange="rioFillStarts();renderRioDistTable();renderRioHorarios();">
                 <option value="subida">⬆ SUBIDA (Barra Norte → Manaus)</option>
                 <option value="descida">⬇ DESCIDA (Manaus → Barra Norte)</option>
               </select>
@@ -1400,6 +1400,40 @@
           <button class="btn btn-primary" onclick="rioBuildETA()" style="width:100%;">🧮 Calcular ETA por trecho</button>
           <div id="rio-eta-result" style="margin-top:12px;"></div>
           <div id="rio-eta-notas" style="margin-top:8px;font-size:11px;color:var(--text-dim);"></div>
+        </div>
+      </div>
+
+      <!-- Quadro de Horários por Ponto-Chave (editável) -->
+      <div class="panel">
+        <div class="panel-header">🕐 Quadro de Horários — Pecém · Barra Norte · Macapá · Itacoatiara · Manaus</div>
+        <div style="padding:14px;">
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
+            Horários previstos calculados a partir da <strong>Data/Hora de saída</strong> e <strong>Velocidade</strong> informadas acima (sentido <span id="rio-hor-dir-tag" style="font-weight:700;"></span>). Após calcular, cada horário fica <strong>editável</strong> — ajuste manualmente e o valor fica salvo automaticamente.
+          </div>
+          <button class="btn btn-primary" onclick="rioPreverHorarios()" style="width:100%;margin-bottom:10px;">🔮 Prever Horários dos Pontos-Chave</button>
+          <div id="rio-horarios-table"></div>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" onclick="rioResetHorarios()">↺ Limpar ajustes manuais</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Painel Visual de Maré — Barra Norte -->
+      <div class="panel" style="overflow:hidden;">
+        <div class="panel-header" style="background:linear-gradient(135deg,#062f4a 0%,#0e7490 55%,#06b6d4 100%);display:flex;align-items:center;gap:8px;">
+          <span style="font-size:16px;">🌊</span> Maré — <span id="rio-mare-title-loc">Barra Norte</span>
+          <span style="margin-left:auto;font-size:9px;font-weight:700;background:rgba(255,255,255,.18);padding:3px 8px;border-radius:20px;letter-spacing:.4px;">BM / PM</span>
+        </div>
+        <div style="padding:14px;background:linear-gradient(180deg,#f0fdff 0%,#fff 130px);">
+          <div id="rio-mare-summary"></div>
+          <div id="rio-mare-chart" style="margin-top:12px;">
+            <div style="background:linear-gradient(135deg,#0c4a6e,#0e7490);border-radius:14px;padding:36px 16px;text-align:center;color:#e0f2fe;font-size:12px;">
+              🌊 Preencha BM/PM abaixo ou use <strong>🌐 Buscar Maré na Internet</strong> para ver a curva
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:10px;color:var(--muted);text-align:center;">
+            Curva ilustrativa por interpolação senoidal entre a baixa-mar e a preamar informadas · confirme sempre com a Tábua DHN
+          </div>
         </div>
       </div>
 
@@ -3285,7 +3319,7 @@ var RIO_DESCIDA = [
   {nm:'MACAPÁ (Fazendinha)',   d:104.2, fuso:-3, key:'mcp'},
   {nm:'⭐ PONTA DO CÉU / Canal do Curuá', d:76.5, fuso:-3, key:'curua'},
   {nm:'⭐ BARRA NORTE',        d:83.2,  fuso:-3, key:'bn'},
-  {nm:'→ Vitória (VIX)',       d:1923.6,fuso:-3},
+  {nm:'→ Vitória (VIX) [alt.]',d:1923.6,fuso:-3, alt:true},
   {nm:'→ Santos (SSZ) [alt.]', d:2372.3,fuso:-3, alt:true},
   {nm:'→ Pecém (PEC) [alt.]',  d:684.1, fuso:-3, alt:true}
 ];
@@ -3328,6 +3362,7 @@ function initRio(){
   rioFillStarts();
   rioLocChange();
   renderRioDistTable();
+  renderRioHorarios();
 }
 
 function rioFillStarts(){
@@ -3484,6 +3519,10 @@ function calcUKC(){
   var pmT = document.getElementById('rio-pm-t')?.value, pmH = parseFloat(document.getElementById('rio-pm-h')?.value);
   if(!passDt || !bmT || !pmT || isNaN(bmH) || isNaN(pmH)){
     out.innerHTML = '<div style="color:var(--muted);font-size:12px;font-style:italic;padding:6px 0;">Preencha BM, PM e hora da passagem — ou use 🌐 Buscar Maré na Internet.</div>';
+    var chartEl0 = document.getElementById('rio-mare-chart');
+    var sumEl0   = document.getElementById('rio-mare-summary');
+    if(chartEl0) chartEl0.innerHTML = '<div style="text-align:center;padding:30px 10px;color:var(--muted);font-size:12px;">🌊 Preencha os horários de baixa-mar e preamar para ver a curva de maré</div>';
+    if(sumEl0)   sumEl0.innerHTML = '';
     return;
   }
   var tp = new Date(passDt).getTime();
@@ -3515,6 +3554,140 @@ function calcUKC(){
     + '<div style="flex:1;font-size:14px;font-weight:800;color:'+cor+';">'+status+'</div>'
     + '</div>'
     + '<div style="font-size:10px;color:var(--muted);margin-top:6px;">Fórmula: FAQ = (NR carta '+nr.toFixed(2)+' + maré '+mare.toFixed(2)+') − calado '+calado.toFixed(2)+' − squat '+squat.toFixed(2)+' − margem '+margem.toFixed(2)+' · Interpolação senoidal entre BM/PM (≈ regra dos duodécimos, conforme curva da tábua)</div>';
+
+  var locKey = document.getElementById('rio-mare-loc')?.value||'bn';
+  var locNm  = (RIO_LOCS[locKey]&&RIO_LOCS[locKey].nm) || 'Barra Norte';
+  var titleEl = document.getElementById('rio-mare-title-loc');
+  if(titleEl) titleEl.textContent = locNm;
+  renderMareSummary('rio-mare-summary', t1, h1, t2, h2, tp);
+  renderMareChart('rio-mare-chart', t1, h1, t2, h2, tp, locNm);
+}
+
+// ── Resumo visual da maré: cartões Baixa-mar / Preamar / Agora ──
+function renderMareSummary(containerId, t1, h1, t2, h2, tp){
+  var el = document.getElementById(containerId);
+  if(!el) return;
+  var fmtFull = function(ms){ var d=new Date(ms); return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' · '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); };
+  var mareAgora = rioTideAt(tp, t1, h1, t2, h2);
+  var amplitude = Math.abs(h2-h1);
+  var subindo = h2 > h1; // dentro do trecho t1→t2, a maré sobe se PM vem depois da BM
+  var faseTxt = subindo ? '🔺 Enchente (subindo)' : '🔻 Vazante (descendo)';
+  var faseCor = subindo ? '#0e7490' : '#b45309';
+
+  var card = function(icon, label, timeTxt, heightTxt, bg, border, txtCor, tag){
+    return '<div style="flex:1;min-width:150px;background:'+bg+';border:1px solid '+border+';border-radius:12px;padding:12px 14px;position:relative;overflow:hidden;">'
+      + (tag?'<div style="position:absolute;top:0;right:0;background:'+txtCor+';color:#fff;font-size:8px;font-weight:800;padding:2px 8px;border-radius:0 0 0 8px;letter-spacing:.4px;">'+tag+'</div>':'')
+      + '<div style="font-size:20px;line-height:1;margin-bottom:4px;">'+icon+'</div>'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:'+txtCor+';margin-bottom:3px;">'+label+'</div>'
+      + '<div style="font-family:monospace;font-weight:800;font-size:15px;color:var(--text);">'+timeTxt+'</div>'
+      + '<div style="font-family:monospace;font-size:13px;color:'+txtCor+';font-weight:700;margin-top:1px;">'+heightTxt+'</div>'
+      + '</div>';
+  };
+
+  el.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+    + card('🔻','Baixa-mar', fmtFull(t1), h1.toFixed(2)+' m', '#fef2f2', '#fecaca', '#b91c1c', t1>tp?'PRÓXIMA':'')
+    + card('🔺','Preamar',   fmtFull(t2), h2.toFixed(2)+' m', '#ecfeff', '#a5f3fc', '#0e7490', t2>tp?'PRÓXIMA':'')
+    + card('🌊','Maré agora', fmtFull(tp), mareAgora.toFixed(2)+' m', '#faf5ff', '#e9d5ff', '#7c3aed', '')
+    + '</div>'
+    + '<div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;">'
+    + '<span style="font-weight:800;color:'+faseCor+';">'+faseTxt+'</span>'
+    + '<span style="color:var(--muted);">· amplitude '+amplitude.toFixed(2)+' m</span>'
+    + '</div>';
+}
+
+// ── Gráfico de maré (SVG) — diferencia Baixa-mar (BM) e Preamar (PM) ──
+function renderMareChart(containerId, t1, h1, t2, h2, tp, locNm){
+  var el = document.getElementById(containerId);
+  if(!el) return;
+  var W = 680, H = 260, padL = 42, padR = 20, padT = 46, padB = 34;
+  var plotW = W - padL - padR, plotH = H - padT - padB;
+
+  // Amostragem estendida (mostra a curva além de BM/PM p/ revelar o vale e o pico)
+  var xMin = -0.34, xMax = 1.34, N = 72;
+  var pts = [];
+  for(var i=0;i<=N;i++){
+    var x = xMin + (xMax-xMin)*i/N;
+    var h = h1 + (h2-h1) * (1 - Math.cos(Math.PI*x)) / 2;
+    var t = t1 + x*(t2-t1);
+    pts.push({t:t, h:h});
+  }
+  var hMin = Math.min.apply(null, pts.map(function(p){return p.h;}));
+  var hMax = Math.max.apply(null, pts.map(function(p){return p.h;}));
+  var hPad = Math.max(0.18, (hMax-hMin)*0.22);
+  hMin -= hPad; hMax += hPad;
+  var tSpan = pts[pts.length-1].t - pts[0].t;
+
+  var xOf = function(t){ return padL + ((t - pts[0].t)/tSpan) * plotW; };
+  var yOf = function(h){ return padT + (1 - (h-hMin)/(hMax-hMin)) * plotH; };
+
+  var line = pts.map(function(p,i){ return (i===0?'M':'L') + xOf(p.t).toFixed(1) + ',' + yOf(p.h).toFixed(1); }).join(' ');
+  var area = line + ' L' + xOf(pts[pts.length-1].t).toFixed(1) + ',' + (padT+plotH) + ' L' + xOf(pts[0].t).toFixed(1) + ',' + (padT+plotH) + ' Z';
+
+  var fmtT = function(ms){ return new Date(ms).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); };
+  var fmtDia = function(ms){ return new Date(ms).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}); };
+
+  // Grade horizontal (linhas de referência de altura)
+  var grid = '';
+  var steps = 4;
+  for(var g=0; g<=steps; g++){
+    var hv = hMin + (hMax-hMin)*g/steps;
+    var y = yOf(hv);
+    grid += '<line x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(padL+plotW)+'" y2="'+y.toFixed(1)+'" stroke="rgba(255,255,255,.12)" stroke-width="1"/>';
+    grid += '<text x="'+(padL-8)+'" y="'+(y+3).toFixed(1)+'" font-size="9" fill="rgba(255,255,255,.55)" text-anchor="end" font-family="monospace">'+hv.toFixed(1)+'m</text>';
+  }
+  // eixo do tempo (rótulos discretos: início, BM, PM, fim)
+  var axisPts = [{t:pts[0].t,lbl:false},{t:t1,lbl:true},{t:t2,lbl:true},{t:pts[pts.length-1].t,lbl:false}];
+  var axisTxt = '';
+  [t1,t2].forEach(function(tt){
+    var xx = xOf(tt);
+    axisTxt += '<text x="'+xx.toFixed(1)+'" y="'+(padT+plotH+16)+'" font-size="9" fill="rgba(255,255,255,.6)" text-anchor="middle" font-family="monospace">'+fmtDia(tt)+' '+fmtT(tt)+'</text>';
+  });
+
+  // Linha vertical do horário de passagem/consulta
+  var passLine = '';
+  if(tp>=pts[0].t && tp<=pts[pts.length-1].t){
+    var xp = xOf(tp);
+    var xTide = h1 + (h2-h1) * (1 - Math.cos(Math.PI*((tp-t1)/(t2-t1)))) / 2;
+    passLine = '<line x1="'+xp.toFixed(1)+'" y1="'+padT+'" x2="'+xp.toFixed(1)+'" y2="'+(padT+plotH)+'" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="5,4"/>'
+      + '<circle cx="'+xp.toFixed(1)+'" cy="'+yOf(xTide).toFixed(1)+'" r="5.5" fill="#a855f7" stroke="#fff" stroke-width="2" filter="url(#mareShadow)"/>'
+      + '<rect x="'+(xp-30).toFixed(1)+'" y="'+(padT-30)+'" width="60" height="16" rx="8" fill="#a855f7"/>'
+      + '<text x="'+xp.toFixed(1)+'" y="'+(padT-18)+'" font-size="9.5" fill="#fff" text-anchor="middle" font-weight="800">🚢 agora</text>';
+  }
+
+  // Marcadores BM (baixa-mar) e PM (preamar) — cores diferenciadas
+  var bmIsFirst = h1 <= h2;
+  var xBM = xOf(t1), yBM = yOf(h1), xPM = xOf(t2), yPM = yOf(h2);
+  var markers =
+      '<g>'
+    + '<circle cx="'+xBM.toFixed(1)+'" cy="'+yBM.toFixed(1)+'" r="6" fill="#f87171" stroke="#fff" stroke-width="2" filter="url(#mareShadow)"/>'
+    + '<rect x="'+(xBM-38).toFixed(1)+'" y="'+(yBM+(bmIsFirst?10:-30)).toFixed(1)+'" width="76" height="20" rx="10" fill="#dc2626" opacity="0.92"/>'
+    + '<text x="'+xBM.toFixed(1)+'" y="'+(yBM+(bmIsFirst?24:-16)).toFixed(1)+'" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="800">🔻 Baixa-mar</text>'
+    + '<circle cx="'+xPM.toFixed(1)+'" cy="'+yPM.toFixed(1)+'" r="6" fill="#22d3ee" stroke="#fff" stroke-width="2" filter="url(#mareShadow)"/>'
+    + '<rect x="'+(xPM-34).toFixed(1)+'" y="'+(yPM+(bmIsFirst?-30:10)).toFixed(1)+'" width="68" height="20" rx="10" fill="#0891b2" opacity="0.92"/>'
+    + '<text x="'+xPM.toFixed(1)+'" y="'+(yPM+(bmIsFirst?-16:24)).toFixed(1)+'" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="800">🔺 Preamar</text>'
+    + '</g>';
+
+  var svg = '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;border-radius:14px;display:block;">'
+    + '<defs>'
+    + '<linearGradient id="mareBg" x1="0" y1="0" x2="0" y2="1">'
+    + '<stop offset="0%" stop-color="#0c4a6e"/><stop offset="55%" stop-color="#075985"/><stop offset="100%" stop-color="#0e7490"/>'
+    + '</linearGradient>'
+    + '<linearGradient id="mareFill" x1="0" y1="0" x2="0" y2="1">'
+    + '<stop offset="0%" stop-color="#67e8f9" stop-opacity="0.55"/><stop offset="100%" stop-color="#67e8f9" stop-opacity="0.03"/>'
+    + '</linearGradient>'
+    + '<filter id="mareShadow" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000" flood-opacity="0.35"/></filter>'
+    + '</defs>'
+    + '<rect x="0" y="0" width="'+W+'" height="'+H+'" rx="14" fill="url(#mareBg)"/>'
+    + '<text x="16" y="24" font-size="12" fill="#e0f2fe" font-weight="800" letter-spacing=".3px">📈 CURVA DE MARÉ — '+escHtml(locNm).toUpperCase()+'</text>'
+    + grid
+    + '<path d="'+area+'" fill="url(#mareFill)"/>'
+    + '<path d="'+line+'" fill="none" stroke="#a5f3fc" stroke-width="3" stroke-linecap="round"/>'
+    + axisTxt
+    + passLine
+    + markers
+    + '</svg>';
+
+  el.innerHTML = svg;
 }
 
 // ── Busca de maré na internet (Open-Meteo Marine API — grátis, sem chave) ──
@@ -3595,6 +3768,140 @@ function renderRioDistTable(){
   };
   el.innerHTML = mk(RIO_SUBIDA,'⬆️ Subida — Pecém → Barra Norte → Manaus','var(--login-blue)')
     + mk(RIO_DESCIDA,'⬇️ Descida — Manaus → Barra Norte → Costa','var(--login-green-dk)');
+}
+
+// ─────────────────────────────────────────────
+// QUADRO DE HORÁRIOS — Pontos-chave (editável)
+// Pecém · Barra Norte · Macapá · Itacoatiara · Manaus
+// ─────────────────────────────────────────────
+var RIO_PONTOS_5 = {
+  subida: [
+    {id:'pecem', label:'📍 Pecém (saída)',   match:function(w,i){return i===0;}},
+    {id:'bn',    label:'⭐ Barra Norte',      match:function(w){return w.key==='bn';}},
+    {id:'mcp',   label:'⭐ Macapá',           match:function(w){return w.key==='mcp';}},
+    {id:'ita',   label:'⭐ Itacoatiara',      match:function(w){return w.key==='ita';}},
+    {id:'mao',   label:'🏁 Manaus',           match:function(w){return w.key==='mao';}}
+  ],
+  descida: [
+    {id:'mao',   label:'📍 Manaus (saída)',   match:function(w,i){return i===0;}},
+    {id:'ita',   label:'⭐ Itacoatiara',      match:function(w){return w.key==='ita';}},
+    {id:'mcp',   label:'⭐ Macapá',           match:function(w){return w.key==='mcp';}},
+    {id:'bn',    label:'⭐ Barra Norte',      match:function(w){return w.key==='bn';}},
+    {id:'pecem', label:'🏁 Pecém',            match:function(w){return w.alt && w.nm.indexOf('Pecém')>=0;}}
+  ]
+};
+
+function rioCumTo(wpts, idx){
+  var cum = 0;
+  for(var i=0;i<=idx;i++){
+    var w = wpts[i];
+    if(i===idx){ return w.alt ? (cum + w.d) : (cum + w.d); }
+    if(!w.alt) cum += w.d;
+  }
+  return cum;
+}
+
+function rioHorLoadSaved(){
+  try{ return JSON.parse(localStorage.getItem('jac_rio_horarios')||'{}'); }catch(e){ return {}; }
+}
+function rioHorSave(all){
+  try{ localStorage.setItem('jac_rio_horarios', JSON.stringify(all)); }catch(e){}
+}
+
+function renderRioHorarios(){
+  var el = document.getElementById('rio-horarios-table');
+  if(!el) return;
+  var dir = document.getElementById('rio-dir')?.value||'subida';
+  var tag = document.getElementById('rio-hor-dir-tag');
+  if(tag) tag.textContent = dir==='subida' ? '⬆ SUBIDA' : '⬇ DESCIDA';
+  var saved = rioHorLoadSaved();
+  var savedDir = saved[dir]||{};
+  var pontos = RIO_PONTOS_5[dir];
+
+  var rows = pontos.map(function(p){
+    var manual = savedDir[p.id];
+    return '<tr>'
+      + '<td style="font-weight:700;">'+p.label+'</td>'
+      + '<td class="mono" id="rio-hor-prev-'+p.id+'" style="color:var(--text-dim);">'+(window._rioHorPrev && window._rioHorPrev[dir] && window._rioHorPrev[dir][p.id] ? fmtDT(window._rioHorPrev[dir][p.id]) : '—')+'</td>'
+      + '<td><input type="datetime-local" class="form-control" style="min-width:170px;" id="rio-hor-edit-'+p.id+'" value="'+(manual||'')+'" onchange="rioHorInputChange(\''+dir+'\',\''+p.id+'\')"></td>'
+      + '</tr>';
+  }).join('');
+
+  el.innerHTML = '<div style="overflow-x:auto;"><table class="tbl" style="width:100%;font-size:12px;">'
+    + '<thead><tr><th>Ponto</th><th>🔮 Previsão (calculada)</th><th>✏️ Horário Editado</th></tr></thead>'
+    + '<tbody>'+rows+'</tbody></table></div>';
+}
+
+function fmtDT(iso){
+  if(!iso) return '—';
+  var d = new Date(iso);
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+function rioPreverHorarios(){
+  var dir  = document.getElementById('rio-dir')?.value||'subida';
+  var dtv  = document.getElementById('rio-dt')?.value;
+  var vel  = parseFloat(document.getElementById('rio-vel')?.value)||15;
+  if(!dtv){ toast('⚠️ Informe a Data/Hora de saída','warn'); return; }
+  if(vel<=0){ toast('⚠️ Velocidade inválida','warn'); return; }
+
+  var wpts = dir==='subida' ? RIO_SUBIDA : RIO_DESCIDA;
+  var pontos = RIO_PONTOS_5[dir];
+  var t0 = new Date(dtv).getTime();
+  var startFuso = wpts[0].fuso;
+
+  window._rioHorPrev = window._rioHorPrev || {};
+  window._rioHorPrev[dir] = {};
+
+  var saved = rioHorLoadSaved();
+  saved[dir] = saved[dir] || {};
+
+  pontos.forEach(function(p){
+    var idx = wpts.findIndex(p.match);
+    if(idx<0) return;
+    var cum = rioCumTo(wpts, idx);
+    var horas = cum/vel;
+    var arriveMs = t0 + horas*3600000;
+    // ajusta fuso local do ponto em relação ao ponto de partida
+    var arriveLocalMs = arriveMs + (wpts[idx].fuso - startFuso)*3600000;
+    var iso = new Date(arriveLocalMs - new Date(arriveLocalMs).getTimezoneOffset()*60000).toISOString().slice(0,16);
+    window._rioHorPrev[dir][p.id] = iso;
+    // só preenche o campo editável automaticamente se o usuário ainda não tiver ajustado manualmente
+    if(!saved[dir][p.id]){
+      var inp = document.getElementById('rio-hor-edit-'+p.id);
+      if(inp) inp.value = iso;
+    }
+  });
+
+  renderRioHorarios();
+  // reaplica os valores editáveis (renderRioHorarios recria os inputs)
+  pontos.forEach(function(p){
+    var inp = document.getElementById('rio-hor-edit-'+p.id);
+    if(inp && !inp.value){
+      inp.value = (saved[dir][p.id]) || (window._rioHorPrev[dir][p.id]||'');
+    }
+  });
+  toast('🔮 Previsão de horários calculada!','ok');
+}
+
+function rioHorInputChange(dir, id){
+  var inp = document.getElementById('rio-hor-edit-'+id);
+  if(!inp) return;
+  var all = rioHorLoadSaved();
+  all[dir] = all[dir]||{};
+  if(inp.value){ all[dir][id] = inp.value; } else { delete all[dir][id]; }
+  rioHorSave(all);
+  toast('💾 Horário ajustado salvo','ok');
+}
+
+function rioResetHorarios(){
+  var dir = document.getElementById('rio-dir')?.value||'subida';
+  if(!confirm('Limpar todos os ajustes manuais do sentido '+(dir==='subida'?'SUBIDA':'DESCIDA')+'?')) return;
+  var all = rioHorLoadSaved();
+  delete all[dir];
+  rioHorSave(all);
+  renderRioHorarios();
+  toast('↺ Ajustes manuais removidos','ok');
 }
 
 function printRioETA(){
@@ -7616,8 +7923,8 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.0.0';
-const APP_BUILD   = '2026-04-21';
+const APP_VERSION = '1.1.0';
+const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
 let _pendingPatch = null;
