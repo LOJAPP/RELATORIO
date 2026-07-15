@@ -1342,6 +1342,11 @@
             <div class="form-group"><label>URL do Web App (Google Apps Script)</label><input type="text" class="form-control" id="cfg-webapp-url" placeholder="https://script.google.com/macros/s/..."></div>
             <div class="form-group"><label>URL da Pasta no Drive</label><input type="text" class="form-control" id="cfg-drive-folder-url" placeholder="https://drive.google.com/drive/folders/..."></div>
             <div class="form-group"><label>Auto-sync (minutos, 0 = desativado)</label><input type="number" class="form-control" id="cfg-auto-interval" placeholder="0" min="0" max="60"></div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;margin-bottom:10px;cursor:pointer;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:9px 12px;">
+              <input type="checkbox" id="cfg-autosave" style="width:17px;height:17px;">
+              🔄 Autosalvar & sincronizar automaticamente
+              <span style="font-weight:400;font-size:10px;color:var(--text-dim);">(envia ao Drive ~45 s após cada alteração e, ao abrir o app em qualquer dispositivo, baixa a versão mais recente automaticamente)</span>
+            </label>
             <button class="btn btn-green" onclick="saveDriveConfig()" style="width:100%;margin-bottom:8px;">💾 Salvar Configuração Drive</button>
             <div id="drive-links-cfg-panel" style="margin-top:10px;"></div>
             <div style="display:flex;gap:8px;margin-top:10px;">
@@ -2474,7 +2479,10 @@ function loadData(){
   storStatus();
 }
 function saveData(silent=false){
-  try{localStorage.setItem('jac_v5',JSON.stringify({regs:S.regs,crew:S.crew,fotos:S.fotos,empresas:S.empresas,oficina:S.oficina,desvios:S.desvios,inspecoes:S.inspecoes,embHistory:S.embHistory||[],relatorios:S.relatorios||[],rioCfg:S.rioCfg||{}}));if(!silent)toast('✅ Dados salvos!','ok');storStatus();}
+  try{localStorage.setItem('jac_v5',JSON.stringify({regs:S.regs,crew:S.crew,fotos:S.fotos,empresas:S.empresas,oficina:S.oficina,desvios:S.desvios,inspecoes:S.inspecoes,embHistory:S.embHistory||[],relatorios:S.relatorios||[],rioCfg:S.rioCfg||{}}));
+    try{localStorage.setItem('jac_last_change',String(Date.now()));}catch(e){}
+    if(typeof scheduleDriveSync==='function')scheduleDriveSync();
+    if(!silent)toast('✅ Dados salvos!','ok');storStatus();}
   catch(e){toast('⚠️ Erro ao salvar — faça backup JSON','warn');}
 }
 function storStatus(){
@@ -2874,11 +2882,58 @@ function renderTP(ctx){
     <div class="photo-thumb"><img src="${p.u}" onclick="viewP('${p.u}')">
     <button class="rmp" onclick="S.tp['${ctx}'].splice(${i},1);renderTP('${ctx}')">✕</button></div>`).join('');
 }
-function viewP(src){
+function viewP(src, list){
+  const items=(Array.isArray(list)&&list.length)?list:[src];
+  let idx=Math.max(0,items.indexOf(src));
+  let zoom=false;
   const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;';
-  ov.innerHTML=`<img src="${src}" style="max-width:92vw;max-height:92vh;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.5)">`;
-  ov.onclick=()=>ov.remove();document.body.appendChild(ov);
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML=
+    '<img id="pv-img" src="'+items[idx]+'" style="max-width:94vw;max-height:86vh;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.6);transition:transform .18s;cursor:zoom-in;user-select:none;-webkit-user-drag:none;">'
+    +'<button id="pv-x" style="position:fixed;top:14px;right:14px;background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:18px;cursor:pointer;font-weight:700;z-index:2;">✕</button>'
+    +(items.length>1
+      ? '<button id="pv-prev" style="position:fixed;left:8px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:24px;cursor:pointer;z-index:2;">‹</button>'
+        +'<button id="pv-next" style="position:fixed;right:8px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:24px;cursor:pointer;z-index:2;">›</button>'
+        +'<div id="pv-count" style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);color:#fff;font-size:12px;background:rgba(255,255,255,.14);padding:4px 14px;border-radius:20px;font-weight:700;"></div>'
+      : '');
+  document.body.appendChild(ov);
+  const img=ov.querySelector('#pv-img');
+  const cnt=ov.querySelector('#pv-count');
+  const show=function(){
+    img.src=items[idx];
+    zoom=false; img.style.transform=''; img.style.cursor='zoom-in';
+    if(cnt)cnt.textContent=(idx+1)+' / '+items.length;
+  };
+  const nav=function(d){ idx=(idx+d+items.length)%items.length; show(); };
+  const close=function(){ ov.remove(); document.removeEventListener('keydown',onKey); };
+  const onKey=function(e){
+    if(e.key==='Escape')close();
+    else if(e.key==='ArrowLeft'&&items.length>1)nav(-1);
+    else if(e.key==='ArrowRight'&&items.length>1)nav(1);
+  };
+  document.addEventListener('keydown',onKey);
+  ov.onclick=function(e){ if(e.target===ov)close(); };
+  ov.querySelector('#pv-x').onclick=close;
+  if(items.length>1){
+    ov.querySelector('#pv-prev').onclick=function(e){e.stopPropagation();nav(-1);};
+    ov.querySelector('#pv-next').onclick=function(e){e.stopPropagation();nav(1);};
+  }
+  img.onclick=function(e){
+    e.stopPropagation();
+    zoom=!zoom;
+    img.style.transform=zoom?'scale(1.9)':'';
+    img.style.cursor=zoom?'zoom-out':'zoom-in';
+  };
+  // Swipe no celular
+  let tx0=null;
+  ov.addEventListener('touchstart',function(e){ tx0=e.touches[0].clientX; },{passive:true});
+  ov.addEventListener('touchend',function(e){
+    if(tx0==null||items.length<2)return;
+    const dx=e.changedTouches[0].clientX-tx0;
+    if(Math.abs(dx)>50) nav(dx>0?-1:1);
+    tx0=null;
+  },{passive:true});
+  show();
 }
 function savePhotos(){
   const ph=S.tp.av||[];if(!ph.length){toast('⚠️ Nenhuma foto selecionada','warn');return;}
@@ -2902,10 +2957,13 @@ function renderGallery(){
   S.regs.forEach(r=>(r.fotos||[]).forEach(u=>all.push({u,desc:`SEM ${r.s}: ${r.a.slice(0,40)}`,ts:r.ts})));
   S.fotos.forEach(f=>all.push({u:f.u,desc:f.desc||f.nm,ts:f.ts}));
   if(!all.length){g.innerHTML='<div class="empty-state" style="width:100%"><div class="ico">🖼️</div><p>Nenhuma foto</p></div>';return;}
-  g.innerHTML=all.sort((a,b)=>b.ts-a.ts).map(f=>`
-    <div style="cursor:pointer;width:110px" onclick="viewP('${f.u}')">
-      <div class="photo-thumb" style="width:110px;height:82px"><img src="${f.u}" alt=""></div>
-      <div style="font-size:10px;color:var(--text-dim);margin-top:3px">${(f.desc||'').slice(0,40)}</div>
+  all.sort((a,b)=>b.ts-a.ts);
+  window._galList=all.map(f=>f.u);
+  g.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;width:100%;';
+  g.innerHTML=all.map((f,i)=>`
+    <div style="cursor:pointer;" onclick="viewP(window._galList[${i}],window._galList)">
+      <div style="aspect-ratio:4/3;overflow:hidden;border-radius:8px;border:2px solid var(--border);background:#fff;"><img src="${f.u}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(f.desc||'').slice(0,48)}</div>
     </div>`).join('');
 }
 
@@ -7382,6 +7440,7 @@ function renderConfigPage(){
   const wu=document.getElementById('cfg-webapp-url');if(wu)wu.value=cfg.webAppUrl||'';
   const fu=document.getElementById('cfg-drive-folder-url');if(fu)fu.value=cfg.driveFolderUrl||'';
   const ai=document.getElementById('cfg-auto-interval');if(ai)ai.value=cfg.autoInterval||'0';
+  const as=document.getElementById('cfg-autosave');if(as)as.checked=!!cfg.autoSave;
   // Render config status
   renderDriveConfigStatus();
   // Render drive links in config panel
@@ -7443,6 +7502,7 @@ function saveDriveConfig(){
   cfg.webAppUrl=url||'';
   cfg.driveFolderUrl=folderUrl||'';
   cfg.autoInterval=interval;
+  cfg.autoSave=!!document.getElementById('cfg-autosave')?.checked;
   saveCfg(cfg);
 
   // Update drive link with folder URL if provided
@@ -7497,10 +7557,17 @@ async function sendToDrive(silent=false){
     return;
   }
   if(!silent){showDriveStatus('⏳ Enviando para o Drive...','info');toast('⏳ Sincronizando...','ok');}
+  const _cfgAll=getCfg();
+  const _extraLs={};
+  ['jac_viagens','jac_rio','jac_rio_trechos2','jac_rio_portos','jac_rio_portos_custom','jac_rio_chm','jac_rtz_route'].forEach(k=>{
+    const v=localStorage.getItem(k); if(v!=null)_extraLs[k]=v;
+  });
   const payload={
-    v:5, exp:new Date().toISOString(),
+    v:6, exp:new Date().toISOString(),
     regs:S.regs, crew:S.crew, fotos:S.fotos,
     empresas:S.empresas, oficina:S.oficina, desvios:S.desvios,
+    inspecoes:S.inspecoes||[], embHistory:S.embHistory||[], relatorios:S.relatorios||[], rioCfg:S.rioCfg||{},
+    extras:{ ls:_extraLs, vessel:_cfgAll.vessel||{} }
   };
   try{
     // Apps Script CORS: use no-cors mode, then verify with GET
@@ -7532,6 +7599,25 @@ async function sendToDrive(silent=false){
   }
 }
 
+function applyDriveData(data, silent){
+  S.regs=data.regs||[];S.crew=data.crew||[];S.fotos=data.fotos||[];
+  S.empresas=data.empresas||[];S.oficina=data.oficina||[];S.desvios=data.desvios||[];
+  if(data.inspecoes)S.inspecoes=data.inspecoes;
+  if(data.embHistory)S.embHistory=data.embHistory;
+  if(data.relatorios)S.relatorios=data.relatorios;
+  if(data.rioCfg)S.rioCfg=data.rioCfg;
+  if(data.extras){
+    if(data.extras.ls){ Object.keys(data.extras.ls).forEach(k=>{ try{localStorage.setItem(k,data.extras.ls[k]);}catch(e){} }); }
+    if(data.extras.vessel){ const c=getCfg(); c.vessel=Object.assign({},c.vessel||{},data.extras.vessel); saveCfg(c); }
+  }
+  saveData(true);
+  // Marca o momento do dado remoto como "última alteração local" p/ não re-empurrar em loop
+  try{ if(data.exp) localStorage.setItem('jac_last_change', String(new Date(data.exp).getTime())); }catch(e){}
+  kpis();renderDash();
+  try{ if(document.getElementById('page-rio')?.classList.contains('active')) initRio(); }catch(e){}
+  if(!silent)toast('✅ Dados sincronizados do Drive!','ok');
+}
+
 async function loadFromDrive(){
   const cfg=getCfg();
   if(!cfg.webAppUrl){
@@ -7545,15 +7631,43 @@ async function loadFromDrive(){
     if(data.error)throw new Error(data.error);
     if(!data.regs){showDriveStatus('⚠️ Drive sem dados salvos ainda.','info');return;}
     if(!confirm(`Carregar dados do Drive?\n\nRegistros: ${(data.regs||[]).length}\nTripulantes: ${(data.crew||[]).length}\nExportado em: ${data.exp||'—'}\n\n⚠️ Os dados locais serão SUBSTITUÍDOS.`))return;
-    S.regs=data.regs||[];S.crew=data.crew||[];S.fotos=data.fotos||[];
-    S.empresas=data.empresas||[];S.oficina=data.oficina||[];S.desvios=data.desvios||[];
-    saveData(true);kpis();renderDash();
+    applyDriveData(data,true);
     showDriveStatus(`✅ Dados carregados do Drive! ${S.regs.length} registros.`,'ok');
     toast('✅ Dados sincronizados do Drive!','ok');
   }catch(e){
     showDriveStatus(`❌ Erro ao carregar: ${e.message}`,'err');
   }
 }
+
+// ── AUTOSALVAR & SYNC ENTRE DISPOSITIVOS ──
+var _driveDebounce=null;
+function scheduleDriveSync(){
+  const cfg=getCfg();
+  if(!cfg.autoSave||!cfg.webAppUrl)return;
+  if(_driveDebounce)clearTimeout(_driveDebounce);
+  _driveDebounce=setTimeout(function(){ sendToDrive(true); },45000); // 45 s após a última alteração
+}
+async function autoStartupSync(){
+  const cfg=getCfg();
+  if(!cfg.autoSave||!cfg.webAppUrl)return;
+  try{
+    const res=await fetch(cfg.webAppUrl+'?t='+Date.now());
+    if(!res.ok)return;
+    const data=await res.json();
+    if(!data||data.error||!data.exp)return;
+    const remote=new Date(data.exp).getTime();
+    const local=parseInt(localStorage.getItem('jac_last_change')||'0');
+    if(remote>local+5000){
+      applyDriveData(data,true);
+      toast('☁️ Dados atualizados do Drive (alterados em outro dispositivo)','ok');
+    } else if(local>remote+5000){
+      sendToDrive(true); // este dispositivo está mais novo → sobe
+    }
+  }catch(e){}
+}
+// Salvaguardas: salva ao sair/ocultar o app
+window.addEventListener('visibilitychange',function(){ if(document.hidden){ try{saveData(true);}catch(e){} } });
+window.addEventListener('beforeunload',function(){ try{saveData(true);}catch(e){} });
 
 async function testDriveConnection(){
   const cfg=getCfg();
@@ -8764,7 +8878,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.6.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
@@ -11918,7 +12032,7 @@ const _importApply = {
 window.addEventListener('beforeunload', function(){ saveData(true); });
 // Auto-save every 60s as safety net  
 setInterval(function(){ saveData(true); }, 60000);
-loadData();checkInspFromURL();kpis();renderDash();fillWeekSel();renderDriveLinks();
+loadData();checkInspFromURL();kpis();renderDash();fillWeekSel();renderDriveLinks();setTimeout(function(){try{autoStartupSync();}catch(e){}},1200);
 // Check for embedded data from shared HTML
 if(window.__JDATA_PENDING__){
   setTimeout(function(){
