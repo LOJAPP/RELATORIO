@@ -1399,7 +1399,7 @@
           </div>
           <button class="btn btn-primary" onclick="rioBuildETA()" style="width:100%;">🧮 Calcular ETA por Trecho</button>
           <div style="font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.5;">
-            ⭐ Os pontos em destaque (Pecém, Barra Norte, Macapá, Itacoatiara, Manaus) são <strong>totalmente editáveis</strong>: ajuste a <strong>distância</strong>, a <strong>velocidade</strong>, o <strong>tempo</strong> ou o <strong>ETA</strong> — ao editar qualquer campo, todos os trechos seguintes recalculam automaticamente. A velocidade editada passa a valer daquele trecho em diante; editar o ETA ou o tempo ajusta a chegada real do ponto. Distâncias e waypoints completos da rota já aparecem juntos na mesma tabela.
+            ✏️ <strong>Todos os waypoints são editáveis</strong>: em qualquer linha ajuste a <strong>distância</strong>, a <strong>velocidade</strong>, o <strong>tempo</strong> ou o <strong>ETA</strong> — ao editar qualquer campo, os trechos seguintes recalculam automaticamente em cascata. A velocidade editada passa a valer daquele trecho em diante; ETA/tempo fixam a chegada real no ponto. Os pontos-chave da linha (⭐ Pecém, Barra Norte, Macapá, Itacoatiara, Manaus) aparecem destacados.
           </div>
           <div id="rio-eta-result" style="margin-top:12px;"></div>
           <div id="rio-eta-notas" style="margin-top:8px;font-size:11px;color:var(--text-dim);"></div>
@@ -1420,6 +1420,35 @@
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-primary" onclick="rioPortoAdd()">➕ Adicionar trecho</button>
             <button class="btn btn-ghost btn-sm" onclick="rioPortosReset()">↺ Limpar planejador</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rotas ECDIS (RTZ) -->
+      <div class="panel">
+        <div class="panel-header">🗺️ Rotas ECDIS — Importar · Editar · Converter (RTZ / GPX / KML / CSV)</div>
+        <div style="padding:14px;">
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
+            Carregue a rota exportada do ECDIS em <strong>RTZ</strong> (padrão IEC 61174, ex.: Chartpilot/Navi-Planner) — ou GPX/KML/CSV — para ver e <strong>editar os waypoints</strong> (nome, latitude, longitude, velocidade). As distâncias entre waypoints são calculadas automaticamente. Depois exporte no formato desejado para levar de volta ao ECDIS ou usar em outros sistemas.
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+            <label class="btn btn-primary btn-sm" style="cursor:pointer;">📂 Importar rota
+              <input type="file" id="rtz-file" accept=".rtz,.xml,.gpx,.kml,.csv" style="display:none;" onchange="rtzImport(this)">
+            </label>
+            <button class="btn btn-ghost btn-sm" onclick="rtzNew()">🆕 Nova rota</button>
+            <button class="btn btn-ghost btn-sm" onclick="rtzAddWp()">➕ Waypoint</button>
+            <span id="rtz-route-name" style="font-weight:800;font-size:12px;color:var(--login-blue);"></span>
+          </div>
+          <div id="rtz-body"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;">
+            <span style="font-size:11px;font-weight:700;color:var(--text-dim);">Exportar:</span>
+            <button class="btn btn-green btn-sm" onclick="rtzExport('rtz')">💾 RTZ (ECDIS)</button>
+            <button class="btn btn-ghost btn-sm" onclick="rtzExport('gpx')">📍 GPX</button>
+            <button class="btn btn-ghost btn-sm" onclick="rtzExport('kml')">🌍 KML</button>
+            <button class="btn btn-ghost btn-sm" onclick="rtzExport('csv')">📋 CSV</button>
+          </div>
+          <div style="margin-top:10px;padding:8px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:10.5px;color:var(--text-dim);line-height:1.5;">
+            💻 Para conversões avançadas entre formatos proprietários (JRC RTM/RTN, Transas RT3, Furuno, Sperry etc.) no computador do passadiço (Windows), use o <strong>ECDIS Route Manager</strong>. <a href="ECDIS_Route_Manager.exe" download style="font-weight:700;">Baixar ECDIS_Route_Manager.exe</a> <span style="color:var(--muted);">(disponível se o arquivo estiver no repositório do app)</span>.
           </div>
         </div>
       </div>
@@ -1459,6 +1488,7 @@
             </div>
             <div class="form-group"><label>🕐 Data/Hora da passagem</label>
               <input type="datetime-local" class="form-control" id="rio-pass-dt" onchange="calcUKC()">
+              <button class="btn btn-ghost btn-sm" style="margin-top:4px;font-size:10px;padding:3px 8px;width:100%;" onclick="rioUsarEtaBN()" title="Preenche com o ETA de Barra Norte calculado na tabela ETA por Trecho">🧮 Usar ETA de Barra Norte</button>
             </div>
             <div class="form-group"><label>📏 NR carta (m)</label>
               <input type="number" step="0.01" class="form-control" id="rio-nr" value="8.80" oninput="calcUKC()">
@@ -3392,6 +3422,7 @@ function initRio(){
   rioChmRestore();
   rioBuildETA();
   rioPortosInit();
+  rtzRender();
 }
 
 function rioFillStarts(){
@@ -3487,10 +3518,10 @@ function rioKeyIdOf(w){
   return null;
 }
 function rioTrechoLoad(){
-  try{ return JSON.parse(localStorage.getItem('jac_rio_trechos')||'{}'); }catch(e){ return {}; }
+  try{ return JSON.parse(localStorage.getItem('jac_rio_trechos2')||'{}'); }catch(e){ return {}; }
 }
 function rioTrechoSave(all){
-  try{ localStorage.setItem('jac_rio_trechos', JSON.stringify(all)); }catch(e){}
+  try{ localStorage.setItem('jac_rio_trechos2', JSON.stringify(all)); }catch(e){}
 }
 function rioMsToLocalISO(ms){
   return new Date(ms - new Date(ms).getTimezoneOffset()*60000).toISOString().slice(0,16);
@@ -3513,16 +3544,19 @@ function rioBuildETA(){
   var startFuso = wpts[startIdx].fuso;
 
   var t = t0;            // linha do tempo interna (referida ao fuso do ponto de partida)
-  var curVel = vel0;     // velocidade vigente (pode mudar nos pontos-chave)
+  var curVel = vel0;     // velocidade vigente (pode mudar em qualquer waypoint editado)
   var branchT = t0;      // tempo no último ponto não-alternativo (base p/ destinos alternativos)
   var cumD = 0, nEdit = 0;
   var prevFuso = startFuso;
   var rows = '';
+  window._rioBnEta = window._rioBnEta||{};
 
   for(var i=0;i<real.length;i++){
     var w = real[i];
-    var keyId = (i===0) ? null : rioKeyIdOf(w);
-    var ov = keyId ? (over[keyId]||{}) : {};
+    var gIdx = startIdx + i;                    // índice global do waypoint no sentido atual
+    var rid = (i===0) ? null : ('w'+gIdx);      // TODOS os waypoints são editáveis (exceto a partida)
+    var keyId = (i===0) ? null : rioKeyIdOf(w); // pontos-chave só para destaque visual
+    var ov = rid ? (over[rid]||{}) : {};
 
     // Distância do trecho (editável nos pontos-chave)
     var d = (i===0) ? 0 : ((ov.dist>0) ? ov.dist : w.d);
@@ -3565,6 +3599,8 @@ function rioBuildETA(){
     var fusoTag = (!w.alt && w.fuso!==prevFuso) ? ' <span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">FUSO '+(w.fuso>0?'+':'')+w.fuso+'</span>' : '';
     if(!w.alt) prevFuso = w.fuso;
 
+    if(!w.alt && w.key==='bn'){ window._rioBnEta[dir] = displayMs; }
+
     var isKey = !!keyId;
     var rowStyle = isKey
       ? 'background:linear-gradient(90deg,#ecfeff,#f0fdff 70%);border-left:3px solid #0891b2;'
@@ -3572,18 +3608,19 @@ function rioBuildETA(){
     var nameStyle = 'font-weight:'+(isKey?'800':'500')+';color:'+(isKey?'#0e7490':'var(--text)')+';';
 
     var edStyle = function(on){ return on ? 'border-color:#f59e0b;background:#fffbeb;' : ''; };
+    var anyEd = (edited||tempoEdited||distEdited||velEdited);
     var distCell, velCell, tempoCell, etaCell;
-    if(isKey){
-      distCell = '<input type="number" step="0.1" min="0" class="form-control" style="width:80px;font-size:11px;padding:5px 6px;text-align:right;'+edStyle(distEdited)+'" value="'+d.toFixed(1)+'" onchange="rioOvr(\''+keyId+'\',\'dist\',this.value)" title="Distância do trecho até este ponto (nm)">';
-      velCell = '<input type="number" step="0.1" min="1" class="form-control" style="width:70px;font-size:11px;padding:5px 6px;text-align:right;'+edStyle(velEdited)+'" value="'+velShown.toFixed(1)+'" onchange="rioOvr(\''+keyId+'\',\'vel\',this.value)" title="Velocidade neste trecho e nos seguintes (nós)">';
-      tempoCell = '<input type="number" step="0.1" min="0" class="form-control" style="width:74px;font-size:11px;padding:5px 6px;text-align:right;'+edStyle(tempoEdited)+'" value="'+hShown.toFixed(2)+'" onchange="rioOvr(\''+keyId+'\',\'tempo\',this.value)" title="Tempo do trecho (horas)">';
-      etaCell = '<input type="datetime-local" class="form-control" style="min-width:168px;font-size:11px;padding:5px 6px;'+edStyle(edited)+'" value="'+rioMsToLocalISO(displayMs)+'" onchange="rioOvr(\''+keyId+'\',\'eta\',this.value)">'
-        + ((edited||tempoEdited||distEdited||velEdited)?'<div style="font-size:9px;color:#b45309;font-weight:700;margin-top:2px;">✏️ ajustado manualmente</div>':'');
+    if(rid){
+      distCell = '<input type="number" step="0.1" min="0" class="form-control" style="width:80px;font-size:11px;padding:5px 6px;text-align:right;'+edStyle(distEdited)+'" value="'+d.toFixed(1)+'" onchange="rioOvr(\''+rid+'\',\'dist\',this.value)" title="Distância do trecho até este ponto (nm)">';
+      velCell = '<input type="number" step="0.1" min="1" class="form-control" style="width:70px;font-size:11px;padding:5px 6px;text-align:right;'+edStyle(velEdited)+'" value="'+velShown.toFixed(1)+'" onchange="rioOvr(\''+rid+'\',\'vel\',this.value)" title="Velocidade neste trecho e nos seguintes (nós)">';
+      tempoCell = '<input type="number" step="0.1" min="0" class="form-control" style="width:74px;font-size:11px;padding:5px 6px;text-align:right;'+edStyle(tempoEdited)+'" value="'+hShown.toFixed(2)+'" onchange="rioOvr(\''+rid+'\',\'tempo\',this.value)" title="Tempo do trecho (horas)">';
+      etaCell = '<input type="datetime-local" class="form-control" style="min-width:168px;font-size:11px;padding:5px 6px;'+edStyle(edited)+'" value="'+rioMsToLocalISO(displayMs)+'" onchange="rioOvr(\''+rid+'\',\'eta\',this.value)">'
+        + (anyEd?'<div style="font-size:9px;color:#b45309;font-weight:700;margin-top:2px;">✏️ ajustado manualmente</div>':'');
     } else {
       distCell = '<span class="mono">'+(d>0?d.toFixed(1):'—')+'</span>';
-      velCell = '<span class="mono" style="color:var(--text-dim);">'+(i===0?'—':velShown.toFixed(1))+'</span>';
-      tempoCell = '<span class="mono" style="color:var(--login-blue);">'+(i===0?'—':hShown.toFixed(2))+'</span>';
-      etaCell = '<span class="mono" style="font-weight:'+(i===0?'800':'600')+';">'+(i===0?'🕐 ':'')+new Date(displayMs).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span>';
+      velCell = '<span class="mono" style="color:var(--text-dim);">—</span>';
+      tempoCell = '<span class="mono" style="color:var(--login-blue);">—</span>';
+      etaCell = '<span class="mono" style="font-weight:800;">🕐 '+new Date(displayMs).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span>';
     }
 
     rows += '<tr style="'+rowStyle+'">'
@@ -4035,6 +4072,254 @@ function fmtDT(iso){
   if(!iso) return '—';
   var d = new Date(iso);
   return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ─────────────────────────────────────────────
+// ROTAS ECDIS — RTZ / GPX / KML / CSV
+// ─────────────────────────────────────────────
+function rtzLoad(){
+  try{ return JSON.parse(localStorage.getItem('jac_rtz_route')||'null') || {name:'NOVA ROTA', wps:[]}; }catch(e){ return {name:'NOVA ROTA', wps:[]}; }
+}
+function rtzSave(r){
+  try{ localStorage.setItem('jac_rtz_route', JSON.stringify(r)); }catch(e){}
+}
+function rtzHaversineNm(la1,lo1,la2,lo2){
+  var R=3440.065, rad=Math.PI/180;
+  var dLa=(la2-la1)*rad, dLo=(lo2-lo1)*rad;
+  var a=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(la1*rad)*Math.cos(la2*rad)*Math.sin(dLo/2)*Math.sin(dLo/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function rtzFmtCoord(v, isLat){
+  var hemi = isLat ? (v>=0?'N':'S') : (v>=0?'E':'W');
+  var abs=Math.abs(v), deg=Math.floor(abs), min=(abs-deg)*60;
+  return String(deg).padStart(isLat?2:3,'0')+'°'+min.toFixed(3).padStart(6,'0')+"'"+hemi;
+}
+function rtzImport(inp){
+  var f = inp.files && inp.files[0];
+  if(!f) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      var txt = ev.target.result;
+      var ext = (f.name.split('.').pop()||'').toLowerCase();
+      var route = null;
+      if(ext==='csv'){ route = rtzParseCSV(txt, f.name); }
+      else {
+        var xml = new DOMParser().parseFromString(txt, 'text/xml');
+        if(xml.getElementsByTagName('parsererror').length){ throw new Error('XML inválido'); }
+        if(ext==='gpx' || xml.documentElement.nodeName.toLowerCase()==='gpx'){ route = rtzParseGPX(xml, f.name); }
+        else if(ext==='kml' || xml.documentElement.nodeName.toLowerCase()==='kml'){ route = rtzParseKML(xml, f.name); }
+        else { route = rtzParseRTZ(xml, f.name); }
+      }
+      if(!route || !route.wps.length){ toast('⚠️ Nenhum waypoint encontrado no arquivo','warn'); return; }
+      rtzSave(route);
+      rtzRender();
+      toast('📂 Rota "'+route.name+'" importada — '+route.wps.length+' waypoints','ok');
+    }catch(e){
+      toast('❌ Erro ao ler arquivo: '+e.message,'err');
+    }
+    inp.value='';
+  };
+  reader.readAsText(f);
+}
+function rtzParseRTZ(xml, fname){
+  var ri = xml.getElementsByTagName('routeInfo')[0];
+  var name = (ri && ri.getAttribute('routeName')) || fname.replace(/\.[^.]+$/,'');
+  var wps = [];
+  var nodes = xml.getElementsByTagName('waypoint');
+  for(var i=0;i<nodes.length;i++){
+    var n = nodes[i];
+    var pos = n.getElementsByTagName('position')[0];
+    if(!pos) continue;
+    var leg = n.getElementsByTagName('leg')[0];
+    var spd = leg ? parseFloat(leg.getAttribute('planSpeedMax')||leg.getAttribute('planSpeed')||leg.getAttribute('speedMax')||'') : NaN;
+    wps.push({
+      name: n.getAttribute('name') || ('WP'+(i+1)),
+      lat: parseFloat(pos.getAttribute('lat')),
+      lon: parseFloat(pos.getAttribute('lon')),
+      vel: isNaN(spd)?'':spd
+    });
+  }
+  return {name:name, wps:wps};
+}
+function rtzParseGPX(xml, fname){
+  var name = fname.replace(/\.[^.]+$/,'');
+  var pts = xml.getElementsByTagName('rtept');
+  if(!pts.length) pts = xml.getElementsByTagName('trkpt');
+  if(!pts.length) pts = xml.getElementsByTagName('wpt');
+  var wps=[];
+  for(var i=0;i<pts.length;i++){
+    var p=pts[i];
+    var nm=p.getElementsByTagName('name')[0];
+    wps.push({name: nm?nm.textContent.trim():('WP'+(i+1)), lat:parseFloat(p.getAttribute('lat')), lon:parseFloat(p.getAttribute('lon')), vel:''});
+  }
+  return {name:name, wps:wps};
+}
+function rtzParseKML(xml, fname){
+  var name = fname.replace(/\.[^.]+$/,'');
+  var wps=[];
+  // 1) Placemarks com Point
+  var pms = xml.getElementsByTagName('Placemark');
+  for(var i=0;i<pms.length;i++){
+    var pt = pms[i].getElementsByTagName('Point')[0];
+    if(!pt) continue;
+    var c = pt.getElementsByTagName('coordinates')[0];
+    if(!c) continue;
+    var parts = c.textContent.trim().split(',');
+    var nmEl = pms[i].getElementsByTagName('name')[0];
+    wps.push({name:nmEl?nmEl.textContent.trim():('WP'+(wps.length+1)), lat:parseFloat(parts[1]), lon:parseFloat(parts[0]), vel:''});
+  }
+  // 2) LineString (rota contínua)
+  if(!wps.length){
+    var ls = xml.getElementsByTagName('LineString')[0];
+    if(ls){
+      var cs = ls.getElementsByTagName('coordinates')[0];
+      if(cs){
+        cs.textContent.trim().split(/\s+/).forEach(function(tok,i){
+          var p = tok.split(',');
+          if(p.length>=2) wps.push({name:'WP'+(i+1), lat:parseFloat(p[1]), lon:parseFloat(p[0]), vel:''});
+        });
+      }
+    }
+  }
+  return {name:name, wps:wps};
+}
+function rtzParseCSV(txt, fname){
+  var name = fname.replace(/\.[^.]+$/,'');
+  var lines = txt.split(/\r?\n/).filter(function(l){return l.trim();});
+  if(!lines.length) return {name:name, wps:[]};
+  var sep = lines[0].indexOf(';')>=0?';':',';
+  var head = lines[0].toLowerCase().split(sep).map(function(s){return s.trim();});
+  var iName = head.findIndex(function(h){return h.indexOf('name')>=0||h.indexOf('nome')>=0||h.indexOf('wp')>=0;});
+  var iLat  = head.findIndex(function(h){return h.indexOf('lat')>=0;});
+  var iLon  = head.findIndex(function(h){return h.indexOf('lon')>=0||h.indexOf('lng')>=0;});
+  var iVel  = head.findIndex(function(h){return h.indexOf('vel')>=0||h.indexOf('speed')>=0;});
+  var start = (iLat>=0&&iLon>=0)?1:0;
+  if(start===0){ iName=0; iLat=1; iLon=2; iVel=3; }
+  var wps=[];
+  for(var i=start;i<lines.length;i++){
+    var c = lines[i].split(sep);
+    var lat = parseFloat((c[iLat]||'').replace(',','.'));
+    var lon = parseFloat((c[iLon]||'').replace(',','.'));
+    if(isNaN(lat)||isNaN(lon)) continue;
+    var v = iVel>=0 ? parseFloat((c[iVel]||'').replace(',','.')) : NaN;
+    wps.push({name:(c[iName]||'WP'+(wps.length+1)).trim(), lat:lat, lon:lon, vel:isNaN(v)?'':v});
+  }
+  return {name:name, wps:wps};
+}
+function rtzRender(){
+  var el = document.getElementById('rtz-body');
+  if(!el) return;
+  var r = rtzLoad();
+  var nameEl = document.getElementById('rtz-route-name');
+  if(nameEl) nameEl.innerHTML = r.wps.length ? '🧭 <input type="text" class="form-control" style="display:inline-block;width:auto;min-width:160px;font-size:12px;padding:4px 8px;font-weight:800;" value="'+escHtml(r.name)+'" onchange="rtzRename(this.value)">' : '';
+  if(!r.wps.length){
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px;background:#f8fafc;border:1px dashed var(--border);border-radius:10px;">📂 Importe um arquivo RTZ do ECDIS ou crie uma nova rota para começar</div>';
+    return;
+  }
+  var total=0;
+  var rows = r.wps.map(function(w,i){
+    var dist = i===0?0:rtzHaversineNm(r.wps[i-1].lat, r.wps[i-1].lon, w.lat, w.lon);
+    total += dist;
+    return '<tr>'
+      + '<td class="mono" style="color:var(--muted);">'+(i+1)+'</td>'
+      + '<td><input type="text" class="form-control" style="min-width:110px;font-size:11px;padding:4px 6px;" value="'+escHtml(w.name)+'" onchange="rtzUpd('+i+',\'name\',this.value)"></td>'
+      + '<td><input type="number" step="0.00001" class="form-control" style="width:104px;font-size:11px;padding:4px 6px;text-align:right;" value="'+w.lat+'" onchange="rtzUpd('+i+',\'lat\',this.value)"><div class="mono" style="font-size:9px;color:var(--muted);text-align:right;">'+rtzFmtCoord(w.lat,true)+'</div></td>'
+      + '<td><input type="number" step="0.00001" class="form-control" style="width:110px;font-size:11px;padding:4px 6px;text-align:right;" value="'+w.lon+'" onchange="rtzUpd('+i+',\'lon\',this.value)"><div class="mono" style="font-size:9px;color:var(--muted);text-align:right;">'+rtzFmtCoord(w.lon,false)+'</div></td>'
+      + '<td><input type="number" step="0.1" min="0" class="form-control" style="width:66px;font-size:11px;padding:4px 6px;text-align:right;" value="'+(w.vel===''?'':w.vel)+'" placeholder="—" onchange="rtzUpd('+i+',\'vel\',this.value)"></td>'
+      + '<td class="mono" style="text-align:right;">'+(i===0?'—':dist.toFixed(2))+'</td>'
+      + '<td class="mono" style="text-align:right;color:var(--text-dim);">'+total.toFixed(1)+'</td>'
+      + '<td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="padding:2px 7px;color:var(--danger);" onclick="rtzDel('+i+')" title="Remover">✕</button></td>'
+      + '</tr>';
+  }).join('');
+  el.innerHTML = '<div style="overflow-x:auto;"><table class="tbl" style="width:100%;font-size:12px;min-width:760px;">'
+    + '<thead><tr><th>#</th><th>Waypoint</th><th>Latitude</th><th>Longitude</th><th style="text-align:right;">Vel (nós)</th><th style="text-align:right;">Trecho (nm)</th><th style="text-align:right;">Acum. (nm)</th><th></th></tr></thead>'
+    + '<tbody>'+rows+'</tbody></table></div>'
+    + '<div style="margin-top:8px;padding:8px 12px;background:var(--login-blue-xlt);border-radius:6px;font-size:12px;">📏 <strong>'+r.wps.length+' waypoints</strong> · distância total '+total.toFixed(1)+' NM (loxodromia/haversine)</div>';
+}
+function rtzRename(v){ var r=rtzLoad(); r.name=v||'ROTA'; rtzSave(r); }
+function rtzUpd(i, field, val){
+  var r = rtzLoad();
+  if(!r.wps[i]) return;
+  if(field==='name'){ r.wps[i].name = val; }
+  else if(field==='vel'){ r.wps[i].vel = val===''?'':parseFloat(val); }
+  else { var v=parseFloat(val); if(!isNaN(v)) r.wps[i][field]=v; }
+  rtzSave(r);
+  rtzRender();
+}
+function rtzAddWp(){
+  var r = rtzLoad();
+  var last = r.wps[r.wps.length-1];
+  r.wps.push({name:'WP'+(r.wps.length+1), lat:last?last.lat:0, lon:last?last.lon:0, vel:last?last.vel:''});
+  rtzSave(r);
+  rtzRender();
+}
+function rtzDel(i){
+  var r = rtzLoad();
+  r.wps.splice(i,1);
+  rtzSave(r);
+  rtzRender();
+}
+function rtzNew(){
+  if(rtzLoad().wps.length && !confirm('Descartar a rota atual e criar uma nova?')) return;
+  rtzSave({name:'NOVA ROTA', wps:[]});
+  rtzRender();
+}
+function rtzXmlEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function rtzExport(fmt){
+  var r = rtzLoad();
+  if(!r.wps.length){ toast('⚠️ Não há waypoints para exportar','warn'); return; }
+  var content='', mime='', ext=fmt;
+  if(fmt==='rtz'){
+    mime='application/xml';
+    content = '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + '<route xmlns="http://www.cirm.org/RTZ/1/1" version="1.1">\n'
+      + '  <routeInfo routeName="'+rtzXmlEsc(r.name)+'" routeAuthor="LOG-IN Jacaranda App"/>\n'
+      + '  <waypoints>\n    <defaultWaypoint radius="0.30"/>\n'
+      + r.wps.map(function(w,i){
+          return '    <waypoint id="'+(i+1)+'" name="'+rtzXmlEsc(w.name)+'">\n'
+            + '      <position lat="'+w.lat.toFixed(6)+'" lon="'+w.lon.toFixed(6)+'"/>\n'
+            + (w.vel!==''&&!isNaN(w.vel)?'      <leg planSpeedMax="'+parseFloat(w.vel).toFixed(1)+'"/>\n':'')
+            + '    </waypoint>';
+        }).join('\n')+'\n'
+      + '  </waypoints>\n</route>\n';
+  } else if(fmt==='gpx'){
+    mime='application/gpx+xml';
+    content = '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + '<gpx version="1.1" creator="LOG-IN Jacaranda App" xmlns="http://www.topografix.com/GPX/1/1">\n'
+      + '  <rte>\n    <name>'+rtzXmlEsc(r.name)+'</name>\n'
+      + r.wps.map(function(w){ return '    <rtept lat="'+w.lat.toFixed(6)+'" lon="'+w.lon.toFixed(6)+'"><name>'+rtzXmlEsc(w.name)+'</name></rtept>'; }).join('\n')+'\n'
+      + '  </rte>\n</gpx>\n';
+  } else if(fmt==='kml'){
+    mime='application/vnd.google-earth.kml+xml';
+    content = '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + '<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>'+rtzXmlEsc(r.name)+'</name>\n'
+      + r.wps.map(function(w){ return '  <Placemark><name>'+rtzXmlEsc(w.name)+'</name><Point><coordinates>'+w.lon.toFixed(6)+','+w.lat.toFixed(6)+',0</coordinates></Point></Placemark>'; }).join('\n')+'\n'
+      + '  <Placemark><name>'+rtzXmlEsc(r.name)+' — linha</name><LineString><coordinates>\n'
+      + r.wps.map(function(w){ return '    '+w.lon.toFixed(6)+','+w.lat.toFixed(6)+',0'; }).join('\n')+'\n'
+      + '  </coordinates></LineString></Placemark>\n</Document></kml>\n';
+  } else {
+    mime='text/csv'; ext='csv';
+    content = 'name;lat;lon;vel\n' + r.wps.map(function(w){ return [w.name, w.lat.toFixed(6), w.lon.toFixed(6), (w.vel===''?'':w.vel)].join(';'); }).join('\n')+'\n';
+  }
+  var blob = new Blob([content], {type:mime});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (r.name||'rota').replace(/[^\w\-]+/g,'_')+'.'+ext;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
+  toast('💾 Rota exportada em '+fmt.toUpperCase(),'ok');
+}
+
+function rioUsarEtaBN(){
+  var dir = document.getElementById('rio-dir')?.value||'subida';
+  if(!window._rioBnEta || !window._rioBnEta[dir]){ rioBuildETA(); }
+  var ms = window._rioBnEta && window._rioBnEta[dir];
+  if(!ms){ toast('⚠️ Calcule primeiro o ETA por Trecho (informe saída e velocidade)','warn'); return; }
+  var inp = document.getElementById('rio-pass-dt');
+  if(inp){ inp.value = rioMsToLocalISO(ms); }
+  calcUKC();
+  toast('🧮 Passagem = ETA de Barra Norte ('+fmtDT(rioMsToLocalISO(ms))+') — maré recalculada','ok');
 }
 
 // ─────────────────────────────────────────────
@@ -8142,7 +8427,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.2.1';
+const APP_VERSION = '1.3.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
