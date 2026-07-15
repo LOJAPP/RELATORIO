@@ -1376,6 +1376,32 @@
         </div>
       </div>
 
+      <!-- Viagem: número, backup e relatório -->
+      <div class="panel">
+        <div class="panel-header">🧾 Viagem — Nº de Viagem · Backup · Relatório PDF</div>
+        <div style="padding:14px;">
+          <div class="form-row" style="margin-bottom:8px;">
+            <div class="form-group"><label>Nº da Viagem</label>
+              <input type="text" class="form-control" id="rio-viagem-nro" placeholder="Ex: V-2607/26" onchange="try{localStorage.setItem('jac_viagem_last',this.value)}catch(e){}">
+            </div>
+            <div class="form-group" style="flex:1.4;"><label>Backups salvos (por Nº de viagem)</label>
+              <select class="form-control" id="rio-viagem-list"></select>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="rioViagemSalvar()">💾 Salvar backup da viagem</button>
+            <button class="btn btn-green btn-sm" onclick="rioViagemPDF()">📄 Relatório PDF da Viagem</button>
+            <button class="btn btn-ghost btn-sm" onclick="rioViagemRestaurar()">♻️ Restaurar selecionada</button>
+            <button class="btn btn-ghost btn-sm" onclick="rioViagemExportar()">📤 Exportar arquivo (.json)</button>
+            <label class="btn btn-ghost btn-sm" style="cursor:pointer;">📥 Importar arquivo
+              <input type="file" accept=".json" style="display:none;" onchange="rioViagemImportar(this)">
+            </label>
+            <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="rioViagemExcluir()">🗑️ Excluir selecionada</button>
+          </div>
+          <div id="rio-viagem-status" style="margin-top:8px;font-size:11px;color:var(--text-dim);"></div>
+        </div>
+      </div>
+
       <!-- ETA por Trecho — unificado com distâncias/waypoints, editável nos pontos-chave -->
       <div class="panel">
         <div class="panel-header">🧮 ETA por Trecho — Rota Completa (editável em Pecém · Barra Norte · Macapá · Itacoatiara · Manaus)</div>
@@ -1419,7 +1445,17 @@
           <div id="rio-portos-body"></div>
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-primary" onclick="rioPortoAdd()">➕ Adicionar trecho</button>
+            <button class="btn btn-green btn-sm" onclick="rioPortoNovoToggle()">🆕 Agregar porto à lista</button>
             <button class="btn btn-ghost btn-sm" onclick="rioPortosReset()">↺ Limpar planejador</button>
+          </div>
+          <div id="rio-porto-novo" style="display:none;margin-top:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;">
+            <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">🆕 Novo porto para a lista De/Para</div>
+            <div class="form-row" style="margin-bottom:8px;">
+              <div class="form-group"><label style="font-size:10px;">Código (2–5 letras)</label><input type="text" class="form-control" id="rio-porto-novo-id" maxlength="5" placeholder="Ex: BEL" style="text-transform:uppercase;"></div>
+              <div class="form-group" style="flex:2;"><label style="font-size:10px;">Nome do porto</label><input type="text" class="form-control" id="rio-porto-novo-nm" placeholder="Ex: Belém - PA"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="rioPortoCustomAdd()">✔ Salvar porto</button>
+            <div id="rio-portos-custom-list" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;"></div>
           </div>
         </div>
       </div>
@@ -3423,6 +3459,7 @@ function initRio(){
   rioBuildETA();
   rioPortosInit();
   rtzRender();
+  rioViagemInit();
 }
 
 function rioFillStarts(){
@@ -4020,6 +4057,52 @@ function rioPortoUpd(i, field, val){
   rioPortosSave(legs);
   rioPortosRender();
 }
+function rioPortoCustomLoad(){
+  try{ return JSON.parse(localStorage.getItem('jac_rio_portos_custom')||'[]'); }catch(e){ return []; }
+}
+function rioPortoCustomSave(l){
+  try{ localStorage.setItem('jac_rio_portos_custom', JSON.stringify(l)); }catch(e){}
+}
+function rioPortosAll(){
+  return RIO_PORTOS.concat(rioPortoCustomLoad());
+}
+function rioPortoNovoToggle(){
+  var el = document.getElementById('rio-porto-novo');
+  if(!el) return;
+  el.style.display = el.style.display==='none' ? 'block' : 'none';
+  rioPortosRenderCustom();
+}
+function rioPortoCustomAdd(){
+  var idEl = document.getElementById('rio-porto-novo-id');
+  var nmEl = document.getElementById('rio-porto-novo-nm');
+  var id = (idEl?.value||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  var nm = (nmEl?.value||'').trim();
+  if(id.length<2 || id.length>5){ toast('⚠️ Código deve ter 2 a 5 letras/números','warn'); return; }
+  if(!nm){ toast('⚠️ Informe o nome do porto','warn'); return; }
+  if(rioPortosAll().some(function(p){ return p.id===id; })){ toast('⚠️ Já existe um porto com o código '+id,'warn'); return; }
+  var l = rioPortoCustomLoad();
+  l.push({id:id, nm:nm, custom:true});
+  rioPortoCustomSave(l);
+  if(idEl) idEl.value=''; if(nmEl) nmEl.value='';
+  rioPortosRender();
+  rioPortosRenderCustom();
+  toast('🆕 Porto '+id+' · '+nm+' adicionado à lista','ok');
+}
+function rioPortoCustomDel(id){
+  if(!confirm('Remover o porto '+id+' da lista? Trechos que o utilizam ficarão sem porto.')) return;
+  rioPortoCustomSave(rioPortoCustomLoad().filter(function(p){ return p.id!==id; }));
+  rioPortosRender();
+  rioPortosRenderCustom();
+  toast('🗑️ Porto '+id+' removido','ok');
+}
+function rioPortosRenderCustom(){
+  var el = document.getElementById('rio-portos-custom-list');
+  if(!el) return;
+  var l = rioPortoCustomLoad();
+  el.innerHTML = l.length
+    ? l.map(function(p){ return '<span style="background:#fff;border:1px solid #86efac;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:#166534;">'+p.id+' · '+escHtml(p.nm)+' <a href="javascript:void(0)" onclick="rioPortoCustomDel(\''+p.id+'\')" style="color:var(--danger);text-decoration:none;font-weight:800;">✕</a></span>'; }).join('')
+    : '<span style="font-size:10px;color:var(--muted);">Nenhum porto personalizado ainda.</span>';
+}
 function rioPortosRender(){
   var el = document.getElementById('rio-portos-body');
   if(!el) return;
@@ -4027,8 +4110,8 @@ function rioPortosRender(){
   var prevEta = null;
   var totalNm = 0, totalH = 0;
   var opts = function(sel){
-    return '<option value="">—</option>'+RIO_PORTOS.map(function(p){
-      return '<option value="'+p.id+'"'+(p.id===sel?' selected':'')+'>'+p.id+' · '+p.nm+'</option>';
+    return '<option value="">—</option>'+rioPortosAll().map(function(p){
+      return '<option value="'+p.id+'"'+(p.id===sel?' selected':'')+'>'+p.id+' · '+escHtml(p.nm)+(p.custom?' 🆕':'')+'</option>';
     }).join('');
   };
   var rows = legs.map(function(l, i){
@@ -4072,6 +4155,167 @@ function fmtDT(iso){
   if(!iso) return '—';
   var d = new Date(iso);
   return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ─────────────────────────────────────────────
+// VIAGEM — Nº, BACKUP POR VIAGEM E RELATÓRIO PDF
+// ─────────────────────────────────────────────
+var RIO_BKP_KEYS = ['jac_rio','jac_rio_trechos2','jac_rio_portos','jac_rio_portos_custom','jac_rio_chm','jac_rtz_route'];
+
+function rioViagemSnapshot(){
+  var ls = {};
+  RIO_BKP_KEYS.forEach(function(k){ var v = localStorage.getItem(k); if(v!=null) ls[k]=v; });
+  var fields = {};
+  document.querySelectorAll('#page-rio input, #page-rio select').forEach(function(el){
+    if(el.id && el.type!=='file') fields[el.id] = el.value;
+  });
+  return {
+    app:'jacaranda', tipo:'viagem-backup', versao:(typeof APP_VERSION!=='undefined'?APP_VERSION:''),
+    navio:'M/V LOG-IN JACARANDA', imo:'9471886',
+    nro:(document.getElementById('rio-viagem-nro')?.value||'').trim(),
+    savedAt:new Date().toISOString(),
+    ls:ls, fields:fields
+  };
+}
+function rioViagensLoad(){
+  try{ return JSON.parse(localStorage.getItem('jac_viagens')||'{}'); }catch(e){ return {}; }
+}
+function rioViagensSave(v){
+  try{ localStorage.setItem('jac_viagens', JSON.stringify(v)); }catch(e){}
+}
+function rioViagemRenderList(){
+  var sel = document.getElementById('rio-viagem-list');
+  if(!sel) return;
+  var v = rioViagensLoad();
+  var nros = Object.keys(v).sort().reverse();
+  sel.innerHTML = nros.length
+    ? nros.map(function(n){ return '<option value="'+escHtml(n)+'">'+escHtml(n)+' — salvo em '+new Date(v[n].savedAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</option>'; }).join('')
+    : '<option value="">— nenhum backup salvo —</option>';
+}
+function rioViagemInit(){
+  try{
+    var last = localStorage.getItem('jac_viagem_last');
+    var inp = document.getElementById('rio-viagem-nro');
+    if(inp && last && !inp.value) inp.value = last;
+  }catch(e){}
+  rioViagemRenderList();
+  rioPortosRenderCustom();
+}
+function rioViagemSalvar(){
+  var snap = rioViagemSnapshot();
+  if(!snap.nro){ toast('⚠️ Informe o Nº da Viagem antes de salvar','warn'); return; }
+  var v = rioViagensLoad();
+  v[snap.nro] = snap;
+  rioViagensSave(v);
+  try{ localStorage.setItem('jac_viagem_last', snap.nro); }catch(e){}
+  rioViagemRenderList();
+  var st = document.getElementById('rio-viagem-status');
+  if(st) st.innerHTML = '💾 Backup da viagem <strong>'+escHtml(snap.nro)+'</strong> salvo em '+new Date().toLocaleString('pt-BR')+'. Use 📤 para exportar o arquivo.';
+  toast('💾 Backup da viagem '+snap.nro+' salvo','ok');
+}
+function rioViagemAplicar(snap){
+  Object.keys(snap.ls||{}).forEach(function(k){
+    try{ localStorage.setItem(k, snap.ls[k]); }catch(e){}
+  });
+  Object.keys(snap.fields||{}).forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.value = snap.fields[id];
+  });
+  rioBuildETA();
+  rioPortosRender();
+  rioPortosRenderCustom();
+  rtzRender();
+  calcUKC();
+  rioViagemRenderList();
+}
+function rioViagemRestaurar(){
+  var nro = document.getElementById('rio-viagem-list')?.value;
+  if(!nro){ toast('⚠️ Nenhum backup selecionado','warn'); return; }
+  var v = rioViagensLoad();
+  if(!v[nro]){ toast('⚠️ Backup não encontrado','warn'); return; }
+  if(!confirm('Restaurar a viagem '+nro+'? Os dados atuais da aba serão substituídos.')) return;
+  rioViagemAplicar(v[nro]);
+  toast('♻️ Viagem '+nro+' restaurada','ok');
+}
+function rioViagemExcluir(){
+  var nro = document.getElementById('rio-viagem-list')?.value;
+  if(!nro){ toast('⚠️ Nenhum backup selecionado','warn'); return; }
+  if(!confirm('Excluir definitivamente o backup da viagem '+nro+'?')) return;
+  var v = rioViagensLoad();
+  delete v[nro];
+  rioViagensSave(v);
+  rioViagemRenderList();
+  toast('🗑️ Backup '+nro+' excluído','ok');
+}
+function rioViagemExportar(){
+  var snap = rioViagemSnapshot();
+  var nro = snap.nro || 'SEM-NUMERO';
+  var blob = new Blob([JSON.stringify(snap, null, 2)], {type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'VIAGEM_'+nro.replace(/[^\w\-]+/g,'_')+'_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
+  toast('📤 Arquivo de backup exportado','ok');
+}
+function rioViagemImportar(inp){
+  var f = inp.files && inp.files[0];
+  if(!f) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      var snap = JSON.parse(ev.target.result);
+      if(snap.tipo!=='viagem-backup'){ toast('❌ Arquivo não é um backup de viagem do Jacarandá','err'); return; }
+      if(!confirm('Importar backup da viagem '+(snap.nro||'?')+' (salvo em '+(snap.savedAt?new Date(snap.savedAt).toLocaleString('pt-BR'):'?')+')? Os dados atuais serão substituídos.')) return;
+      rioViagemAplicar(snap);
+      if(snap.nro){
+        var v = rioViagensLoad(); v[snap.nro] = snap; rioViagensSave(v);
+        var inpN = document.getElementById('rio-viagem-nro'); if(inpN) inpN.value = snap.nro;
+      }
+      rioViagemRenderList();
+      toast('📥 Backup importado e aplicado','ok');
+    }catch(e){ toast('❌ Erro ao ler o arquivo: '+e.message,'err'); }
+    inp.value='';
+  };
+  reader.readAsText(f);
+}
+function rioViagemPDF(){
+  var nro = (document.getElementById('rio-viagem-nro')?.value||'').trim() || '—';
+  var dir = document.getElementById('rio-dir')?.value==='descida' ? '⬇ DESCIDA (Manaus → Barra Norte)' : '⬆ SUBIDA (Barra Norte → Manaus)';
+  var saida = document.getElementById('rio-dt')?.value;
+  var vel = document.getElementById('rio-vel')?.value||'';
+  var grab = function(id){ var el=document.getElementById(id); return el?el.innerHTML:''; };
+  var sec = function(titulo, html){
+    return html && html.trim() ? '<h2>'+titulo+'</h2><div class="sec">'+html+'</div>' : '';
+  };
+  var w = window.open('','_blank','width=980,height=1100');
+  if(!w){ toast('⚠️ Permita pop-ups para gerar o relatório','warn'); return; }
+  w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Viagem '+nro+'</title><style>'
+    + 'body{font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#111;margin:24px;font-size:12px;}'
+    + 'h1{font-size:18px;margin:0 0 2px;}h2{font-size:13px;margin:18px 0 6px;padding-bottom:3px;border-bottom:2px solid #1A5FA8;color:#1A5FA8;text-transform:uppercase;}'
+    + '.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1A5FA8;padding-bottom:8px;margin-bottom:10px;}'
+    + '.meta{font-size:11px;color:#333;line-height:1.6;}'
+    + 'table{border-collapse:collapse;width:100%;font-size:10.5px;}th,td{border:1px solid #cbd5e1;padding:3px 6px;text-align:left;}th{background:#eff6ff;}'
+    + 'input,select{border:none;background:none;font:inherit;color:inherit;padding:0;width:auto;max-width:120px;}'
+    + 'input[type=datetime-local]{max-width:140px;}button, .btn, a.btn{display:none!important;}'
+    + '.sec{margin-bottom:8px;}svg{max-width:100%;height:auto;}'
+    + '.sign{margin-top:44px;display:flex;justify-content:space-around;text-align:center;font-size:11px;}'
+    + '.sign div{border-top:1px solid #111;padding-top:4px;width:260px;}'
+    + '@media print{.noprint{display:none;}}'
+    + '</style></head><body>'
+    + '<div class="noprint" style="text-align:right;margin-bottom:8px;"><button onclick="window.print()" style="display:inline-block!important;background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Imprimir / PDF</button></div>'
+    + '<div class="head"><div><h1>⚓ RELATÓRIO DE VIAGEM</h1><div class="meta"><strong>M/V LOG-IN JACARANDÁ</strong> · IMO 9471886 · Linha Amazonas</div></div>'
+    + '<div class="meta" style="text-align:right;"><strong>Nº Viagem: '+escHtml(nro)+'</strong><br>Sentido: '+dir+'<br>Saída: '+(saida?new Date(saida).toLocaleString('pt-BR'):'—')+' · Veloc. inicial: '+escHtml(vel)+' nós<br>Emitido: '+new Date().toLocaleString('pt-BR')+'</div></div>'
+    + sec('🧮 ETA por Trecho — Rota Completa', grab('rio-eta-result'))
+    + sec('⚓ ETA entre Portos — Planejador de Pernas', grab('rio-portos-body'))
+    + sec('🌊 Maré — Resumo (BM / PM / Maré na passagem)', grab('rio-mare-summary'))
+    + sec('📈 Curva de Maré', grab('rio-mare-chart'))
+    + sec('⚓ UKC / Profundidade (FAQ)', grab('rio-ukc-result'))
+    + sec('🗺️ Rota ECDIS — Waypoints', grab('rtz-body'))
+    + '<div class="sign"><div>Comandante</div><div>Imediato / OOW</div></div>'
+    + '</body></html>');
+  w.document.close();
+  toast('📄 Relatório gerado — use 🖨 Imprimir/PDF para salvar','ok');
 }
 
 // ─────────────────────────────────────────────
@@ -4218,24 +4462,55 @@ function rtzRender(){
     return;
   }
   var total=0;
+  var gm = function(v){ var abs=Math.abs(v); var d=Math.floor(abs); var m=(abs-d)*60; if(m>=59.9995){d+=1;m=0;} return {d:d, m:m}; };
   var rows = r.wps.map(function(w,i){
     var dist = i===0?0:rtzHaversineNm(r.wps[i-1].lat, r.wps[i-1].lon, w.lat, w.lon);
     total += dist;
+    var la=gm(w.lat), lo=gm(w.lon);
+    var laH=w.lat>=0?'N':'S', loH=w.lon>=0?'E':'W';
+    var latCell = '<div style="display:flex;gap:3px;align-items:center;">'
+      + '<input type="number" min="0" max="90" step="1" class="form-control" style="width:52px;font-size:11px;padding:4px 4px;text-align:right;" value="'+la.d+'" id="rtz-lat-d-'+i+'" onchange="rtzUpdGm('+i+',\'lat\')" title="Graus">'
+      + '<span style="font-size:10px;color:var(--muted);">°</span>'
+      + '<input type="number" min="0" max="59.999" step="0.001" class="form-control" style="width:72px;font-size:11px;padding:4px 4px;text-align:right;" value="'+la.m.toFixed(3)+'" id="rtz-lat-m-'+i+'" onchange="rtzUpdGm('+i+',\'lat\')" title="Minutos decimais">'
+      + '<span style="font-size:10px;color:var(--muted);">\u2032</span>'
+      + '<select class="form-control" style="width:48px;font-size:11px;padding:4px 2px;" id="rtz-lat-h-'+i+'" onchange="rtzUpdGm('+i+',\'lat\')" title="Hemisfério"><option'+(laH==='N'?' selected':'')+'>N</option><option'+(laH==='S'?' selected':'')+'>S</option></select>'
+      + '</div><div class="mono" style="font-size:9px;color:var(--muted);text-align:right;">'+w.lat.toFixed(6)+'°</div>';
+    var lonCell = '<div style="display:flex;gap:3px;align-items:center;">'
+      + '<input type="number" min="0" max="180" step="1" class="form-control" style="width:56px;font-size:11px;padding:4px 4px;text-align:right;" value="'+lo.d+'" id="rtz-lon-d-'+i+'" onchange="rtzUpdGm('+i+',\'lon\')" title="Graus">'
+      + '<span style="font-size:10px;color:var(--muted);">°</span>'
+      + '<input type="number" min="0" max="59.999" step="0.001" class="form-control" style="width:72px;font-size:11px;padding:4px 4px;text-align:right;" value="'+lo.m.toFixed(3)+'" id="rtz-lon-m-'+i+'" onchange="rtzUpdGm('+i+',\'lon\')" title="Minutos decimais">'
+      + '<span style="font-size:10px;color:var(--muted);">\u2032</span>'
+      + '<select class="form-control" style="width:48px;font-size:11px;padding:4px 2px;" id="rtz-lon-h-'+i+'" onchange="rtzUpdGm('+i+',\'lon\')" title="Hemisfério"><option'+(loH==='E'?' selected':'')+'>E</option><option'+(loH==='W'?' selected':'')+'>W</option></select>'
+      + '</div><div class="mono" style="font-size:9px;color:var(--muted);text-align:right;">'+w.lon.toFixed(6)+'°</div>';
     return '<tr>'
       + '<td class="mono" style="color:var(--muted);">'+(i+1)+'</td>'
       + '<td><input type="text" class="form-control" style="min-width:110px;font-size:11px;padding:4px 6px;" value="'+escHtml(w.name)+'" onchange="rtzUpd('+i+',\'name\',this.value)"></td>'
-      + '<td><input type="number" step="0.00001" class="form-control" style="width:104px;font-size:11px;padding:4px 6px;text-align:right;" value="'+w.lat+'" onchange="rtzUpd('+i+',\'lat\',this.value)"><div class="mono" style="font-size:9px;color:var(--muted);text-align:right;">'+rtzFmtCoord(w.lat,true)+'</div></td>'
-      + '<td><input type="number" step="0.00001" class="form-control" style="width:110px;font-size:11px;padding:4px 6px;text-align:right;" value="'+w.lon+'" onchange="rtzUpd('+i+',\'lon\',this.value)"><div class="mono" style="font-size:9px;color:var(--muted);text-align:right;">'+rtzFmtCoord(w.lon,false)+'</div></td>'
+      + '<td>'+latCell+'</td>'
+      + '<td>'+lonCell+'</td>'
       + '<td><input type="number" step="0.1" min="0" class="form-control" style="width:66px;font-size:11px;padding:4px 6px;text-align:right;" value="'+(w.vel===''?'':w.vel)+'" placeholder="—" onchange="rtzUpd('+i+',\'vel\',this.value)"></td>'
       + '<td class="mono" style="text-align:right;">'+(i===0?'—':dist.toFixed(2))+'</td>'
       + '<td class="mono" style="text-align:right;color:var(--text-dim);">'+total.toFixed(1)+'</td>'
       + '<td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="padding:2px 7px;color:var(--danger);" onclick="rtzDel('+i+')" title="Remover">✕</button></td>'
       + '</tr>';
   }).join('');
-  el.innerHTML = '<div style="overflow-x:auto;"><table class="tbl" style="width:100%;font-size:12px;min-width:760px;">'
-    + '<thead><tr><th>#</th><th>Waypoint</th><th>Latitude</th><th>Longitude</th><th style="text-align:right;">Vel (nós)</th><th style="text-align:right;">Trecho (nm)</th><th style="text-align:right;">Acum. (nm)</th><th></th></tr></thead>'
+  el.innerHTML = '<div style="overflow-x:auto;"><table class="tbl" style="width:100%;font-size:12px;min-width:860px;">'
+    + '<thead><tr><th>#</th><th>Waypoint</th><th>Latitude (° ′ N/S)</th><th>Longitude (° ′ E/W)</th><th style="text-align:right;">Vel (nós)</th><th style="text-align:right;">Trecho (nm)</th><th style="text-align:right;">Acum. (nm)</th><th></th></tr></thead>'
     + '<tbody>'+rows+'</tbody></table></div>'
     + '<div style="margin-top:8px;padding:8px 12px;background:var(--login-blue-xlt);border-radius:6px;font-size:12px;">📏 <strong>'+r.wps.length+' waypoints</strong> · distância total '+total.toFixed(1)+' NM (loxodromia/haversine)</div>';
+}
+function rtzUpdGm(i, axis){
+  var d = parseFloat(document.getElementById('rtz-'+axis+'-d-'+i)?.value)||0;
+  var m = parseFloat(document.getElementById('rtz-'+axis+'-m-'+i)?.value)||0;
+  var h = document.getElementById('rtz-'+axis+'-h-'+i)?.value||(axis==='lat'?'N':'E');
+  if(m>=60){ m=59.999; }
+  var maxD = axis==='lat'?90:180;
+  if(d>maxD){ d=maxD; m=0; }
+  var dec = (d + m/60) * ((h==='S'||h==='W')?-1:1);
+  var r = rtzLoad();
+  if(!r.wps[i]) return;
+  r.wps[i][axis] = dec;
+  rtzSave(r);
+  rtzRender();
 }
 function rtzRename(v){ var r=rtzLoad(); r.name=v||'ROTA'; rtzSave(r); }
 function rtzUpd(i, field, val){
@@ -8427,7 +8702,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
