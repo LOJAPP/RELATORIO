@@ -231,9 +231,9 @@
   .photo-thumb:hover{border-color:var(--login-blue);}
   .photo-thumb img{width:100%;height:100%;object-fit:cover;}
   .photo-thumb .rmp{position:absolute;top:2px;right:2px;background:rgba(192,57,43,.88);border:none;border-radius:3px;color:#fff;font-size:10px;padding:1px 4px;cursor:pointer;}
-  .rep-photo{width:100%;height:120px;object-fit:cover;border-radius:5px;border:2px solid var(--border);cursor:pointer;transition:transform .15s;display:block;}
+  .rep-photo{width:100%;aspect-ratio:4/3;height:auto;object-fit:cover;border-radius:5px;border:2px solid var(--border);cursor:pointer;transition:transform .15s;display:block;}
   .rep-photo:hover{transform:scale(1.04);border-color:var(--login-blue);}
-  .rep-photos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;}@media(max-width:640px){.rep-photos{grid-template-columns:repeat(2,1fr);}}
+  .rep-photos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;align-items:start;}@media(max-width:640px){.rep-photos{grid-template-columns:repeat(2,1fr);}}
 
   /* ── MODAL ── */
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,30,70,.55);z-index:1000;align-items:center;justify-content:center;padding:20px;}
@@ -534,10 +534,13 @@
     .act-photos-label span{background:var(--login-blue);color:#fff;font-size:9px;padding:1px 7px;border-radius:10px;}
     .act-photos-grid{
       display:grid;
-      grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
+      grid-template-columns:repeat(4,1fr);
       gap:8px;
+      align-items:start;
     }
+    @media(max-width:640px){.act-photos-grid{grid-template-columns:repeat(2,1fr);}}
     .act-photo-wrap{
+      position:relative;aspect-ratio:4/3;
       border-radius:10px;overflow:hidden;
       border:2px solid var(--border);
       background:#fff;
@@ -546,8 +549,8 @@
       cursor:pointer;
     }
     .act-photo-wrap:hover{transform:scale(1.03);box-shadow:var(--shadow-md);border-color:var(--login-blue);}
-    .act-photo-wrap img{width:100%;height:120px;object-fit:cover;display:block;}
-    .act-photo-caption{font-size:9px;color:var(--text-dim);text-align:center;padding:4px 6px;background:#f9fafb;border-top:1px solid var(--border);line-height:1.3;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .act-photo-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+    .act-photo-caption{position:absolute;left:0;right:0;bottom:0;font-size:9px;color:#fff;text-align:center;padding:3px 6px;background:rgba(0,0,0,.55);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
     /* ── TAGS ── */
     .tag{font-size:9px!important;padding:1px 5px!important;border-radius:3px!important;font-weight:700!important;}
@@ -644,12 +647,12 @@
     color:var(--text-dim);margin-bottom:9px;display:flex;align-items:center;gap:7px;}
   .act-photo-count{background:var(--login-blue);color:#fff;font-size:9px;font-weight:700;
     padding:1px 7px;border-radius:10px;}
-  .act-photos-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
-  .act-photo-wrap{border-radius:10px;overflow:hidden;border:2px solid var(--border);
+  .act-photos-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:start;}@media(max-width:640px){.act-photos-grid{grid-template-columns:repeat(2,1fr);}}
+  .act-photo-wrap{position:relative;aspect-ratio:4/3;border-radius:10px;overflow:hidden;border:2px solid var(--border);
     background:#fff;box-shadow:var(--shadow-xs);cursor:pointer;
     transition:transform .2s,box-shadow .2s,border-color .2s;}
   .act-photo-wrap:hover{transform:scale(1.04);box-shadow:var(--shadow-md);border-color:var(--login-blue);}
-  .act-photo-wrap img{width:100%;height:110px;object-fit:cover;display:block;}
+  .act-photo-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
   .act-photo-caption{font-size:9px;color:var(--text-dim);text-align:center;
     padding:4px 6px;background:#f9fafb;border-top:1px solid var(--border);
     line-height:1.3;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -752,8 +755,7 @@
     background:var(--login-blue-xlt);color:var(--login-blue);padding:1px 5px;border-radius:4px;}
 
   @media(max-width:600px){
-    .act-photos-grid{grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;}
-    .act-photo-wrap img{height:90px;}
+    .act-photos-grid{grid-template-columns:repeat(2,1fr);gap:6px;}
     .form-row{flex-direction:column;}
     .form-row .form-group{min-width:unset;}
   }
@@ -1491,6 +1493,14 @@
             <button class="btn btn-ghost btn-sm" onclick="rtzAddWp()">➕ Waypoint</button>
             <span id="rtz-route-name" style="font-weight:800;font-size:12px;color:var(--login-blue);"></span>
           </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:8px 10px;">
+            <span style="font-size:11px;font-weight:800;color:var(--text-dim);">📚 Biblioteca de rotas:</span>
+            <button class="btn btn-green btn-sm" onclick="rtzLibSave()">💾 Salvar rota atual</button>
+            <select class="form-control" id="rtz-lib-sel" style="width:auto;min-width:150px;font-size:11px;padding:5px 8px;"></select>
+            <button class="btn btn-ghost btn-sm" onclick="rtzLibLoad()">📂 Carregar</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="rtzLibDel()">🗑️</button>
+            <span style="font-size:9.5px;color:var(--muted);">rotas salvas entram nos backups de viagem e no Drive</span>
+          </div>
           <div id="rtz-body"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;">
             <span style="font-size:11px;font-weight:700;color:var(--text-dim);">Exportar:</span>
@@ -1527,6 +1537,12 @@
       <!-- Cálculo UKC + Maré -->
       <div class="panel">
         <div class="panel-header">⚓ UKC / Profundidade (FAQ) — com Interpolação de Maré</div>
+        <div style="padding:10px 14px;background:#f0f9ff;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:11px;font-weight:800;color:#075985;">🌊 Backup de Maré (por viagem):</span>
+          <button class="btn btn-primary btn-sm" onclick="rioMareSalvar()">💾 Salvar maré na viagem</button>
+          <button class="btn btn-ghost btn-sm" onclick="rioMareCarregar()">📥 Carregar última maré salva</button>
+          <span id="rio-mare-bkp-status" style="font-size:10.5px;color:var(--text-dim);"></span>
+        </div>
         <div style="padding:14px;">
           <div class="form-row">
             <div class="form-group"><label>📍 Ponto crítico</label>
@@ -3131,7 +3147,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;backgr
 /* Photo grid — activities */
 .pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 24px 14px;background:linear-gradient(180deg,#f5f9ff,#eef4fb);border-bottom:1px solid #f3f4f6;page-break-inside:avoid;}
 .pgrid-cell{border-radius:10px;overflow:hidden;border:2px solid #e5e7eb;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06);}
-.pgrid-cell img{width:100%;height:130px;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.pgrid-cell img{width:100%;aspect-ratio:4/3;height:auto;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 .pgrid-cap{font-size:8px;color:#6b7280;text-align:center;padding:3px 6px;background:#f9fafb;border-top:1px solid #f3f4f6;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}
 /* Inspection card */
 .insp-card{border:1px solid #e5e7eb;border-radius:8px;margin:10px 24px;overflow:hidden;}
@@ -3528,6 +3544,7 @@ function initRio(){
   rioBuildETA();
   rioPortosInit();
   rtzRender();
+  rtzLibRender();
   rioViagemInit();
 }
 
@@ -4077,8 +4094,17 @@ var RIO_PORT_DIST = {
   'MAO>VIX':2795.1,'MAO>SSZ':3243.8,
   'VIX>SSZ':448.7, 'SSZ>VIX':448.7
 };
+function rioDistCustomLoad(){
+  try{ return JSON.parse(localStorage.getItem('jac_rio_dist_custom')||'{}'); }catch(e){ return {}; }
+}
+function rioDistCustomSave(d){
+  try{ localStorage.setItem('jac_rio_dist_custom', JSON.stringify(d)); }catch(e){}
+}
 function rioPortDist(a,b){
   if(!a||!b||a===b) return null;
+  var c = rioDistCustomLoad();
+  if(c[a+'>'+b]!=null) return c[a+'>'+b];
+  if(c[b+'>'+a]!=null) return c[b+'>'+a];
   if(RIO_PORT_DIST[a+'>'+b]!=null) return RIO_PORT_DIST[a+'>'+b];
   if(RIO_PORT_DIST[b+'>'+a]!=null) return RIO_PORT_DIST[b+'>'+a];
   return null;
@@ -4122,7 +4148,16 @@ function rioPortoUpd(i, field, val){
     var sug = rioPortDist(legs[i].de, legs[i].para);
     if(sug!=null && (legs[i].dist===''||legs[i].dist==null||legs[i]._sug)){ legs[i].dist = sug; legs[i]._sug = true; }
   }
-  if(field==='dist'){ legs[i]._sug = false; }
+  if(field==='dist'){
+    legs[i]._sug = false;
+    // Memoriza a distância digitada para este par de portos (reutilizada e incluída nos backups)
+    var dv = parseFloat(val);
+    if(dv>0 && legs[i].de && legs[i].para){
+      var dc = rioDistCustomLoad();
+      dc[legs[i].de+'>'+legs[i].para] = dv;
+      rioDistCustomSave(dc);
+    }
+  }
   rioPortosSave(legs);
   rioPortosRender();
 }
@@ -4229,7 +4264,38 @@ function fmtDT(iso){
 // ─────────────────────────────────────────────
 // VIAGEM — Nº, BACKUP POR VIAGEM E RELATÓRIO PDF
 // ─────────────────────────────────────────────
-var RIO_BKP_KEYS = ['jac_rio','jac_rio_trechos2','jac_rio_portos','jac_rio_portos_custom','jac_rio_chm','jac_rtz_route'];
+var RIO_BKP_KEYS = ['jac_rio','jac_rio_trechos2','jac_rio_portos','jac_rio_portos_custom','jac_rio_dist_custom','jac_rio_chm','jac_rtz_route','jac_rtz_saved'];
+
+// ── BACKUP DE MARÉ POR VIAGEM (separado) ──
+var RIO_MARE_FIELDS = ['rio-mare-loc','rio-pass-dt','rio-nr','rio-bm-t','rio-bm-h','rio-pm-t','rio-pm-h','rio-calado','rio-squat','rio-margem'];
+function rioMareSalvar(){
+  var nro = (document.getElementById('rio-viagem-nro')?.value||'').trim();
+  if(!nro){ toast('⚠️ Informe o Nº da Viagem no painel 🧾 Viagem','warn'); return; }
+  var fields = {};
+  RIO_MARE_FIELDS.forEach(function(id){ var el=document.getElementById(id); if(el) fields[id]=el.value; });
+  var v = rioViagensLoad();
+  v[nro] = v[nro] || {app:'jacaranda', tipo:'viagem-backup', nro:nro, savedAt:new Date().toISOString(), ls:{}, fields:{}};
+  v[nro].mare = { savedAt:new Date().toISOString(), fields:fields, chm:(localStorage.getItem('jac_rio_chm')||'') };
+  rioViagensSave(v);
+  var st=document.getElementById('rio-mare-bkp-status');
+  if(st) st.textContent = '💾 Maré salva na viagem '+nro+' ('+new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+')';
+  rioViagemRenderList();
+  toast('💾 Maré salva na viagem '+nro,'ok');
+}
+function rioMareCarregar(){
+  var nro = (document.getElementById('rio-viagem-nro')?.value||'').trim();
+  if(!nro){ toast('⚠️ Informe o Nº da Viagem no painel 🧾 Viagem','warn'); return; }
+  var v = rioViagensLoad();
+  var m = v[nro] && v[nro].mare;
+  if(!m){ toast('⚠️ Nenhuma maré salva na viagem '+nro,'warn'); return; }
+  Object.keys(m.fields||{}).forEach(function(id){ var el=document.getElementById(id); if(el&&m.fields[id]!=null) el.value=m.fields[id]; });
+  if(m.chm){ try{ localStorage.setItem('jac_rio_chm', m.chm); }catch(e){} rioChmRestore(); }
+  rioLocChange();
+  calcUKC();
+  var st=document.getElementById('rio-mare-bkp-status');
+  if(st) st.textContent = '📥 Maré da viagem '+nro+' carregada (salva em '+new Date(m.savedAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+')';
+  toast('📥 Última maré da viagem '+nro+' carregada','ok');
+}
 
 function rioViagemSnapshot(){
   var ls = {};
@@ -4610,6 +4676,57 @@ function rtzNew(){
   rtzRender();
 }
 function rtzXmlEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Biblioteca de rotas salvas (entra nos backups de viagem e no Drive) ──
+function rtzLibAll(){
+  try{ return JSON.parse(localStorage.getItem('jac_rtz_saved')||'{}'); }catch(e){ return {}; }
+}
+function rtzLibPersist(l){
+  try{ localStorage.setItem('jac_rtz_saved', JSON.stringify(l)); }catch(e){}
+}
+function rtzLibRender(){
+  var sel=document.getElementById('rtz-lib-sel');
+  if(!sel) return;
+  var lib=rtzLibAll();
+  var names=Object.keys(lib).sort();
+  sel.innerHTML = names.length
+    ? names.map(function(n){ return '<option value="'+escHtml(n)+'">'+escHtml(n)+' ('+(lib[n].wps||[]).length+' wp)</option>'; }).join('')
+    : '<option value="">— nenhuma rota salva —</option>';
+}
+function rtzLibSave(){
+  var r=rtzLoad();
+  if(!r.wps.length){ toast('⚠️ Não há waypoints na rota atual','warn'); return; }
+  var nome=prompt('Nome para salvar esta rota na biblioteca:', r.name||'ROTA');
+  if(!nome) return;
+  nome=nome.trim();
+  var lib=rtzLibAll();
+  if(lib[nome] && !confirm('Já existe uma rota "'+nome+'". Substituir?')) return;
+  lib[nome]={name:nome, wps:r.wps, savedAt:new Date().toISOString()};
+  rtzLibPersist(lib);
+  rtzLibRender();
+  if(typeof saveData==='function') saveData(true); // agenda sync automático
+  toast('💾 Rota "'+nome+'" salva na biblioteca','ok');
+}
+function rtzLibLoad(){
+  var nome=document.getElementById('rtz-lib-sel')?.value;
+  if(!nome){ toast('⚠️ Nenhuma rota selecionada','warn'); return; }
+  var lib=rtzLibAll();
+  if(!lib[nome]){ toast('⚠️ Rota não encontrada','warn'); return; }
+  if(rtzLoad().wps.length && !confirm('Substituir a rota atual pela rota "'+nome+'" da biblioteca?')) return;
+  rtzSave({name:lib[nome].name, wps:JSON.parse(JSON.stringify(lib[nome].wps))});
+  rtzRender();
+  toast('📂 Rota "'+nome+'" carregada','ok');
+}
+function rtzLibDel(){
+  var nome=document.getElementById('rtz-lib-sel')?.value;
+  if(!nome){ toast('⚠️ Nenhuma rota selecionada','warn'); return; }
+  if(!confirm('Excluir a rota "'+nome+'" da biblioteca?')) return;
+  var lib=rtzLibAll();
+  delete lib[nome];
+  rtzLibPersist(lib);
+  rtzLibRender();
+  toast('🗑️ Rota "'+nome+'" excluída','ok');
+}
 function rtzExport(fmt){
   var r = rtzLoad();
   if(!r.wps.length){ toast('⚠️ Não há waypoints para exportar','warn'); return; }
@@ -5139,19 +5256,23 @@ function renderActCard(r, i, showEdit=true){
   const titulo=r.titulo||(r.a?r.a.split('\n')[0]:'—');
   const desc=r.titulo?r.a:(r.a?r.a.split('\n').slice(1).join('\n').trim():'');
   const descHtml=desc?`<div class="act-desc">${escHtml(desc)}</div>`:'';
-  const fotosHtml=fotos.length?`
+  const fotosHtml=fotos.length?(function(){
+    window._pvReg=window._pvReg||{};
+    window._pvReg[r.id]=fotos;
+    return `
     <div class="act-photos">
       <div class="act-photos-label">📷 <span class="act-photo-count">${fotos.length}</span> Foto${fotos.length>1?'s':''}</div>
       <div class="act-photos-grid">
         ${fotos.map((u,fi)=>{
           const cap=(r.fotosCaptions&&r.fotosCaptions[fi])||'';
-          return `<div class="act-photo-wrap" onclick="viewP('${u}')">
+          return `<div class="act-photo-wrap" onclick="viewP(window._pvReg['${r.id}'][${fi}],window._pvReg['${r.id}'])">
             <img src="${u}" alt="${escHtml(cap)}" loading="lazy">
             ${cap?`<div class="act-photo-caption">${escHtml(cap)}</div>`:''}
           </div>`;
         }).join('')}
       </div>
-    </div>`:'';
+    </div>`;
+  })():'';
 
   // Status color for band
   const stColors={
@@ -7559,7 +7680,7 @@ async function sendToDrive(silent=false){
   if(!silent){showDriveStatus('⏳ Enviando para o Drive...','info');toast('⏳ Sincronizando...','ok');}
   const _cfgAll=getCfg();
   const _extraLs={};
-  ['jac_viagens','jac_rio','jac_rio_trechos2','jac_rio_portos','jac_rio_portos_custom','jac_rio_chm','jac_rtz_route'].forEach(k=>{
+  ['jac_viagens','jac_rio','jac_rio_trechos2','jac_rio_portos','jac_rio_portos_custom','jac_rio_dist_custom','jac_rio_chm','jac_rtz_route','jac_rtz_saved'].forEach(k=>{
     const v=localStorage.getItem(k); if(v!=null)_extraLs[k]=v;
   });
   const payload={
@@ -8878,7 +8999,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
