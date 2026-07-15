@@ -231,9 +231,9 @@
   .photo-thumb:hover{border-color:var(--login-blue);}
   .photo-thumb img{width:100%;height:100%;object-fit:cover;}
   .photo-thumb .rmp{position:absolute;top:2px;right:2px;background:rgba(192,57,43,.88);border:none;border-radius:3px;color:#fff;font-size:10px;padding:1px 4px;cursor:pointer;}
-  .rep-photo{width:120px;height:90px;object-fit:cover;border-radius:5px;border:2px solid var(--border);cursor:pointer;transition:transform .15s;}
+  .rep-photo{width:100%;height:120px;object-fit:cover;border-radius:5px;border:2px solid var(--border);cursor:pointer;transition:transform .15s;display:block;}
   .rep-photo:hover{transform:scale(1.04);border-color:var(--login-blue);}
-  .rep-photos{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .rep-photos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;}@media(max-width:640px){.rep-photos{grid-template-columns:repeat(2,1fr);}}
 
   /* ── MODAL ── */
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,30,70,.55);z-index:1000;align-items:center;justify-content:center;padding:20px;}
@@ -644,7 +644,7 @@
     color:var(--text-dim);margin-bottom:9px;display:flex;align-items:center;gap:7px;}
   .act-photo-count{background:var(--login-blue);color:#fff;font-size:9px;font-weight:700;
     padding:1px 7px;border-radius:10px;}
-  .act-photos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;}
+  .act-photos-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
   .act-photo-wrap{border-radius:10px;overflow:hidden;border:2px solid var(--border);
     background:#fff;box-shadow:var(--shadow-xs);cursor:pointer;
     transition:transform .2s,box-shadow .2s,border-color .2s;}
@@ -1313,6 +1313,17 @@
           <div class="panel-header">🚢 Informações do Navio</div>
           <div style="padding:14px;">
             <div class="form-group"><label>Nome do Navio</label><input type="text" class="form-control" id="cfg-vessel" placeholder="LOG-IN JACARANDÁ"></div>
+            <div class="form-group"><label>Empresa / Armador</label><input type="text" class="form-control" id="cfg-empresa" placeholder="LOG-IN Logística Intermodal S/A"></div>
+            <div class="form-group"><label>Logo da empresa (aparece nos relatórios PDF)</label>
+              <div id="cfg-logo-preview" style="margin-bottom:8px;"></div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <label class="btn btn-ghost btn-sm" style="cursor:pointer;">🖼️ Enviar logo
+                  <input type="file" accept="image/*" style="display:none;" onchange="cfgLogoUpload(this)">
+                </label>
+                <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="cfgLogoRemove()">✕ Remover logo</button>
+              </div>
+              <div style="font-size:10px;color:var(--muted);margin-top:4px;">PNG/JPG. Redimensionado automaticamente. Sem logo, os relatórios usam a marca padrão "login." em texto.</div>
+            </div>
             <div class="form-group"><label>Linha / Rota</label><input type="text" class="form-control" id="cfg-route" placeholder="Linha Amazonas"></div>
             <div class="sep"></div>
             <div class="form-group"><label>Comandante</label><input type="text" class="form-control" id="cfg-cmte" placeholder="Jose Moncada"></div>
@@ -3060,9 +3071,9 @@ body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;backgr
 .act-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:#6b7280;}
 .st-badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;white-space:nowrap;flex-shrink:0;}
 /* Photo grid — activities */
-.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;padding:10px 24px 14px;background:linear-gradient(180deg,#f5f9ff,#eef4fb);border-bottom:1px solid #f3f4f6;}
+.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 24px 14px;background:linear-gradient(180deg,#f5f9ff,#eef4fb);border-bottom:1px solid #f3f4f6;page-break-inside:avoid;}
 .pgrid-cell{border-radius:10px;overflow:hidden;border:2px solid #e5e7eb;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06);}
-.pgrid-cell img{width:100%;height:110px;object-fit:cover;display:block;}
+.pgrid-cell img{width:100%;height:130px;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 .pgrid-cap{font-size:8px;color:#6b7280;text-align:center;padding:3px 6px;background:#f9fafb;border-top:1px solid #f3f4f6;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}
 /* Inspection card */
 .insp-card{border:1px solid #e5e7eb;border-radius:8px;margin:10px 24px;overflow:hidden;}
@@ -4304,7 +4315,7 @@ function rioViagemPDF(){
     + '@media print{.noprint{display:none;}}'
     + '</style></head><body>'
     + '<div class="noprint" style="text-align:right;margin-bottom:8px;"><button onclick="window.print()" style="display:inline-block!important;background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Imprimir / PDF</button></div>'
-    + '<div class="head"><div><h1>⚓ RELATÓRIO DE VIAGEM</h1><div class="meta"><strong>M/V LOG-IN JACARANDÁ</strong> · IMO 9471886 · Linha Amazonas</div></div>'
+    + '<div class="head"><div style="display:flex;gap:14px;align-items:center;">'+rptBrandHtml('dark')+'<div><h1>⚓ RELATÓRIO DE VIAGEM</h1><div class="meta"><strong>'+escHtml((getCfg().vessel&&getCfg().vessel.vessel)||'M/V LOG-IN JACARANDÁ')+'</strong> · IMO 9471886 · '+escHtml((getCfg().vessel&&getCfg().vessel.route)||'Linha Amazonas')+'</div></div></div>'
     + '<div class="meta" style="text-align:right;"><strong>Nº Viagem: '+escHtml(nro)+'</strong><br>Sentido: '+dir+'<br>Saída: '+(saida?new Date(saida).toLocaleString('pt-BR'):'—')+' · Veloc. inicial: '+escHtml(vel)+' nós<br>Emitido: '+new Date().toLocaleString('pt-BR')+'</div></div>'
     + sec('🧮 ETA por Trecho — Rota Completa', grab('rio-eta-result'))
     + sec('⚓ ETA entre Portos — Planejador de Pernas', grab('rio-portos-body'))
@@ -5306,7 +5317,7 @@ function renderSem(week){
 
     <!-- HEADER LOGIM STYLE -->
     <div class="rpt-header" style="border-radius:8px 8px 0 0;">
-      <div class="rpt-logo"><span>log</span><span class="gi">in</span><span class="dot">.</span></div>
+      ${rptBrandHtml()}
       <div style="flex:1;padding-left:16px;border-left:2px solid rgba(255,255,255,.3);">
         <div class="rpt-title">Relatório de Trabalhos a Bordo — Semana ${week}</div>
         <div class="rpt-sub">${vcfg.vessel||'LOG-IN JACARANDÁ'} &nbsp;·&nbsp; Cmte. ${vcfg.cmte||'Jose Moncada'}</div>
@@ -5411,7 +5422,7 @@ function renderMensal(){
     return `<div style="margin-bottom:20px;">
       <!-- Week header — same as semanal rpt-header -->
       <div class="rpt-header" style="border-radius:8px 8px 0 0;">
-        <div class="rpt-logo"><span>log</span><span class="gi">in</span><span class="dot">.</span></div>
+        ${rptBrandHtml()}
         <div style="flex:1;padding-left:16px;border-left:2px solid rgba(255,255,255,.3);">
           <div class="rpt-title">Semana ${sem} — ${mName.toUpperCase()}</div>
           <div class="rpt-sub">${vcfg.vessel||'LOG-IN JACARANDÁ'} &nbsp;·&nbsp; ${regs.length} atividades · ${ofW.length} bloco · ${inspW.length} inspeções</div>
@@ -5446,7 +5457,7 @@ function renderMensal(){
   div.innerHTML=`
     ${kpis}
     <div class="rpt-header" style="border-radius:8px;margin-bottom:14px;">
-      <div class="rpt-logo"><span>log</span><span class="gi">in</span><span class="dot">.</span></div>
+      ${rptBrandHtml()}
       <div style="flex:1;padding-left:16px;border-left:2px solid rgba(255,255,255,.3);">
         <div class="rpt-title">Relatório Mensal — ${mName.toUpperCase()}</div>
         <div class="rpt-sub">${vcfg.vessel||'LOG-IN JACARANDÁ'} &nbsp;·&nbsp; Cmte. ${vcfg.cmte||'Jose Moncada'} &nbsp;·&nbsp; ${sems.length} semana(s)</div>
@@ -7244,7 +7255,7 @@ function buildSnapshotHTML(data,vessel,cmte,exportDate){
   <!-- BANNER -->
   <div class="banner">
     <div class="banner-top">
-      <div class="logo"><span>log</span><span class="gi">in</span><span class="dot">.</span></div>
+      ${rptBrandHtml()}
       <div class="banner-info">
         <div class="banner-title">📋 Relatório de Trabalhos a Bordo — ${vessel}</div>
         <div class="banner-sub">Gerado em ${exportDate} &nbsp;|&nbsp; Cmte. ${cmte}</div>
@@ -7377,9 +7388,10 @@ function renderConfigPage(){
   renderDriveLinksCfg();
   // Vessel config
   const vcfg=cfg.vessel||{};
-  ['vessel','route','cmte','imo','cmaq','scmaq'].forEach(id=>{
+  ['vessel','route','cmte','imo','cmaq','scmaq','empresa'].forEach(id=>{
     const el=document.getElementById('cfg-'+id);if(el&&vcfg[id])el.value=vcfg[id];
   });
+  renderCfgLogo();
   renderDeptChips();
   renderRoleChips();
 }
@@ -7562,11 +7574,61 @@ async function testDriveConnection(){
 }
 
 function saveVesselConfig(){
-  const cfg=getCfg();cfg.vessel={};
-  ['vessel','route','cmte','imo','cmaq','scmaq'].forEach(id=>{
+  const cfg=getCfg();cfg.vessel=cfg.vessel||{};
+  ['vessel','route','cmte','imo','cmaq','scmaq','empresa'].forEach(id=>{
     const el=document.getElementById('cfg-'+id);if(el)cfg.vessel[id]=el.value;
   });
   saveCfg(cfg);toast('✅ Configurações do navio salvas!','ok');
+}
+function cfgLogoUpload(inp){
+  const f=inp.files&&inp.files[0];
+  if(!f)return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    const img=new Image();
+    img.onload=function(){
+      // Redimensiona para no máx. 400px de largura (mantém proporção)
+      const maxW=400, scale=Math.min(1, maxW/img.width);
+      const cv=document.createElement('canvas');
+      cv.width=Math.round(img.width*scale); cv.height=Math.round(img.height*scale);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      const cfg=getCfg();cfg.vessel=cfg.vessel||{};
+      cfg.vessel.logo=cv.toDataURL('image/png');
+      saveCfg(cfg);
+      renderCfgLogo();
+      toast('🖼️ Logo salvo — será usado nos relatórios','ok');
+    };
+    img.onerror=function(){ toast('❌ Imagem inválida','err'); };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(f);
+  inp.value='';
+}
+function cfgLogoRemove(){
+  const cfg=getCfg();
+  if(cfg.vessel) delete cfg.vessel.logo;
+  saveCfg(cfg);
+  renderCfgLogo();
+  toast('✕ Logo removido — relatórios voltam à marca padrão','ok');
+}
+function renderCfgLogo(){
+  const el=document.getElementById('cfg-logo-preview');
+  if(!el)return;
+  const logo=(getCfg().vessel||{}).logo;
+  el.innerHTML = logo
+    ? '<div style="display:inline-block;background:#1A5FA8;padding:10px 14px;border-radius:8px;"><img src="'+logo+'" style="height:40px;max-width:180px;object-fit:contain;display:block;"></div>'
+    : '<div style="display:inline-block;background:#1A5FA8;padding:10px 14px;border-radius:8px;font-family:\'Barlow Condensed\',sans-serif;font-size:24px;font-weight:800;color:#fff;letter-spacing:-1px;">log<span style="color:#6DB847;">in</span><span style="opacity:.6;">.</span> <span style="font-size:10px;font-weight:400;letter-spacing:0;opacity:.7;">(padrão)</span></div>';
+}
+// Marca (logo + empresa) usada nos cabeçalhos dos relatórios.
+// theme 'light' = cabeçalho azul escuro (texto branco) · 'dark' = fundo branco (texto azul)
+function rptBrandHtml(theme){
+  var v=(getCfg().vessel)||{};
+  var txtColor = theme==='dark' ? '#1A5FA8' : '#fff';
+  var brand = v.logo
+    ? '<img src="'+v.logo+'" style="height:38px;max-width:150px;object-fit:contain;display:block;">'
+    : '<div style="font-family:\'Barlow Condensed\',Arial,sans-serif;font-size:26px;font-weight:800;letter-spacing:-1px;color:'+txtColor+';line-height:1;">log<span style="color:#6DB847;">in</span><span style="opacity:.6;">.</span></div>';
+  var emp = v.empresa ? '<div style="font-size:8px;letter-spacing:.4px;opacity:.85;margin-top:3px;white-space:nowrap;color:'+txtColor+';">'+escHtml(v.empresa)+'</div>' : '';
+  return '<div class="rpt-logo" style="flex-shrink:0;">'+brand+emp+'</div>';
 }
 function showDriveStatus(msg,type){
   const el=document.getElementById('drive-status');if(!el)return;
@@ -8153,7 +8215,7 @@ function renderEmbarque(){
   const vcfg=(getCfg().vessel)||{};
   div.innerHTML=`
     <div class="rpt-header">
-      <div class="rpt-logo"><span>log</span><span class="gi">in</span><span class="dot">.</span></div>
+      ${rptBrandHtml()}
       <div style="flex:1;padding-left:16px;border-left:2px solid rgba(255,255,255,.3)">
         <div class="rpt-title">Relatório de Embarque — ${vcfg.vessel||'LOG-IN JACARANDÁ'}</div>
         <div class="rpt-sub">Cmte. ${vcfg.cmte||'Jose Moncada'} &nbsp;|&nbsp; ${vcfg.route||'Linha Amazonas'} &nbsp;|&nbsp; ${new Date().toLocaleDateString('pt-BR')}</div>
@@ -8702,7 +8764,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
@@ -10834,7 +10896,7 @@ function renderInspecao(){
     const semPend=items.filter(i=>i.result!=='Conforme').length;
     return `<div style="margin-bottom:20px;">
       <div class="rpt-header" style="border-radius:8px 8px 0 0;">
-        <div class="rpt-logo"><span>log</span><span class="gi">in</span><span class="dot">.</span></div>
+        ${rptBrandHtml()}
         <div style="flex:1;padding-left:14px;border-left:2px solid rgba(255,255,255,.3);">
           <div class="rpt-title">Inspeções — Semana ${sem}</div>
           <div class="rpt-sub">${vcfg.vessel||'LOG-IN JACARANDÁ'} &nbsp;·&nbsp; ${items.length} inspeção(ões) &nbsp;·&nbsp; ${semConf} conformes · ${semPend} pendentes</div>
