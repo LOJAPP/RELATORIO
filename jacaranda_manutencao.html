@@ -1420,6 +1420,30 @@
         </div>
       </div>
 
+      <!-- Destinos de salvamento & compartilhamento -->
+      <div class="panel">
+        <div class="panel-header">💾 Destinos de Salvamento — Rede · Drive · Compartilhar</div>
+        <div style="padding:14px;">
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
+            Configure onde os arquivos da seção Médias Rio Amazonas devem ser guardados. Com <strong>📁 Escolher pasta</strong> (Chrome/Edge no computador), os arquivos exportados (backups .json, rotas RTZ/GPX/KML/CSV) são <strong>salvos direto na pasta</strong> escolhida — inclusive pasta de rede mapeada. Nos demais navegadores, vão para Downloads e o caminho configurado serve de referência. Esses caminhos acompanham automaticamente os backups e o compartilhamento.
+          </div>
+          <div class="form-row" style="margin-bottom:8px;">
+            <div class="form-group" style="flex:1.4;"><label>📁 Caminho da pasta de rede</label>
+              <input type="text" class="form-control" id="rio-path-rede" placeholder="Ex: \\SERVIDOR\Jacaranda\Viagens" onchange="rioPathsSave()">
+            </div>
+            <div class="form-group" style="flex:1.4;"><label>☁️ Link da pasta no Drive</label>
+              <input type="url" class="form-control" id="rio-path-drive" placeholder="https://drive.google.com/drive/folders/..." onchange="rioPathsSave()">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn btn-primary btn-sm" onclick="rioPickDir()">📁 Escolher pasta (disco/rede)</button>
+            <button class="btn btn-green btn-sm" onclick="rioShareViagem()">🔗 Compartilhar viagem</button>
+            <a href="#" id="rio-path-drive-open" class="btn btn-ghost btn-sm" target="_blank" rel="noopener" style="display:none;">☁️ Abrir pasta do Drive</a>
+            <span id="rio-dir-status" style="font-size:10.5px;color:var(--text-dim);"></span>
+          </div>
+        </div>
+      </div>
+
       <!-- ETA por Trecho — unificado com distâncias/waypoints, editável nos pontos-chave -->
       <div class="panel">
         <div class="panel-header">🧮 ETA por Trecho — Rota Completa (editável em Pecém · Barra Norte · Macapá · Itacoatiara · Manaus)</div>
@@ -3546,6 +3570,7 @@ function initRio(){
   rtzRender();
   rtzLibRender();
   rioViagemInit();
+  rioPathsRender();
 }
 
 function rioFillStarts(){
@@ -4309,6 +4334,7 @@ function rioViagemSnapshot(){
     navio:'M/V LOG-IN JACARANDA', imo:'9471886',
     nro:(document.getElementById('rio-viagem-nro')?.value||'').trim(),
     savedAt:new Date().toISOString(),
+    paths:rioPathsGet(), driveSync:(getCfg().webAppUrl?true:false), driveFolder:(getCfg().driveFolderUrl||''),
     ls:ls, fields:fields
   };
 }
@@ -4356,6 +4382,7 @@ function rioViagemAplicar(snap){
     var el = document.getElementById(id);
     if(el) el.value = snap.fields[id];
   });
+  if(snap.paths){ var c0=getCfg(); c0.rioPaths=snap.paths; saveCfg(c0); rioPathsRender(); }
   rioBuildETA();
   rioPortosRender();
   rioPortosRenderCustom();
@@ -4385,13 +4412,8 @@ function rioViagemExcluir(){
 function rioViagemExportar(){
   var snap = rioViagemSnapshot();
   var nro = snap.nro || 'SEM-NUMERO';
-  var blob = new Blob([JSON.stringify(snap, null, 2)], {type:'application/json'});
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'VIAGEM_'+nro.replace(/[^\w\-]+/g,'_')+'_backup_'+new Date().toISOString().slice(0,10)+'.json';
-  document.body.appendChild(a); a.click();
-  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
-  toast('📤 Arquivo de backup exportado','ok');
+  var nome = 'VIAGEM_'+nro.replace(/[^\w\-]+/g,'_')+'_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  rioSaveFile(nome, 'application/json', JSON.stringify(snap, null, 2));
 }
 function rioViagemImportar(inp){
   var f = inp.files && inp.files[0];
@@ -4447,10 +4469,96 @@ function rioViagemPDF(){
     + sec('📈 Curva de Maré', grab('rio-mare-chart'))
     + sec('⚓ UKC / Profundidade (FAQ)', grab('rio-ukc-result'))
     + sec('🗺️ Rota ECDIS — Waypoints', grab('rtz-body'))
+    + (function(){ var p=rioPathsGet(); var l=[]; if(p.rede)l.push('📁 Pasta de rede: '+escHtml(p.rede)); if(p.drive)l.push('☁️ Drive: '+escHtml(p.drive)); return l.length?'<div style="margin-top:10px;font-size:9.5px;color:#555;border-top:1px dashed #cbd5e1;padding-top:6px;">Arquivos desta viagem: '+l.join(' &nbsp;·&nbsp; ')+'</div>':''; })()
     + '<div class="sign"><div>Comandante</div><div>Imediato / OOW</div></div>'
     + '</body></html>');
   w.document.close();
   toast('📄 Relatório gerado — use 🖨 Imprimir/PDF para salvar','ok');
+}
+
+// ─────────────────────────────────────────────
+// DESTINOS DE SALVAMENTO — REDE · DRIVE · SHARE
+// ─────────────────────────────────────────────
+window._rioDirHandle = null;
+function rioPathsGet(){
+  return (getCfg().rioPaths)||{};
+}
+function rioPathsSave(){
+  const cfg=getCfg();
+  cfg.rioPaths = {
+    rede:(document.getElementById('rio-path-rede')?.value||'').trim(),
+    drive:(document.getElementById('rio-path-drive')?.value||'').trim()
+  };
+  saveCfg(cfg);
+  rioPathsRender();
+}
+function rioPathsRender(){
+  const p=rioPathsGet();
+  const r=document.getElementById('rio-path-rede'); if(r&&p.rede!=null&&!r.value) r.value=p.rede;
+  const dv=document.getElementById('rio-path-drive'); if(dv&&p.drive!=null&&!dv.value) dv.value=p.drive;
+  const a=document.getElementById('rio-path-drive-open');
+  if(a){ if(p.drive){ a.href=p.drive; a.style.display='inline-flex'; } else { a.style.display='none'; } }
+  const st=document.getElementById('rio-dir-status');
+  if(st && !window._rioDirHandle){
+    st.textContent = p.rede ? ('Destino de referência: '+p.rede) : '';
+  }
+}
+async function rioPickDir(){
+  if(!window.showDirectoryPicker){
+    toast('⚠️ Este navegador não permite escolher pasta — os arquivos irão para Downloads. Use Chrome/Edge no computador.','warn');
+    return;
+  }
+  try{
+    window._rioDirHandle = await window.showDirectoryPicker({mode:'readwrite'});
+    const st=document.getElementById('rio-dir-status');
+    if(st) st.innerHTML = '✅ Salvando direto em: <strong>'+escHtml(window._rioDirHandle.name)+'</strong> (válido nesta sessão)';
+    toast('📁 Pasta selecionada — exportações serão salvas nela','ok');
+  }catch(e){ /* usuário cancelou */ }
+}
+async function rioSaveFile(filename, mime, content){
+  if(window._rioDirHandle){
+    try{
+      const fh = await window._rioDirHandle.getFileHandle(filename, {create:true});
+      const w = await fh.createWritable();
+      await w.write(new Blob([content],{type:mime}));
+      await w.close();
+      toast('💾 Salvo em "'+window._rioDirHandle.name+'/'+filename+'"','ok');
+      return 'dir';
+    }catch(e){
+      toast('⚠️ Falha ao gravar na pasta ('+e.message+') — baixando para Downloads','warn');
+    }
+  }
+  const blob = new Blob([content], {type:mime});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
+  const p=rioPathsGet();
+  if(p.rede) toast('⬇️ Baixado — mover para: '+p.rede,'ok');
+  return 'download';
+}
+function rioShareViagem(){
+  const nro=(document.getElementById('rio-viagem-nro')?.value||'').trim()||'—';
+  const p=rioPathsGet();
+  const cfgV=(getCfg().vessel)||{};
+  const linhas=[
+    '⚓ '+(cfgV.vessel||'M/V LOG-IN JACARANDÁ')+' — Viagem '+nro,
+    '📱 App: https://lojapp.github.io/RELATORIO/jacaranda_manutencao.html'
+  ];
+  if(p.rede)  linhas.push('📁 Pasta de rede: '+p.rede);
+  if(p.drive) linhas.push('☁️ Pasta no Drive: '+p.drive);
+  const dl=(getCfg().driveFolderUrl||'');
+  if(dl && dl!==p.drive) linhas.push('☁️ Drive (sync do app): '+dl);
+  const texto=linhas.join('\n');
+  if(navigator.share){
+    navigator.share({title:'Viagem '+nro+' — Jacarandá', text:texto}).catch(function(){});
+  } else {
+    navigator.clipboard?.writeText(texto).then(
+      function(){ toast('🔗 Informações copiadas — cole no WhatsApp/e-mail','ok'); },
+      function(){ prompt('Copie as informações da viagem:', texto); }
+    );
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -4763,13 +4871,7 @@ function rtzExport(fmt){
     mime='text/csv'; ext='csv';
     content = 'name;lat;lon;vel\n' + r.wps.map(function(w){ return [w.name, w.lat.toFixed(6), w.lon.toFixed(6), (w.vel===''?'':w.vel)].join(';'); }).join('\n')+'\n';
   }
-  var blob = new Blob([content], {type:mime});
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = (r.name||'rota').replace(/[^\w\-]+/g,'_')+'.'+ext;
-  document.body.appendChild(a); a.click();
-  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
-  toast('💾 Rota exportada em '+fmt.toUpperCase(),'ok');
+  rioSaveFile((r.name||'rota').replace(/[^\w\-]+/g,'_')+'.'+ext, mime, content);
 }
 
 function rioUsarEtaBN(){
@@ -8999,7 +9101,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
