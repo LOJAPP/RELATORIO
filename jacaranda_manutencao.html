@@ -8372,6 +8372,7 @@ function saveDriveConfig(){
     toast('⚠️ URL inválida — deve ser do Apps Script (script.google.com)','warn');return;
   }
   cfg.webAppUrl=url||'';
+  cfg.webAppUrlCustom=!!(url && url!==JAC_WEBAPP_OFICIAL);
   cfg.driveFolderUrl=folderUrl||'';
   cfg.autoInterval=interval;
   cfg.autoSave=!!document.getElementById('cfg-autosave')?.checked;
@@ -8421,6 +8422,22 @@ function setupAutoSync(){
   },min*60*1000);
 }
 
+// URLs oficiais do navio (fixadas pelo administrador — corrigem aparelhos sem configuração ou com implantação antiga)
+var JAC_WEBAPP_OFICIAL = 'https://script.google.com/macros/s/AKfycbzU64I5qshFkmng772VAhVAGdMYmPVrnUCD0HBQdiFSBEMsNXRjmfWoyx_aX_2uN5-3/exec';
+var JAC_DRIVE_OFICIAL  = 'https://drive.google.com/file/d/1O2EOSHlRyFbZrfq4r5JpOFW_AwDZMTth/view?usp=sharing';
+function applyDriveDefaults(){
+  try{
+    const cfg=getCfg();
+    let mudou=false;
+    // Sem URL, ou URL antiga não personalizada → aplica a oficial
+    if(!cfg.webAppUrl || (!cfg.webAppUrlCustom && cfg.webAppUrl!==JAC_WEBAPP_OFICIAL)){
+      cfg.webAppUrl=JAC_WEBAPP_OFICIAL; mudou=true;
+    }
+    if(!cfg.driveFolderUrl){ cfg.driveFolderUrl=JAC_DRIVE_OFICIAL; mudou=true; }
+    if(cfg.autoSave==null){ cfg.autoSave=true; mudou=true; } // liga o autosave por padrão
+    if(mudou){ saveCfg(cfg); }
+  }catch(e){}
+}
 async function sendToDrive(silent=false){
   const cfg=getCfg();
   if(!cfg.webAppUrl){
@@ -8441,27 +8458,51 @@ async function sendToDrive(silent=false){
     inspecoes:S.inspecoes||[], embHistory:S.embHistory||[], relatorios:S.relatorios||[], rioCfg:S.rioCfg||{},
     extras:{ ls:_extraLs, vessel:_cfgAll.vessel||{}, cfgShare:{ linksPastas:_cfgAll.linksPastas||{}, rioPaths:_cfgAll.rioPaths||{}, driveFolderUrl:_cfgAll.driveFolderUrl||'', netFilename:_cfgAll.netFilename||'', netDateMode:_cfgAll.netDateMode||'', rootDirName:_cfgAll.rootDirName||'' } }
   };
+  const payloadStr=JSON.stringify(payload);
+  const tamMB=(payloadStr.length/1048576);
+  if(tamMB>45){
+    showDriveStatus('❌ Backup muito grande para o Web App ('+tamMB.toFixed(1)+' MB > 45 MB). Reduza fotos antigas ou exporte por escopo.','err');
+    if(!silent)toast('❌ Backup grande demais para o Drive ('+tamMB.toFixed(1)+' MB)','err');
+    return;
+  }
+  // Verificação real: após o POST, faz um GET e confere o carimbo exp
+  const verificar=async function(){
+    try{
+      const r=await fetch(cfg.webAppUrl+'?t='+Date.now());
+      if(!r.ok) return false;
+      const d=await r.json();
+      return d && d.exp===payload.exp;
+    }catch(x){ return false; }
+  };
   try{
     // Apps Script CORS: use no-cors mode, then verify with GET
     const res=await fetch(cfg.webAppUrl,{
       method:'POST',
-      body:JSON.stringify(payload),
+      body:payloadStr,
       headers:{'Content-Type':'text/plain'}, // Apps Script needs text/plain for CORS
     });
     if(res.ok||res.type==='opaque'){
+      const okVer=await verificar();
       const lastSync=new Date().toLocaleString('pt-BR');
       cfg.lastSync=lastSync;saveCfg(cfg);
-      showDriveStatus(`✅ Dados enviados! Última sincronização: ${lastSync}`,'ok');
-      if(!silent)toast('☁️ Salvo no Drive via Web App!','ok');
+      if(okVer){
+        showDriveStatus(`✅ Salvo e VERIFICADO no Drive (${tamMB.toFixed(1)} MB) — ${lastSync}`,'ok');
+        if(!silent)toast('☁️ Salvo no Drive (verificado)!','ok');
+      } else {
+        showDriveStatus(`⚠️ Enviado, mas não foi possível confirmar a gravação. Verifique a implantação do Web App: Implantar → Gerenciar implantações → acesso "Qualquer pessoa". — ${lastSync}`,'err');
+        if(!silent)toast('⚠️ Envio sem confirmação do Drive — veja o status','warn');
+      }
     } else {
       throw new Error(`HTTP ${res.status}`);
     }
   }catch(e){
     // Try no-cors fallback
     try{
-      await fetch(cfg.webAppUrl,{method:'POST',mode:'no-cors',body:JSON.stringify(payload),headers:{'Content-Type':'text/plain'}});
+      await fetch(cfg.webAppUrl,{method:'POST',mode:'no-cors',body:payloadStr,headers:{'Content-Type':'text/plain'}});
+      const okVer2=await verificar();
       const lastSync=new Date().toLocaleString('pt-BR');
       cfg.lastSync=lastSync;saveCfg(cfg);
+      if(okVer2){ showDriveStatus(`✅ Salvo e VERIFICADO no Drive — ${lastSync}`,'ok'); if(!silent)toast('☁️ Salvo no Drive (verificado)!','ok'); return; }
       showDriveStatus(`✅ Enviado (modo seguro). Última sincronização: ${lastSync}`,'ok');
       if(!silent)toast('☁️ Enviado ao Drive!','ok');
     }catch(e2){
@@ -9761,7 +9802,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.1.1';
+const APP_VERSION = '2.1.2';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
@@ -12995,7 +13036,7 @@ const _importApply = {
 window.addEventListener('beforeunload', function(){ saveData(true); });
 // Auto-save every 60s as safety net  
 setInterval(function(){ saveData(true); }, 60000);
-loadData();checkInspFromURL();kpis();renderDash();fillWeekSel();renderDriveLinks();try{restoreRootDir();}catch(e){}try{npPopulate();}catch(e){}setTimeout(function(){try{autoStartupSync();}catch(e){}},1200);
+loadData();checkInspFromURL();kpis();renderDash();fillWeekSel();renderDriveLinks();try{applyDriveDefaults();}catch(e){}try{restoreRootDir();}catch(e){}try{npPopulate();}catch(e){}setTimeout(function(){try{autoStartupSync();}catch(e){}},1200);
 // Check for embedded data from shared HTML
 if(window.__JDATA_PENDING__){
   setTimeout(function(){
