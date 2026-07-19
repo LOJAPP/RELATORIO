@@ -955,6 +955,15 @@
             </div>
             <button class="btn btn-green" onclick="saveRegNaPasta()" style="width:100%;">📁 Salvar Registro na pasta</button>
             <div style="font-size:9.5px;color:var(--muted);margin-top:5px;">Salva o registro no app E grava o arquivo em: Pasta raiz / Novo Relatorio / &lt;FUNÇÃO&gt; / (a pasta raiz é definida pelo administrador em Configurações)</div>
+            <div class="sep" style="margin:10px 0;"></div>
+            <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">📥 Carregar relatório da pasta</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+              <div class="form-group" style="flex:1;min-width:180px;margin-bottom:0;"><label style="font-size:10px;">Carregar de (pasta / cargo)</label>
+                <select class="form-control" id="np-load-func" onfocus="popLoadFunc('np-load-func')"></select>
+              </div>
+              <button class="btn btn-primary" onclick="loadRelatorioDaPasta('np-load-func')">📥 Carregar relatório</button>
+            </div>
+            <div style="font-size:9.5px;color:var(--muted);margin-top:5px;">Busca os arquivos .json nas pastas Relatorios e Novo Relatorio — por cargo (ITO, ON, OM, SCH, PON, POM, CVS, MAQ, CREW) ou GERAL — e importa as atividades sem duplicar.</div>
           </div>
         </div>
       </div>
@@ -1088,14 +1097,10 @@
           <div class="form-group"><label style="font-size:10px;">Pasta pessoal (função)</label>
             <select class="form-control" id="sr-func"></select>
           </div>
-          <div class="form-group"><label style="font-size:10px;">Carregar de (pasta)</label>
-            <select class="form-control" id="sr-load-func"></select>
-          </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-green btn-sm" onclick="saveSemNaPasta()">📁 Salvar relatório na pasta</button>
-          <button class="btn btn-primary btn-sm" onclick="loadRelatorioDaPasta()">📥 Carregar relatório</button>
-          <span style="font-size:9.5px;color:var(--muted);align-self:center;">Salva a semana ativa em Relatorios/&lt;FUNÇÃO&gt; · carrega arquivos das pastas Relatorios e Novo Relatorio (por função ou GERAL) · tudo entra no backup geral</span>
+          <span style="font-size:9.5px;color:var(--muted);align-self:center;">Salva a semana ativa em Relatorios/&lt;FUNÇÃO&gt; · para carregar relatórios use a janela ✏️ Novo Registro</span>
         </div>
       </div>
       <div class="week-tabs" id="wtabs"></div>
@@ -1293,7 +1298,7 @@
                 <option value="SCH">SCH — Subchefe</option>
                 <option value="PON">PON</option>
                 <option value="POM">POM</option>
-                <option value="MAR">MAR — Marinheiros e outros</option>
+                <option value="CREW">CREW — Marinheiros e outras funções</option>
               </select>
             </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="pickFolder()" id="btn-pick-folder" style="flex:1;">📂 Escolher Pasta</button><button class="btn btn-green btn-sm" onclick="saveToFolder()" style="flex:1;">💾 Salvar</button></div>
@@ -2710,7 +2715,8 @@ function _goPage(id){
   if(id==='dashboard'){renderDash();}
   if(id==='historico'){renderHistorico();}
   if(id==='tripulantes'){renderCrew();_crewSel.clear();_updateCrewBulkBar();switchCrewTab('list');}
-  if(id==='semanal'){try{popOficiais('sr-oficial','sr-func');srPopLoadFunc();}catch(e){}}
+  if(id==='semanal'){try{popOficiais('sr-oficial','sr-func');}catch(e){}}
+  if(id==='novo'){try{npPopulate();popLoadFunc('np-load-func');}catch(e){}}
   if(id==='embarque'){renderEmbarque();}
   if(id==='semanal'){renderSemTabs();}
   if(id==='fotos'){renderGallery();fillFotoAssoc();}
@@ -2912,8 +2918,8 @@ async function saveRegNaPasta(){
   }
 }
 // ── RELATÓRIO SEMANAL → pasta (Relatorios/<FUNÇÃO>) + carregador ──
-function srPopLoadFunc(){
-  var sel=document.getElementById('sr-load-func');
+function popLoadFunc(selId){
+  var sel=document.getElementById(selId||'np-load-func');
   if(sel && !sel.options.length){
     sel.innerHTML = '<option value="GERAL">GERAL — todas as pastas</option>'
       + JAC_FUNCS.filter(function(c){return c!=='GERAL';}).map(function(c){ return '<option value="'+c+'">'+c+' — '+JAC_FUNC_LABELS[c]+'</option>'; }).join('');
@@ -2962,9 +2968,10 @@ function importRelatorioJson(data){
     toast('ℹ️ Nenhuma atividade nova (todas já existiam no app)','ok');
   }
 }
-async function loadRelatorioDaPasta(){
-  srPopLoadFunc();
-  var scope=document.getElementById('sr-load-func')?.value||'GERAL';
+async function loadRelatorioDaPasta(selId){
+  selId = selId||'np-load-func';
+  popLoadFunc(selId);
+  var scope=document.getElementById(selId)?.value||'GERAL';
   // Sem pasta raiz: seletor de arquivo comum
   if(!window._rootDir){
     var inp=document.createElement('input');
@@ -7480,8 +7487,8 @@ function buildFileName(){
 // Estrutura: RAIZ/Novo Relatorio/<FUNÇÃO>/…, RAIZ/Backups/<ESCOPO>/…,
 //            RAIZ/Medias Rio Amazonas/{Viagens,Rotas}/…
 // ─────────────────────────────────────────────
-var JAC_FUNCS = ['GERAL','CVS','MAQ','ON','OM','ITO','SCH','PON','POM','MAR'];
-var JAC_FUNC_LABELS = {GERAL:'Geral',CVS:'Convés',MAQ:'Máquinas',ON:'Oficial de Náutica',OM:'Oficial de Máquinas',ITO:'Imediato',SCH:'Subchefe',PON:'PON',POM:'POM',MAR:'Marinheiros e outros'};
+var JAC_FUNCS = ['GERAL','CVS','MAQ','ON','OM','ITO','SCH','PON','POM','CREW'];
+var JAC_FUNC_LABELS = {GERAL:'Geral',CVS:'Convés',MAQ:'Máquinas',ON:'Oficial de Náutica',OM:'Oficial de Máquinas',ITO:'Imediato',SCH:'Subchefe',PON:'PON',POM:'POM',CREW:'Crew — marinheiros e outras funções'};
 window._rootDir = null;
 
 function idbOpen(){
@@ -7575,7 +7582,7 @@ function jacFuncOfAbbr(abbr){
   for(var code in BKP_SCOPE_ALIAS){
     if(BKP_SCOPE_ALIAS[code].indexOf(abbr)>=0) return code;
   }
-  return 'MAR'; // marinheiros e outros
+  return 'CREW'; // marinheiros e outras funções
 }
 
 // Escopo do backup: GERAL, setor (CVS/MAQ) ou função (ON/OM/ITO/SCH/PON/POM/MAR)
@@ -7585,7 +7592,7 @@ var BKP_SCOPE_ALIAS = {
   ON:['ON'], OM:['OM'],
   ITO:['ITO','IMT','IMEDIATO'],
   SCH:['SCH','SCM','SCHE','SUBCHEFE'],
-  PON:['PON'], POM:['POM'], MAR:['MAR','MARINHEIRO']
+  PON:['PON'], POM:['POM'], CREW:['CREW','MAR','MARINHEIRO']
 };
 function bkpScope(){
   return document.getElementById('bkp-scope')?.value||'GERAL';
@@ -9519,7 +9526,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.9.1';
+const APP_VERSION = '1.9.2';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
