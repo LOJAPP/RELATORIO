@@ -1079,6 +1079,25 @@
     <!-- SEMANAL -->
     <div id="page-semanal" class="page">
       <div class="export-bar"><span>📅</span><p>Relatório semanal com fotos das atividades. Edite diretamente aqui.</p><button class="btn btn-warn btn-sm" onclick="curWeek?openSemPrint(curWeek):exportPDF()">🖨 Imprimir / PDF</button></div>
+      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;margin-bottom:12px;">
+        <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">📁 Pasta do navio — salvar e carregar relatórios (subpastas por função)</div>
+        <div class="form-row" style="margin-bottom:8px;">
+          <div class="form-group"><label style="font-size:10px;">Oficial que está fazendo o relatório</label>
+            <select class="form-control" id="sr-oficial" onfocus="popOficiais('sr-oficial','sr-func')" onchange="oficialFuncAuto('sr-oficial','sr-func')"></select>
+          </div>
+          <div class="form-group"><label style="font-size:10px;">Pasta pessoal (função)</label>
+            <select class="form-control" id="sr-func"></select>
+          </div>
+          <div class="form-group"><label style="font-size:10px;">Carregar de (pasta)</label>
+            <select class="form-control" id="sr-load-func"></select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-green btn-sm" onclick="saveSemNaPasta()">📁 Salvar relatório na pasta</button>
+          <button class="btn btn-primary btn-sm" onclick="loadRelatorioDaPasta()">📥 Carregar relatório</button>
+          <span style="font-size:9.5px;color:var(--muted);align-self:center;">Salva a semana ativa em Relatorios/&lt;FUNÇÃO&gt; · carrega arquivos das pastas Relatorios e Novo Relatorio (por função ou GERAL) · tudo entra no backup geral</span>
+        </div>
+      </div>
       <div class="week-tabs" id="wtabs"></div>
       <div id="rpt-sem"><div class="empty-state"><div class="ico">📅</div><p>Selecione uma semana</p></div></div>
     </div>
@@ -1179,6 +1198,7 @@
         <div id="crew-bulk-bar" style="display:none;background:var(--login-blue);color:#fff;padding:10px 14px;border-radius:8px;margin-bottom:12px;align-items:center;gap:10px;flex-wrap:wrap;">
           <span id="crew-bulk-count" style="font-weight:700;font-size:13px;flex:1;">0 selecionado(s)</span>
           <button onclick="openBulkUpdate()" style="background:#fff;color:var(--login-blue);border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">⚡ Atualizar datas/porto</button>
+          <button onclick="delCrewSelected()" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">🗑️ Eliminar selecionados</button>
           <button onclick="deselectAllCrew()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:7px;padding:7px 12px;font-size:12px;cursor:pointer;">✕ Cancelar</button>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
@@ -2690,6 +2710,7 @@ function _goPage(id){
   if(id==='dashboard'){renderDash();}
   if(id==='historico'){renderHistorico();}
   if(id==='tripulantes'){renderCrew();_crewSel.clear();_updateCrewBulkBar();switchCrewTab('list');}
+  if(id==='semanal'){try{popOficiais('sr-oficial','sr-func');srPopLoadFunc();}catch(e){}}
   if(id==='embarque'){renderEmbarque();}
   if(id==='semanal'){renderSemTabs();}
   if(id==='fotos'){renderGallery();fillFotoAssoc();}
@@ -2821,13 +2842,12 @@ function saveReg(){
   saveData(true);clearRegForm();kpis();toast('✅ Registro salvo!','ok');
 }
 // ── NOVO REGISTRO → pasta do navio (Novo Relatorio/<FUNÇÃO>) ──
-function npPopulate(){
-  var selO=document.getElementById('np-oficial');
-  var selF=document.getElementById('np-func');
+function popOficiais(oficialId, funcId){
+  var selO=document.getElementById(oficialId);
+  var selF=document.getElementById(funcId);
   if(selF && !selF.options.length){
     selF.innerHTML = JAC_FUNCS.map(function(c){ return '<option value="'+c+'">'+c+' — '+JAC_FUNC_LABELS[c]+'</option>'; }).join('');
   }
-  if(selO && selO.options.length<= (S.crew||[]).length){ /* repopula sempre que focar */ }
   if(selO){
     var cur=selO.value;
     selO.innerHTML = '<option value="">— selecione o oficial —</option>'
@@ -2838,13 +2858,15 @@ function npPopulate(){
     if(cur) selO.value=cur;
   }
 }
-function npOficialChange(){
-  var selO=document.getElementById('np-oficial');
-  var selF=document.getElementById('np-func');
+function oficialFuncAuto(oficialId, funcId){
+  var selO=document.getElementById(oficialId);
+  var selF=document.getElementById(funcId);
   if(!selO||!selF) return;
   var opt=selO.options[selO.selectedIndex];
   if(opt && opt.dataset.abbr){ selF.value = jacFuncOfAbbr(opt.dataset.abbr); }
 }
+function npPopulate(){ popOficiais('np-oficial','np-func'); }
+function npOficialChange(){ oficialFuncAuto('np-oficial','np-func'); }
 async function saveRegNaPasta(){
   var s=document.getElementById('r-sem').value;
   var titulo=document.getElementById('r-titulo').value.trim();
@@ -2889,6 +2911,140 @@ async function saveRegNaPasta(){
     toast('✅ Registro salvo no app e na pasta '+func+'!','ok');
   }
 }
+// ── RELATÓRIO SEMANAL → pasta (Relatorios/<FUNÇÃO>) + carregador ──
+function srPopLoadFunc(){
+  var sel=document.getElementById('sr-load-func');
+  if(sel && !sel.options.length){
+    sel.innerHTML = '<option value="GERAL">GERAL — todas as pastas</option>'
+      + JAC_FUNCS.filter(function(c){return c!=='GERAL';}).map(function(c){ return '<option value="'+c+'">'+c+' — '+JAC_FUNC_LABELS[c]+'</option>'; }).join('');
+  }
+}
+async function saveSemNaPasta(){
+  if(!curWeek){ toast('⚠️ Selecione uma semana primeiro','warn'); return; }
+  var selO=document.getElementById('sr-oficial');
+  var selF=document.getElementById('sr-func');
+  var oficial=null;
+  if(selO&&selO.value){ oficial=(S.crew||[]).find(function(c){return c.id===selO.value;}); }
+  if(!oficial){ toast('⚠️ Selecione o oficial que está fazendo o relatório','warn'); return; }
+  var func=(selF&&selF.value)||'GERAL';
+  var regs=S.regs.filter(function(r){ return r.s===curWeek; });
+  if(!regs.length){ toast('⚠️ Nenhuma atividade nesta semana','warn'); return; }
+  var vcfg=(getCfg().vessel)||{};
+  var payload=JSON.stringify({tipo:'relatorio-semanal', navio:vcfg.vessel||'M/V LOG-IN JACARANDÁ',
+    semana:curWeek, oficial:{nome:oficial.nm,funcao:oficial.fn,pasta:func},
+    exp:new Date().toISOString(), regs:regs}, null, 2);
+  var fname='RELATORIO_SEM'+curWeek+'_'+func+'_'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'.json';
+  var ok=await jacSaveStructured(['Relatorios', func], fname, payload, 'application/json');
+  if(!ok){
+    var blob=new Blob([payload],{type:'application/json'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;
+    document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
+    toast('⬇️ Relatório baixado (configure a Pasta Raiz em Configurações p/ salvar direto)','ok');
+  }
+}
+function importRelatorioJson(data){
+  var novos=0;
+  var addIfNew=function(reg){
+    if(!reg||!reg.id) return;
+    if(S.regs.some(function(x){return x.id===reg.id;})) return;
+    S.regs.push(reg); novos++;
+  };
+  if(data.tipo==='novo-registro' && data.reg){ addIfNew(data.reg); }
+  else if(data.tipo==='relatorio-semanal' && Array.isArray(data.regs)){ data.regs.forEach(addIfNew); }
+  else if(Array.isArray(data.regs)){ data.regs.forEach(addIfNew); } // backup geral também é aceito
+  else { toast('⚠️ Arquivo não reconhecido como relatório do Jacarandá','warn'); return; }
+  if(novos>0){
+    saveData(true); kpis(); renderDash(); renderSemTabs();
+    if(curWeek) renderSem(curWeek);
+    toast('📥 '+novos+' atividade(s) importada(s) — já incluídas no backup geral','ok');
+  } else {
+    toast('ℹ️ Nenhuma atividade nova (todas já existiam no app)','ok');
+  }
+}
+async function loadRelatorioDaPasta(){
+  srPopLoadFunc();
+  var scope=document.getElementById('sr-load-func')?.value||'GERAL';
+  // Sem pasta raiz: seletor de arquivo comum
+  if(!window._rootDir){
+    var inp=document.createElement('input');
+    inp.type='file'; inp.accept='.json'; inp.multiple=true;
+    inp.onchange=function(){
+      Array.from(inp.files).forEach(function(f){
+        var r=new FileReader();
+        r.onload=function(ev){ try{ importRelatorioJson(JSON.parse(ev.target.result)); }catch(e){ toast('❌ '+f.name+': '+e.message,'err'); } };
+        r.readAsText(f);
+      });
+    };
+    inp.click();
+    return;
+  }
+  if(!await ensureRootPerm()){ toast('⚠️ Permissão negada na pasta raiz','warn'); return; }
+  var funcs = scope==='GERAL' ? JAC_FUNCS : [scope];
+  var achados=[];
+  for(var p=0;p<2;p++){
+    var parent=['Relatorios','Novo Relatorio'][p];
+    var pDir=null;
+    try{ pDir=await window._rootDir.getDirectoryHandle(parent); }catch(e){ continue; }
+    for(var i=0;i<funcs.length;i++){
+      var fDir=null;
+      try{ fDir=await pDir.getDirectoryHandle(funcs[i]); }catch(e){ continue; }
+      try{
+        for await (var entry of fDir.values()){
+          if(entry.kind==='file' && /\.json$/i.test(entry.name)){
+            achados.push({parent:parent, func:funcs[i], handle:entry});
+          }
+        }
+      }catch(e){}
+    }
+  }
+  if(!achados.length){ toast('⚠️ Nenhum relatório .json encontrado em '+(scope==='GERAL'?'nenhuma pasta':scope),'warn'); return; }
+  achados.sort(function(a,b){ return a.handle.name<b.handle.name?1:-1; });
+  window._srAchados=achados;
+  var ov=document.createElement('div');
+  ov.className='modal-overlay';
+  ov.id='modal-sr-load';
+  ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:560px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.35);">'
+    +'<div style="background:linear-gradient(135deg,#07182e,#0e2540);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:10px;">'
+    +'<div style="flex:1;font-weight:800;">📥 Carregar relatório — '+(scope==='GERAL'?'todas as pastas':scope)+'</div>'
+    +'<button onclick="document.getElementById(\'modal-sr-load\').remove()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;">✕</button></div>'
+    +'<div style="padding:12px 16px;">'
+    +achados.slice(0,60).map(function(f,i){
+      return '<div onclick="srAbrirArquivo('+i+')" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;background:#f8fafc;">'
+        +'<span style="font-size:18px;">📄</span>'
+        +'<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escHtml(f.handle.name)+'</div>'
+        +'<div style="font-size:10px;color:var(--text-dim);">'+f.parent+' / '+f.func+'</div></div>'
+        +'<span style="font-size:11px;color:var(--login-blue);font-weight:700;">Carregar ›</span></div>';
+    }).join('')
+    +(achados.length>60?'<div style="font-size:10px;color:var(--muted);text-align:center;">… e mais '+(achados.length-60)+' arquivo(s)</div>':'')
+    +'</div></div>';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998;display:flex;align-items:center;justify-content:center;';
+  document.body.appendChild(ov);
+}
+async function srAbrirArquivo(i){
+  var f=window._srAchados && window._srAchados[i];
+  if(!f) return;
+  try{
+    var file=await f.handle.getFile();
+    var txt=await file.text();
+    importRelatorioJson(JSON.parse(txt));
+    var m=document.getElementById('modal-sr-load'); if(m)m.remove();
+  }catch(e){ toast('❌ Erro ao ler: '+e.message,'err'); }
+}
+
+// ── TRIPULAÇÃO: eliminar selecionados ──
+function delCrewSelected(){
+  var n=_crewSel.size;
+  if(!n){ toast('⚠️ Selecione tripulantes primeiro','warn'); return; }
+  var nomes=(S.crew||[]).filter(function(c){return _crewSel.has(c.id);}).map(function(c){return c.nm;});
+  if(!confirm('Eliminar '+n+' tripulante(s)?\n\n'+nomes.slice(0,8).join('\n')+(nomes.length>8?'\n…':'')+'\n\nEsta ação não pode ser desfeita.')) return;
+  S.crew=S.crew.filter(function(c){ return !_crewSel.has(c.id); });
+  _crewSel.clear();
+  saveData(true);
+  renderCrew(); _updateCrewBulkBar(); kpis();
+  toast('🗑️ '+n+' tripulante(s) eliminado(s)','ok');
+}
+
 function clearRegForm(){
   ['r-titulo','r-atv','r-loc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   const hidden=document.getElementById('r-eq-hidden');if(hidden)hidden.value='';
@@ -9363,7 +9519,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.9.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
