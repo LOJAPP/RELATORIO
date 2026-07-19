@@ -1324,6 +1324,7 @@
           <div style="padding:12px;">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
               <label style="display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--login-blue-xlt);border:2px dashed var(--border2);border-radius:10px;padding:14px 8px;cursor:pointer;text-align:center;" onmouseover="this.style.borderColor='var(--login-blue)'" onmouseout="this.style.borderColor='var(--border2)'"><span style="font-size:28px;">💾</span><div style="font-size:12px;font-weight:700;color:var(--login-blue);">Backup JSON</div><div style="font-size:10px;color:var(--text-dim);">Restaurar dados</div><input type="file" accept=".json" style="display:none" onchange="importBackupJSON(this)"><span class="btn btn-primary btn-sm" style="pointer-events:none;font-size:10px;">Selecionar</span></label>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:8px;background:#eff6ff;border:2px dashed #93c5fd;border-radius:10px;padding:14px 8px;cursor:pointer;text-align:center;" onclick="loadBackupDaPasta()" onmouseover="this.style.borderColor='#1A5FA8'" onmouseout="this.style.borderColor='#93c5fd'"><span style="font-size:28px;">📂</span><div style="font-size:12px;font-weight:700;color:#1e40af;">Backup da Pasta</div><div style="font-size:10px;color:var(--text-dim);">Carregar da pasta de Backups do navio</div><span class="btn btn-primary btn-sm" style="pointer-events:none;font-size:10px;">Abrir pasta</span></div>
               <label style="display:flex;flex-direction:column;align-items:center;gap:8px;background:#f5f3ff;border:2px dashed #ddd6fe;border-radius:10px;padding:14px 8px;cursor:pointer;text-align:center;" onmouseover="this.style.borderColor='#7c3aed'" onmouseout="this.style.borderColor='#ddd6fe'"><span style="font-size:28px;">🔍</span><div style="font-size:12px;font-weight:700;color:#7c3aed;">Inspeções</div><div style="font-size:10px;color:var(--text-dim);">Importar inspeções</div><input type="file" accept=".json" style="display:none" onchange="importInspecaoFile(this)"><span class="btn btn-sm" style="pointer-events:none;background:#7c3aed;color:#fff;border-color:#7c3aed;font-size:10px;">Selecionar</span></label>
             </div>
             <div id="import-preview" style="display:none;"><div id="import-preview-body" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:180px;overflow-y:auto;font-size:12px;margin-bottom:8px;"></div><div id="import-actions" style="display:flex;gap:8px;flex-wrap:wrap;"></div></div>
@@ -1761,6 +1762,7 @@
       <div class="export-bar"><span>🔍</span><p>Relatórios de inspeção de área, equipamentos e conformidade.</p>
         <button class="btn btn-ghost btn-sm" onclick="exportInspecaoJSON()">💾 Exportar JSON</button>
         <button class="btn btn-ghost btn-sm" onclick="exportPDF()">🖨 Imprimir</button><button class="btn btn-warn btn-sm" onclick="toast('📄 No diálogo, escolha “Salvar como PDF” como destino','ok');exportPDF()">📄 Salvar PDF</button>
+        <button class="btn btn-green btn-sm" onclick="carregarUltimaInspecao()">📥 Última inspeção</button>
         <button class="btn btn-primary btn-sm" onclick="openConsolidaInsp()" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border-color:#7c3aed;">📑 Consolidar Inspeções</button>
       </div>
 
@@ -9759,7 +9761,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.1.0';
+const APP_VERSION = '2.1.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
@@ -12308,6 +12310,86 @@ function showImportPreview(){
 // ══════════════════════════════════════════════════
 // ── BACKUP JACARANDÁ ──
 // ══════════════════════════════════════════════════
+// ── CARREGAR BACKUP GERAL DA PASTA DE BACKUPS ──
+async function loadBackupDaPasta(){
+  // Sem pasta raiz: cai no seletor de arquivo comum
+  if(!window._rootDir){
+    var inp=document.createElement('input');
+    inp.type='file'; inp.accept='.json';
+    inp.onchange=function(){
+      var f=inp.files[0]; if(!f)return;
+      var r=new FileReader();
+      r.onload=function(ev){ try{ previewBackup(JSON.parse(ev.target.result), f.name); }catch(e){ toast('❌ Arquivo inválido','err'); } };
+      r.readAsText(f);
+    };
+    inp.click();
+    return;
+  }
+  if(!await ensureRootPerm()){ toast('⚠️ Permissão negada na pasta raiz','warn'); return; }
+  var achados=[];
+  var bDir=null;
+  try{ bDir=await window._rootDir.getDirectoryHandle('Backups'); }
+  catch(e){ toast('⚠️ Pasta "Backups" ainda não existe na pasta raiz — salve um backup primeiro','warn'); return; }
+  // arquivos soltos em Backups/ + subpastas de escopo
+  try{
+    for await (var e1 of bDir.values()){
+      if(e1.kind==='file' && /\.json$/i.test(e1.name)){ achados.push({sub:'Backups', handle:e1}); }
+      else if(e1.kind==='directory'){
+        try{
+          for await (var e2 of e1.values()){
+            if(e2.kind==='file' && /\.json$/i.test(e2.name)){ achados.push({sub:'Backups/'+e1.name, handle:e2}); }
+          }
+        }catch(x){}
+      }
+    }
+  }catch(x){}
+  if(!achados.length){ toast('⚠️ Nenhum arquivo .json encontrado na pasta Backups','warn'); return; }
+  achados.sort(function(a,b){ return a.handle.name<b.handle.name?1:-1; });
+  window._bkAchados=achados;
+  var ov=document.createElement('div');
+  ov.id='modal-bk-load';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:560px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.35);">'
+    +'<div style="background:linear-gradient(135deg,#07182e,#0e2540);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:10px;">'
+    +'<div style="flex:1;font-weight:800;">📂 Carregar Backup — pasta Backups do navio</div>'
+    +'<button onclick="document.getElementById(\'modal-bk-load\').remove()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;">✕</button></div>'
+    +'<div style="padding:12px 16px;">'
+    +'<div style="font-size:10.5px;color:var(--text-dim);margin-bottom:8px;">O backup mais recente aparece primeiro. Ao carregar, o app mostra a prévia (novos × existentes) antes de aplicar.</div>'
+    +achados.slice(0,60).map(function(f,i){
+      return '<div onclick="bkAbrirArquivo('+i+')" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;background:#f8fafc;">'
+        +'<span style="font-size:18px;">💾</span>'
+        +'<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escHtml(f.handle.name)+'</div>'
+        +'<div style="font-size:10px;color:var(--text-dim);">'+escHtml(f.sub)+'</div></div>'
+        +'<span style="font-size:11px;color:var(--login-blue);font-weight:700;">Carregar ›</span></div>';
+    }).join('')
+    +(achados.length>60?'<div style="font-size:10px;color:var(--muted);text-align:center;">… e mais '+(achados.length-60)+' arquivo(s)</div>':'')
+    +'</div></div>';
+  document.body.appendChild(ov);
+}
+async function bkAbrirArquivo(i){
+  var f=window._bkAchados && window._bkAchados[i];
+  if(!f) return;
+  try{
+    var file=await f.handle.getFile();
+    var txt=await file.text();
+    var data=JSON.parse(txt);
+    var m=document.getElementById('modal-bk-load'); if(m)m.remove();
+    previewBackup(data, f.handle.name);
+  }catch(e){ toast('❌ Erro ao ler: '+e.message,'err'); }
+}
+
+// ── INSPEÇÕES: carregar a última inspeção ──
+function carregarUltimaInspecao(){
+  if(!S.inspecoes || !S.inspecoes.length){ toast('⚠️ Nenhuma inspeção registrada ainda','warn'); return; }
+  var ult=S.inspecoes.slice().sort(function(a,b){
+    var ta=a.ts||new Date(a.data||0).getTime()||0;
+    var tb=b.ts||new Date(b.data||0).getTime()||0;
+    return tb-ta;
+  })[0];
+  openEditInsp(ult.id);
+  toast('📥 Última inspeção carregada: '+(ult.titulo||ult.area||ult.tipo||'')+' ('+(ult.data||'')+')','ok');
+}
+
 function importBackupJSON(input){
   const f=input.files[0]; if(!f)return;
   const r=new FileReader();
