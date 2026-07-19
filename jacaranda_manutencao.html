@@ -812,7 +812,7 @@
     <h1 id="page-title">📊 Painel Geral</h1>
     <div class="topbar-right">
       <div class="clock" id="clock-el">--:--:--</div>
-      <button class="btn btn-ghost btn-sm" onclick="exportPDF()">🖨 PDF</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportPDF()">🖨 Imprimir</button><button class="btn btn-ghost btn-sm" onclick="toast('📄 No diálogo, escolha “Salvar como PDF” como destino','ok');exportPDF()">📄 Salvar PDF</button>
       <button class="btn btn-ghost btn-sm" onclick="exportHTMLFile()" title="Exporta o app com todos os dados para compartilhar com outro celular">📦 Compartilhar App</button>
       <button class="btn btn-ghost btn-sm" onclick="exportJSON()">⬇ Backup</button>
       <button class="btn btn-primary btn-sm" onclick="saveData()">💾 Salvar</button>
@@ -1103,7 +1103,7 @@
 
     <!-- SEMANAL -->
     <div id="page-semanal" class="page">
-      <div class="export-bar"><span>📅</span><p>Relatório semanal com fotos das atividades. Edite diretamente aqui.</p><button class="btn btn-warn btn-sm" onclick="curWeek?openSemPrint(curWeek):exportPDF()">🖨 Imprimir / PDF</button></div>
+      <div class="export-bar"><span>📅</span><p>Relatório semanal com fotos das atividades. Edite diretamente aqui.</p><button class="btn btn-warn btn-sm" onclick="curWeek?openSemPrint(curWeek):exportPDF()">🖨 Imprimir / 📄 PDF</button></div>
       <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;margin-bottom:12px;">
         <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">📁 Pasta do navio — salvar e carregar relatórios (subpastas por função)</div>
         <div class="form-row" style="margin-bottom:8px;">
@@ -1125,7 +1125,7 @@
 
     <!-- MENSAL -->
     <div id="page-mensal" class="page">
-      <div class="export-bar"><span>📆</span><p>Relatório mensal consolidado. Edite registros diretamente.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button></div>
+      <div class="export-bar"><span>📆</span><p>Relatório mensal consolidado. Edite registros diretamente.</p><button class="btn btn-ghost btn-sm" onclick="exportPDF()">🖨 Imprimir</button><button class="btn btn-warn btn-sm" onclick="toast('📄 No diálogo, escolha “Salvar como PDF” como destino','ok');exportPDF()">📄 Salvar PDF</button></div>
       <div class="form-row" style="margin-bottom:14px;">
         <div class="form-group" style="max-width:200px;"><label>Mês</label><input type="month" class="form-control" id="mes-sel" onchange="renderMensal()"></div>
       </div>
@@ -1134,7 +1134,7 @@
 
     <!-- CARTÕES DE DESVIO -->
     <div id="page-desvios" class="page">
-      <div class="export-bar"><span>⚠️</span><p>Registro de não conformidades e desvios de segurança/qualidade. Abra e feche cartões conforme a resolução.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button></div>
+      <div class="export-bar"><span>⚠️</span><p>Registro de não conformidades e desvios de segurança/qualidade. Abra e feche cartões conforme a resolução.</p><button class="btn btn-ghost btn-sm" onclick="exportPDF()">🖨 Imprimir</button><button class="btn btn-warn btn-sm" onclick="toast('📄 No diálogo, escolha “Salvar como PDF” como destino','ok');exportPDF()">📄 Salvar PDF</button></div>
 
       <!-- Novo desvio -->
       <div class="panel">
@@ -1196,7 +1196,7 @@
 
     <!-- HISTÓRICO -->
     <div id="page-historico" class="page">
-      <div class="export-bar"><span>🗂️</span><p>Histórico completo de todos os trabalhos registrados.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button></div>
+      <div class="export-bar"><span>🗂️</span><p>Histórico completo de todos os trabalhos registrados.</p><button class="btn btn-ghost btn-sm" onclick="exportPDF()">🖨 Imprimir</button><button class="btn btn-warn btn-sm" onclick="toast('📄 No diálogo, escolha “Salvar como PDF” como destino','ok');exportPDF()">📄 Salvar PDF</button></div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
         <button class="dept-pill pa" onclick="setDept('Todos',this)">Todos</button>
         <button class="dept-pill" onclick="setDept('Convés',this)">Convés</button>
@@ -1233,13 +1233,13 @@
 
     <!-- EMBARQUE -->
     <div id="page-embarque" class="page">
-      <div class="export-bar"><span>🚢</span><p>Relatório de embarque e desembarque da tripulação.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button></div>
+      <div class="export-bar"><span>🚢</span><p>Relatório de embarque e desembarque da tripulação.</p><button class="btn btn-ghost btn-sm" onclick="exportPDF()">🖨 Imprimir</button><button class="btn btn-warn btn-sm" onclick="toast('📄 No diálogo, escolha “Salvar como PDF” como destino','ok');exportPDF()">📄 Salvar PDF</button></div>
       <div id="embarque-content"></div>
     </div>
 
     <!-- BLOCO / OFICINA (page kept for direct access) -->
     <div id="page-oficina" class="page">
-      <div class="export-bar"><span>🏭</span><p>Relatório de serviços realizados por empresas terceirizadas / bloco / oficina.</p><button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button></div>
+      <div class="export-bar"><span>🏭</span><p>Relatório de serviços realizados por empresas terceirizadas / bloco / oficina.</p><button class="btn btn-ghost btn-sm" onclick="exportPDF()">🖨 Imprimir</button><button class="btn btn-warn btn-sm" onclick="toast('📄 No diálogo, escolha “Salvar como PDF” como destino','ok');exportPDF()">📄 Salvar PDF</button></div>
       <div class="panel">
         <div class="panel-header">🏢 Empresas Terceirizadas <span class="badge" id="emp-count">0</span></div>
         <div style="padding:14px;">
@@ -1739,7 +1739,7 @@
     <div id="page-inspecao" class="page">
       <div class="export-bar"><span>🔍</span><p>Relatórios de inspeção de área, equipamentos e conformidade.</p>
         <button class="btn btn-ghost btn-sm" onclick="exportInspecaoJSON()">💾 Exportar JSON</button>
-        <button class="btn btn-warn btn-sm" onclick="exportPDF()">🖨 PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportPDF()">🖨 Imprimir</button><button class="btn btn-warn btn-sm" onclick="toast('📄 No diálogo, escolha “Salvar como PDF” como destino','ok');exportPDF()">📄 Salvar PDF</button>
         <button class="btn btn-primary btn-sm" onclick="openConsolidaInsp()" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border-color:#7c3aed;">📑 Consolidar Inspeções</button>
       </div>
 
@@ -3821,7 +3821,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;backgr
 <div class="no-print" style="background:#07182e;padding:10px 20px;display:flex;gap:8px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;flex-wrap:wrap;">
   <span style="color:#fff;font-size:13px;font-weight:700;">📅 Relatório Semanal — SEM ${week} — ${vessel}</span>
   <div style="display:flex;gap:8px;">
-    <button onclick="window.print()" style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Imprimir / PDF</button>
+    <button onclick="window.print()" style="font-size:13px;background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">🖨 Imprimir</button> <button onclick="this.nextElementSibling.hidden=false;window.print()" style="font-size:13px;background:#1A5FA8;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">📄 Salvar PDF</button><span class="jac-pdf-hint" hidden style="background:#fbbf24;color:#7c2d12;font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:14px;vertical-align:middle;">No diálogo, escolha “Salvar como PDF” como destino</span><style>@media print{.no-print,.noprint,.jac-pdf-hint{display:none!important}}</style>
     <button onclick="window.close()" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:8px 14px;font-size:13px;cursor:pointer;">✕ Fechar</button>
   </div>
 </div>
@@ -4847,7 +4847,7 @@ function rioViagemPDF(){
     + '.sign div{border-top:1px solid #111;padding-top:4px;width:260px;}'
     + '@media print{.noprint{display:none;}}'
     + '</style></head><body>'
-    + '<div class="noprint" style="text-align:right;margin-bottom:8px;"><button onclick="window.print()" style="display:inline-block!important;background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Imprimir / PDF</button></div>'
+    + '<div class="noprint" style="text-align:right;margin-bottom:8px;"><button onclick="window.print()" style="display:inline-block!important;font-size:13px;background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">🖨 Imprimir</button> <button onclick="this.nextElementSibling.hidden=false;window.print()" style="display:inline-block!important;font-size:13px;background:#1A5FA8;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">📄 Salvar PDF</button><span class="jac-pdf-hint" hidden style="background:#fbbf24;color:#7c2d12;font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:14px;vertical-align:middle;">No diálogo, escolha “Salvar como PDF” como destino</span><style>@media print{.no-print,.noprint,.jac-pdf-hint{display:none!important}}</style></div>'
     + '<div class="head"><div style="display:flex;gap:14px;align-items:center;">'+rptBrandHtml('dark')+'<div><h1>⚓ RELATÓRIO DE VIAGEM</h1><div class="meta"><strong>'+escHtml((getCfg().vessel&&getCfg().vessel.vessel)||'M/V LOG-IN JACARANDÁ')+'</strong> · IMO 9471886 · '+escHtml((getCfg().vessel&&getCfg().vessel.route)||'Linha Amazonas')+'</div></div></div>'
     + '<div class="meta" style="text-align:right;"><strong>Nº Viagem: '+escHtml(nro)+'</strong><br>Sentido: '+dir+'<br>Saída: '+(saida?new Date(saida).toLocaleString('pt-BR'):'—')+' · Veloc. inicial: '+escHtml(vel)+' nós<br>Emitido: '+new Date().toLocaleString('pt-BR')+'</div></div>'
     + sec('🧮 ETA por Trecho — Rota Completa', grab('rio-eta-result'))
@@ -5382,7 +5382,7 @@ function printRioETA(){
   var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>ETA Rio Amazonas — '+vessel+'</title>'
     + '<style>*{box-sizing:border-box;margin:0;padding:0;}@page{margin:12mm;size:A4;}body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.wrap{max-width:800px;margin:0 auto;}@media print{.no-print{display:none!important;}}</style></head><body>'
     + '<div class="no-print" style="background:#064e63;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;"><span style="color:#fff;font-weight:700;font-size:13px;">🌊 ETA Rio Amazonas</span>'
-    + '<div><button onclick="window.print()" style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">🖨 Imprimir / PDF</button> '
+    + '<div><button onclick="window.print()" style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">🖨 Imprimir</button> <button onclick="this.nextElementSibling.hidden=false;window.print()" style="background:#1A5FA8;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">📄 Salvar PDF</button><span class="jac-pdf-hint" hidden style="background:#fbbf24;color:#7c2d12;font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:14px;vertical-align:middle;">No diálogo, escolha “Salvar como PDF” como destino</span><style>@media print{.no-print,.noprint,.jac-pdf-hint{display:none!important}}</style> '
     + '<button onclick="window.close()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:7px;padding:8px 14px;cursor:pointer;">✕</button></div></div>'
     + '<div class="wrap">'
     + '<div style="background:linear-gradient(135deg,#064e63,#0891b2);color:#fff;padding:16px 22px;">'
@@ -5621,7 +5621,7 @@ function printRelatorio(id){
     + '<div class="no-print" style="background:#07182e;padding:10px 20px;display:flex;gap:8px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;flex-wrap:wrap;">'
     + '<span style="color:#fff;font-size:13px;font-weight:700;">📄 '+escHtml(r.titulo)+'</span>'
     + '<div style="display:flex;gap:8px;">'
-    + '<button onclick="window.print()" style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Imprimir / PDF</button>'
+    + '<button onclick="window.print()" style="font-size:13px;background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">🖨 Imprimir</button> <button onclick="this.nextElementSibling.hidden=false;window.print()" style="font-size:13px;background:#1A5FA8;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">📄 Salvar PDF</button><span class="jac-pdf-hint" hidden style="background:#fbbf24;color:#7c2d12;font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:14px;vertical-align:middle;">No diálogo, escolha “Salvar como PDF” como destino</span><style>@media print{.no-print,.noprint,.jac-pdf-hint{display:none!important}}</style>'
     + '<button onclick="window.close()" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:8px 14px;font-size:13px;cursor:pointer;">✕</button>'
     + '</div></div>'
     + '<div class="wrap">'
@@ -6927,7 +6927,7 @@ function printUnificado(){
     + '<div class="no-print">'
     + '<span style="color:#fff;font-size:13px;font-weight:700;">📊 Relatório Unificado — '+escHtml(f.label)+'</span>'
     + '<div style="display:flex;gap:8px;">'
-    + '<button onclick="window.print()" style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Imprimir / PDF</button>'
+    + '<button onclick="window.print()" style="font-size:13px;background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">🖨 Imprimir</button> <button onclick="this.nextElementSibling.hidden=false;window.print()" style="font-size:13px;background:#1A5FA8;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">📄 Salvar PDF</button><span class="jac-pdf-hint" hidden style="background:#fbbf24;color:#7c2d12;font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:14px;vertical-align:middle;">No diálogo, escolha “Salvar como PDF” como destino</span><style>@media print{.no-print,.noprint,.jac-pdf-hint{display:none!important}}</style>'
     + '<button onclick="window.close()" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:8px 14px;font-size:13px;cursor:pointer;">✕</button>'
     + '</div></div>'
     + '<div class="wrap">' + body + '</div>'
@@ -7189,7 +7189,7 @@ function buildConsolidadoHTML(insps, opts){
      + '<span style="color:#fff;font-size:13px;font-weight:700;">📑 Inspeções Consolidadas — '
      + escHtml(vessel)+' ('+insps.length+' inspeções)</span>'
      + '<div style="display:flex;gap:8px;">'
-     + '<button onclick="window.print()" style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Imprimir / PDF</button>'
+     + '<button onclick="window.print()" style="font-size:13px;background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">🖨 Imprimir</button> <button onclick="this.nextElementSibling.hidden=false;window.print()" style="font-size:13px;background:#1A5FA8;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">📄 Salvar PDF</button><span class="jac-pdf-hint" hidden style="background:#fbbf24;color:#7c2d12;font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:14px;vertical-align:middle;">No diálogo, escolha “Salvar como PDF” como destino</span><style>@media print{.no-print,.noprint,.jac-pdf-hint{display:none!important}}</style>'
      + '<button onclick="window.close()" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:8px 14px;font-size:13px;cursor:pointer;">✕</button>'
      + '</div></div>';
 
@@ -9637,7 +9637,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.9.3';
+const APP_VERSION = '1.9.4';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
@@ -11626,7 +11626,7 @@ function printInspCard(id){
     + '<div class="no-print" style="background:#07182e;padding:10px 20px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;position:sticky;top:0;z-index:100;">'
     + '<span style="color:#fff;font-size:13px;font-weight:700;flex:1;min-width:140px;">⚓ '+escHtml(ins.titulo)+'</span>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-    + '<button onclick="window.print()" style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Imprimir / PDF</button>'
+    + '<button onclick="window.print()" style="font-size:13px;background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-weight:700;cursor:pointer;">🖨 Imprimir</button> <button onclick="this.nextElementSibling.hidden=false;window.print()" style="font-size:13px;background:#1A5FA8;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-weight:700;cursor:pointer;">📄 Salvar PDF</button><span class="jac-pdf-hint" hidden style="background:#fbbf24;color:#7c2d12;font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:14px;vertical-align:middle;">No diálogo, escolha “Salvar como PDF” como destino</span><style>@media print{.no-print,.noprint,.jac-pdf-hint{display:none!important}}</style>'
     + '<button onclick="enviarRelatorio()" id="btn-enviar" style="background:#1A5FA8;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">📤 Enviar</button>'
     + '<button onclick="whatsappRelatorio()" style="background:#25D366;color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">💬</button>'
     + '<button onclick="window.close()" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:8px 12px;font-size:13px;cursor:pointer;">✕</button>'

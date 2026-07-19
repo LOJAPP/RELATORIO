@@ -1,5 +1,5 @@
-# ⚓ Jacarandá — build 20260719_0700
-Commit: \`build 20260719_0700 - Relatorio Tecnico com pasta por funcao: salvar e carregar para continuar\`
+# ⚓ Jacarandá — build 20260719_1100
+Commit: `build 20260719_1100 - Botoes separados Imprimir e Salvar PDF em todas as previas e barras do app`
 
 ## Como usar como aplicativo (sem navegador aberto)
 1. **Celular/Tablet (recomendado)**: abra o app no Chrome/Safari → menu → **"Adicionar à tela de início" / "Instalar aplicativo"**. Vira um app com ícone próprio e funciona offline (PWA).
@@ -8,6 +8,7 @@ Commit: \`build 20260719_0700 - Relatorio Tecnico com pasta por funcao: salvar e
 4. **.exe verdadeiro (opcional)**: empacotar com Electron/Tauri/Nativefier em um PC com Node.js (`npx nativefier "https://lojapp.github.io/RELATORIO/jacaranda_manutencao.html"` gera um .exe). Não é necessário — as opções 1–3 dão a mesma experiência.
 
 ## Histórico
+- **20260719_1100** — **Imprimir e Salvar PDF separados** em todo o app: as 7 janelas de pré-visualização (semanal impresso, relatório técnico, inspeções, embarque, unificado, viagem do Rio e exportação geral) agora têm dois botões — 🖨 Imprimir (verde) e 📄 Salvar PDF (azul, mostra a dica de escolher "Salvar como PDF" como destino no diálogo); a barra de botões nunca sai na impressão. As barras internas das páginas (mensal, desvios, histórico, embarque, oficina, dashboard) também ganharam os dois botões separados. App v1.9.4.
 - **20260719_0700** — **Relatório Técnico na pasta do navio**: o formulário 📄 Novo Relatório Técnico ganhou o mesmo bloco verde — a pasta pessoal é detectada automaticamente pelo campo "Registrado por" (ITO, ON, OM, SCH, PON, POM, CVS, MAQ; demais → CREW, ajustável); 📁 **Salvar Relatório na pasta** grava no app E em `Relatorio Tecnico/<FUNÇÃO>/RELTEC_*.json`; 📥 **Carregar p/ continuar** navega pelos arquivos da pasta (por cargo ou GERAL) e reabre o relatório completo no formulário — dados, autor, planos e itens — para continuar de onde parou (ao salvar, grava nova versão). Usa a mesma Pasta Raiz do Administrador, persistente entre atualizações. App v1.9.3.
 - **20260719_0500** — **📥 Carregar relatório** agora fica exclusivamente na janela ✏️ Novo Registro (dentro do bloco verde da pasta do navio), com o seletor de pasta/cargo: GERAL, ITO, ON, OM, SCH, PON, POM, CVS, MAQ e **CREW** (nova pasta para marinheiros e outras funções, substituindo MAR — abreviações MAR/marinheiro caem automaticamente em CREW). A barra do Relatório Semanal mantém apenas o 📁 Salvar relatório na pasta. App v1.9.2.
 - **20260719_0300** — **Relatório Semanal na pasta do navio**: nova barra na página do semanal com oficial autor + pasta pessoal por função (GERAL/CVS/MAQ/ON/OM/ITO/SCH/PON/POM/MAR): 📁 salva a semana ativa em `Relatorios/<FUNÇÃO>` e 📥 **Carregar relatório** abre o navegador de arquivos das pastas `Relatorios` e `Novo Relatorio` (escolhendo por cargo ou GERAL), importando as atividades sem duplicar — tudo passa a integrar o backup geral. Sem pasta raiz, salva/carrega via Downloads/seletor de arquivos. **Tripulação**: novo botão 🗑️ Eliminar selecionados na barra de seleção múltipla (com confirmação e lista de nomes). App v1.9.1.
