@@ -1043,7 +1043,7 @@
         <div style="padding:16px;">
           <div class="form-row">
             <div class="form-group" style="max-width:170px;"><label>📅 Data *</label><input type="date" class="form-control" id="r2-data"></div>
-            <div class="form-group"><label>✍️ Registrado por *</label><select class="form-control" id="r2-autor"></select></div>
+            <div class="form-group"><label>✍️ Registrado por *</label><select class="form-control" id="r2-autor" onchange="rtAutorChange()"></select></div>
             <div class="form-group"><label>🏢 Departamento</label><select class="form-control" id="r2-dept"></select></div>
           </div>
           <div class="form-row">
@@ -1073,6 +1073,22 @@
           </div>
           <div class="sep"></div>
           <button class="btn btn-primary" onclick="saveNovoRelatorio()" style="width:100%;padding:14px;font-size:15px;font-weight:700;background:#7c3aed;border-color:#6d28d9;">💾 Salvar Relatório</button>
+          <div style="margin-top:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;">
+            <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">📁 Pasta do navio — Relatório Técnico (subpasta "Relatorio Tecnico")</div>
+            <div class="form-row" style="margin-bottom:8px;">
+              <div class="form-group"><label style="font-size:10px;">Pasta pessoal (função — detectada por "Registrado por")</label>
+                <select class="form-control" id="rt-func" onfocus="rtPopFunc()"></select>
+              </div>
+              <div class="form-group"><label style="font-size:10px;">Carregar de (pasta / cargo)</label>
+                <select class="form-control" id="rt-load-func" onfocus="popLoadFunc('rt-load-func')"></select>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-green" onclick="saveTecNaPasta()" style="flex:1;min-width:200px;">📁 Salvar Relatório na pasta</button>
+              <button class="btn btn-primary" onclick="loadRelatorioDaPasta('rt-load-func',{parents:['Relatorio Tecnico'],tecToForm:true})" style="flex:1;min-width:200px;">📥 Carregar p/ continuar</button>
+            </div>
+            <div style="font-size:9.5px;color:var(--muted);margin-top:5px;">📁 salva no app E grava em Pasta raiz / Relatorio Tecnico / &lt;FUNÇÃO&gt; · 📥 abre um relatório salvo de volta no formulário para continuar de acordo com a função (ITO, ON, OM, SCH, PON, POM, CVS, MAQ, CREW ou GERAL)</div>
+          </div>
         </div>
       </div>
       <!-- Lista de relatórios salvos -->
@@ -2950,6 +2966,18 @@ async function saveSemNaPasta(){
   }
 }
 function importRelatorioJson(data){
+  if(data.tipo==='relatorio-tecnico' && data.rel){
+    if(window._srOpts && window._srOpts.tecToForm){ rtFillForm(data.rel); }
+    else {
+      if(!S.relatorios) S.relatorios=[];
+      if(!S.relatorios.some(function(x){return x.id===data.rel.id;})){
+        S.relatorios.push(data.rel); saveData(true);
+        if(typeof renderR2Saved==='function') renderR2Saved();
+        toast('📥 Relatório técnico importado','ok');
+      } else { toast('ℹ️ Relatório técnico já existia no app','ok'); }
+    }
+    return;
+  }
   var novos=0;
   var addIfNew=function(reg){
     if(!reg||!reg.id) return;
@@ -2968,8 +2996,9 @@ function importRelatorioJson(data){
     toast('ℹ️ Nenhuma atividade nova (todas já existiam no app)','ok');
   }
 }
-async function loadRelatorioDaPasta(selId){
+async function loadRelatorioDaPasta(selId, opts){
   selId = selId||'np-load-func';
+  window._srOpts = opts||{};
   popLoadFunc(selId);
   var scope=document.getElementById(selId)?.value||'GERAL';
   // Sem pasta raiz: seletor de arquivo comum
@@ -2988,9 +3017,10 @@ async function loadRelatorioDaPasta(selId){
   }
   if(!await ensureRootPerm()){ toast('⚠️ Permissão negada na pasta raiz','warn'); return; }
   var funcs = scope==='GERAL' ? JAC_FUNCS : [scope];
+  var parents = (window._srOpts && window._srOpts.parents) || ['Relatorios','Novo Relatorio'];
   var achados=[];
-  for(var p=0;p<2;p++){
-    var parent=['Relatorios','Novo Relatorio'][p];
+  for(var p=0;p<parents.length;p++){
+    var parent=parents[p];
     var pDir=null;
     try{ pDir=await window._rootDir.getDirectoryHandle(parent); }catch(e){ continue; }
     for(var i=0;i<funcs.length;i++){
@@ -3037,6 +3067,87 @@ async function srAbrirArquivo(i){
     importRelatorioJson(JSON.parse(txt));
     var m=document.getElementById('modal-sr-load'); if(m)m.remove();
   }catch(e){ toast('❌ Erro ao ler: '+e.message,'err'); }
+}
+
+// ── RELATÓRIO TÉCNICO → pasta (Relatorio Tecnico/<FUNÇÃO>) + continuar ──
+function rtPopFunc(){
+  var sel=document.getElementById('rt-func');
+  if(sel && !sel.options.length){
+    sel.innerHTML = JAC_FUNCS.map(function(c){ return '<option value="'+c+'">'+c+' — '+JAC_FUNC_LABELS[c]+'</option>'; }).join('');
+  }
+}
+function rtAutorChange(){
+  rtPopFunc();
+  var autorId=document.getElementById('r2-autor')?.value;
+  var sel=document.getElementById('rt-func');
+  if(!autorId||!sel) return;
+  var autor=(S.crew||[]).find(function(c){return c.id===autorId;});
+  if(autor){
+    var a=autor.abbr||(ROLE_ABBR[autor.fn]||String(autor.fn||'').slice(0,3).toUpperCase());
+    sel.value=jacFuncOfAbbr(a);
+  }
+}
+async function saveTecNaPasta(){
+  var data=document.getElementById('r2-data')?.value;
+  var titulo=document.getElementById('r2-titulo')?.value.trim();
+  var autorId=document.getElementById('r2-autor')?.value;
+  if(!data||!titulo){ toast('⚠️ Preencha a data e o título','warn'); return; }
+  if(!autorId){ toast('⚠️ Selecione quem registra','warn'); return; }
+  var autor=S.crew.find(function(c){return c.id===autorId;});
+  var abbr=autor?(autor.abbr||(ROLE_ABBR[autor.fn]||autor.fn.slice(0,3).toUpperCase())):'';
+  rtPopFunc();
+  var func=document.getElementById('rt-func')?.value||jacFuncOfAbbr(abbr);
+  var rel={
+    id:gid(), data:data,
+    autorId:autorId, autorNm:autor?('['+abbr+'] '+autor.nm):'—',
+    dept:document.getElementById('r2-dept')?.value||'',
+    projeto:document.getElementById('r2-projeto')?.value.trim()||'',
+    area:document.getElementById('r2-area')?.value.trim()||'',
+    titulo:titulo,
+    desc:document.getElementById('r2-desc')?.value.trim()||'',
+    planos:document.getElementById('r2-planos')?.value.trim()||'',
+    items:JSON.parse(JSON.stringify(_r2Items)),
+    s:String(wn()).padStart(2,'0'),
+    funcPasta:func,
+    ts:Date.now()
+  };
+  // 1) salva no app (mesma lista dos Relatórios Salvos)
+  if(!S.relatorios) S.relatorios=[];
+  S.relatorios.push(rel);
+  saveData(true);
+  ['r2-titulo','r2-desc','r2-projeto','r2-area','r2-planos'].forEach(function(id){ var el=document.getElementById(id); if(el)el.value=''; });
+  _r2Items=[]; renderR2Items(); renderR2Saved();
+  // 2) grava o arquivo na estrutura
+  var vcfg=(getCfg().vessel)||{};
+  var payload=JSON.stringify({tipo:'relatorio-tecnico', navio:vcfg.vessel||'M/V LOG-IN JACARANDÁ',
+    oficial:{nome:autor?autor.nm:'', funcao:autor?autor.fn:'', pasta:func},
+    exp:new Date().toISOString(), rel:rel}, null, 2);
+  var fname='RELTEC_'+String(rel.dept||'GERAL').replace(/[^\w]+/g,'-').toUpperCase()+'_'+data.replace(/-/g,'')+'_'+String(rel.id).slice(0,6)+'.json';
+  var ok=await jacSaveStructured(['Relatorio Tecnico', func], fname, payload, 'application/json');
+  if(!ok){
+    var blob=new Blob([payload],{type:'application/json'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;
+    document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
+    toast('✅ Relatório salvo no app · arquivo baixado (configure a Pasta Raiz p/ salvar direto)','ok');
+  } else {
+    toast('✅ Relatório técnico salvo no app e na pasta '+func+'!','ok');
+  }
+}
+function rtFillForm(rel){
+  var set=function(id,v){ var el=document.getElementById(id); if(el)el.value=v||''; };
+  set('r2-data', rel.data);
+  set('r2-dept', rel.dept);
+  set('r2-projeto', rel.projeto);
+  set('r2-area', rel.area);
+  set('r2-titulo', rel.titulo);
+  set('r2-desc', rel.desc);
+  set('r2-planos', rel.planos);
+  if(rel.autorId && document.getElementById('r2-autor')){ document.getElementById('r2-autor').value=rel.autorId; rtAutorChange(); }
+  if(rel.funcPasta){ rtPopFunc(); var f=document.getElementById('rt-func'); if(f)f.value=rel.funcPasta; }
+  _r2Items = JSON.parse(JSON.stringify(rel.items||[]));
+  renderR2Items();
+  toast('📥 Relatório carregado no formulário — continue e salve (será gravada uma nova versão)','ok');
 }
 
 // ── TRIPULAÇÃO: eliminar selecionados ──
@@ -9526,7 +9637,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.9.2';
+const APP_VERSION = '1.9.3';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
