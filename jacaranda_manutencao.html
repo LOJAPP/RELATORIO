@@ -1243,6 +1243,19 @@
             <div id="fs-status-box" style="border-radius:8px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--border2);background:var(--surface2);">
               <div style="display:flex;align-items:center;gap:8px;"><div id="fs-status-icon" style="font-size:20px;">📂</div><div style="flex:1;min-width:0;"><div id="fs-status-title" style="font-weight:700;font-size:12px;color:var(--login-blue);">Nenhuma pasta vinculada</div><div id="fs-status-path" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div></div></div>
             </div>
+            <div class="form-group" style="margin-bottom:8px;"><label style="font-size:10px;">🗂️ Escopo do backup (setor / função)</label>
+              <select class="form-control" id="bkp-scope" style="font-size:11px;">
+                <option value="GERAL">GERAL — todos os setores</option>
+                <option value="CVS">CVS — Convés</option>
+                <option value="MAQ">MAQ — Máquinas</option>
+                <option value="ON">ON — Oficial de Náutica</option>
+                <option value="OM">OM — Oficial de Máquinas</option>
+                <option value="ITO">ITO — Imediato</option>
+                <option value="SCH">SCH — Subchefe</option>
+                <option value="PON">PON</option>
+                <option value="MAR">MAR — Marinheiro</option>
+              </select>
+            </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="pickFolder()" id="btn-pick-folder" style="flex:1;">📂 Escolher Pasta</button><button class="btn btn-green btn-sm" onclick="saveToFolder()" style="flex:1;">💾 Salvar</button></div>
             <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" onclick="loadFromFolder()" style="flex:1;">📥 Carregar</button><button class="btn btn-ghost btn-sm" onclick="exportJSON()" style="flex:1;">⬇️ Download JSON</button></div>
             <div style="display:flex;gap:6px;margin-bottom:8px;"><input type="text" class="form-control" id="cfg-net-filename" placeholder="jacaranda_backup" style="font-size:11px;flex:1;"><select class="form-control" id="cfg-net-date" style="font-size:11px;max-width:100px;"><option value="daily">+data</option><option value="weekly">+semana</option><option value="none">fixo</option></select></div>
@@ -1411,6 +1424,7 @@
             <button class="btn btn-green btn-sm" onclick="rioViagemPDF()">📄 Relatório PDF da Viagem</button>
             <button class="btn btn-ghost btn-sm" onclick="rioViagemRestaurar()">♻️ Restaurar selecionada</button>
             <button class="btn btn-ghost btn-sm" onclick="rioViagemExportar()">📤 Exportar arquivo (.json)</button>
+            <button class="btn btn-ghost btn-sm" onclick="rioViagemSalvarNaPasta()">📁 Salvar backup na pasta</button>
             <label class="btn btn-ghost btn-sm" style="cursor:pointer;">📥 Importar arquivo
               <input type="file" accept=".json" style="display:none;" onchange="rioViagemImportar(this)">
             </label>
@@ -4409,6 +4423,16 @@ function rioViagemExcluir(){
   rioViagemRenderList();
   toast('🗑️ Backup '+nro+' excluído','ok');
 }
+async function rioViagemSalvarNaPasta(){
+  if(!window._rioDirHandle){
+    await rioPickDir();
+    if(!window._rioDirHandle){
+      toast('⚠️ Escolha a pasta (ou use 📤 Exportar para baixar em Downloads)','warn');
+      return;
+    }
+  }
+  rioViagemExportar(); // com a pasta escolhida, rioSaveFile grava direto nela
+}
 function rioViagemExportar(){
   var snap = rioViagemSnapshot();
   var nro = snap.nro || 'SEM-NUMERO';
@@ -7197,10 +7221,44 @@ function buildFileName(){
   const base=cfg.netFilename||document.getElementById('cfg-net-filename')?.value.trim()||'jacaranda_backup';
   const mode=cfg.netDateMode||document.getElementById('cfg-net-date')?.value||'daily';
   let s='';if(mode==='daily')s='_'+new Date().toISOString().slice(0,10);else if(mode==='weekly')s='_SEM'+String(wn()).padStart(2,'0');
-  return base+s+'.json';
+  const sc=bkpScope();
+  return base+(sc!=='GERAL'?('_'+sc):'')+s+'.json';
 }
-function buildBackupData(){
-  return JSON.stringify({v:5,exp:new Date().toISOString(),regs:S.regs,crew:S.crew,fotos:S.fotos,empresas:S.empresas,oficina:S.oficina,desvios:S.desvios,inspecoes:S.inspecoes},null,2);
+// Escopo do backup: GERAL, setor (CVS/MAQ) ou função (ON/OM/ITO/SCH/PON/MAR)
+var BKP_SCOPE_ALIAS = {
+  CVS:['CVS','CONV','CONVES','CONVÉS','DECK'],
+  MAQ:['MAQ','MÁQ','MAQUINA','MÁQUINA','PRAÇA','PRACA','ENG'],
+  ON:['ON'], OM:['OM'],
+  ITO:['ITO','IMT','IMEDIATO'],
+  SCH:['SCH','SCM','SCHE','SUBCHEFE'],
+  PON:['PON'], MAR:['MAR','MARINHEIRO']
+};
+function bkpScope(){
+  return document.getElementById('bkp-scope')?.value||'GERAL';
+}
+function bkpItemMatches(item, code){
+  if(code==='GERAL') return true;
+  var alias = BKP_SCOPE_ALIAS[code]||[code];
+  // 1) departamento/setor do item
+  var dp = String(item.dp||item.dept||'').toUpperCase();
+  if(dp && alias.some(function(k){ return dp.indexOf(k)>=0; })) return true;
+  // 2) função dos responsáveis/equipe
+  var ids = [].concat(item.q||[], item.resp||[], item.equipe||[]);
+  return ids.some(function(id){
+    var c = (S.crew||[]).find(function(x){ return x.id===id; });
+    if(!c) return false;
+    var a = String(c.abbr||ROLE_ABBR[c.fn]||c.fn||'').toUpperCase();
+    return alias.indexOf(a)>=0;
+  });
+}
+function buildBackupData(scope){
+  scope = scope||bkpScope();
+  var regs = S.regs, oficina = S.oficina;
+  if(scope!=='GERAL'){
+    regs = S.regs.filter(function(r){ return bkpItemMatches(r, scope); });
+    oficina = (S.oficina||[]).filter(function(o){ return bkpItemMatches(o, scope); });
+  }
+  return JSON.stringify({v:5,exp:new Date().toISOString(),scope:scope,regs:regs,crew:S.crew,fotos:S.fotos,empresas:S.empresas,oficina:oficina,desvios:S.desvios,inspecoes:S.inspecoes},null,2);
 }
 async function saveToFolder(){
   if(!_folderHandle){await initFolderHandle();}
@@ -7241,8 +7299,8 @@ function exportJSON(){
   const fileName=buildFileName();
   const blob=new Blob([buildBackupData()],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fileName;a.click();
-  recordBackupHistory(fileName,'Downloads','Download Manual');
-  toast('Backup: '+fileName,'ok');
+  recordBackupHistory(fileName,'Downloads','Download Manual ('+bkpScope()+')');
+  toast('Backup '+bkpScope()+': '+fileName,'ok');
 }
 
 // ── Export full HTML + data for sharing to other devices ──
@@ -9101,7 +9159,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.8.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data

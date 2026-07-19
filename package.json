@@ -1,0 +1,35 @@
+{
+  "name": "login-jacaranda-desktop",
+  "productName": "LOG-IN Jacarandá",
+  "version": "1.8.1",
+  "description": "M/V LOG-IN Jacarandá — Relatórios a Bordo (app desktop)",
+  "author": "LOG-IN Jacarandá",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "31.7.7",
+    "electron-builder": "24.13.3"
+  },
+  "build": {
+    "appId": "br.com.login.jacaranda",
+    "productName": "LOG-IN Jacaranda",
+    "directories": { "output": "release" },
+    "files": ["main.js", "icon.ico", "offline.html"],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "shortcutName": "LOG-IN Jacarandá"
+    }
+  }
+}
