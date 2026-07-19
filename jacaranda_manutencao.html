@@ -1294,6 +1294,16 @@
         <div class="panel" style="margin-bottom:0;border-top:3px solid var(--login-blue);">
           <div class="panel-header" style="font-size:13px;">💽 Pasta Local / Rede</div>
           <div style="padding:12px;">
+            <div style="background:#fdf4ff;border:1px solid #d8b4fe;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+              <div style="font-weight:800;font-size:12px;color:#7c3aed;margin-bottom:4px;">🔗 Links Fixos das Pastas (Administrador)</div>
+              <div style="font-size:10px;color:#6b21a8;line-height:1.5;margin-bottom:8px;">Configure os links/caminhos oficiais das pastas (Drive ou rede). Eles ficam <strong>fixos</strong>, viajam junto quando o app é compartilhado e são <strong>sincronizados online</strong> para todos os dispositivos via Drive.</div>
+              <div class="form-group" style="margin-bottom:6px;"><label style="font-size:10px;">💾 Pasta de Backups (link Drive ou caminho de rede)</label><input type="text" class="form-control" id="lk-backups" style="font-size:11px;" placeholder="https://drive.google.com/... ou \\SERVIDOR\Backups"></div>
+              <div class="form-group" style="margin-bottom:6px;"><label style="font-size:10px;">📋 Pasta de Inspeções</label><input type="text" class="form-control" id="lk-inspecoes" style="font-size:11px;" placeholder="link ou caminho"></div>
+              <div class="form-group" style="margin-bottom:6px;"><label style="font-size:10px;">📄 Pasta de Relatórios / Novo Registro</label><input type="text" class="form-control" id="lk-relatorios" style="font-size:11px;" placeholder="link ou caminho"></div>
+              <div class="form-group" style="margin-bottom:8px;"><label style="font-size:10px;">🌊 Pasta Médias Rio Amazonas</label><input type="text" class="form-control" id="lk-rio" style="font-size:11px;" placeholder="link ou caminho"></div>
+              <button class="btn btn-primary btn-sm" onclick="saveLinksPastas()" style="width:100%;">💾 Salvar links fixos</button>
+              <div id="lk-status" style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;"></div>
+            </div>
             <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
               <div style="font-weight:800;font-size:12px;color:#1e40af;margin-bottom:4px;">📂 Pasta Raiz do Navio (Administrador)</div>
               <div style="font-size:10px;color:#1e3a8a;line-height:1.5;margin-bottom:8px;">Configure uma única vez a pasta principal (disco ou rede). Ela fica gravada no aparelho (vale após atualizações) e todos os salvamentos do app são direcionados automaticamente para as subpastas: <strong>Novo Relatorio/&lt;FUNÇÃO&gt;</strong>, <strong>Backups/&lt;ESCOPO&gt;</strong> e <strong>Medias Rio Amazonas</strong>.</div>
@@ -4941,6 +4951,11 @@ function rioShareViagem(){
   ];
   if(p.rede)  linhas.push('📁 Pasta de rede: '+p.rede);
   if(p.drive) linhas.push('☁️ Pasta no Drive: '+p.drive);
+  var lp=(getCfg().linksPastas)||{};
+  if(lp.backups)   linhas.push('💾 Backups: '+lp.backups);
+  if(lp.inspecoes) linhas.push('📋 Inspeções: '+lp.inspecoes);
+  if(lp.relatorios)linhas.push('📄 Relatórios: '+lp.relatorios);
+  if(lp.rio)       linhas.push('🌊 Rio Amazonas: '+lp.rio);
   const dl=(getCfg().driveFolderUrl||'');
   if(dl && dl!==p.drive) linhas.push('☁️ Drive (sync do app): '+dl);
   const texto=linhas.join('\n');
@@ -7656,6 +7671,35 @@ async function ensureRootPerm(){
     return p==='granted';
   }catch(e){ return false; }
 }
+var JAC_LINK_FIELDS = {backups:'lk-backups', inspecoes:'lk-inspecoes', relatorios:'lk-relatorios', rio:'lk-rio'};
+function saveLinksPastas(){
+  var cfg=getCfg(); cfg.linksPastas=cfg.linksPastas||{};
+  Object.keys(JAC_LINK_FIELDS).forEach(function(k){
+    var el=document.getElementById(JAC_LINK_FIELDS[k]);
+    if(el) cfg.linksPastas[k]=el.value.trim();
+  });
+  saveCfg(cfg);
+  renderLinksPastas();
+  if(typeof scheduleDriveSync==='function')scheduleDriveSync();
+  toast('🔗 Links fixos salvos — serão sincronizados aos demais dispositivos','ok');
+}
+function renderLinksPastas(){
+  var cfg=getCfg(); var lp=cfg.linksPastas||{};
+  Object.keys(JAC_LINK_FIELDS).forEach(function(k){
+    var el=document.getElementById(JAC_LINK_FIELDS[k]);
+    if(el&&lp[k]!=null&&!el.value) el.value=lp[k];
+  });
+  var st=document.getElementById('lk-status');
+  if(st){
+    var labels={backups:'💾 Backups',inspecoes:'📋 Inspeções',relatorios:'📄 Relatórios',rio:'🌊 Rio Amazonas'};
+    st.innerHTML=Object.keys(labels).filter(function(k){return lp[k];}).map(function(k){
+      var isUrl=/^https?:/i.test(lp[k]);
+      return isUrl
+        ? '<a href="'+escHtml(lp[k])+'" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 9px;">'+labels[k]+' ↗</a>'
+        : '<span style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:3px 9px;font-size:10px;" title="'+escHtml(lp[k])+'">'+labels[k]+' 📁</span>';
+    }).join('')||'<span style="font-size:10px;color:var(--muted);">Nenhum link configurado ainda.</span>';
+  }
+}
 function renderRootStatus(){
   var el=document.getElementById('root-dir-status');
   if(!el) return;
@@ -7791,7 +7835,8 @@ function exportHTMLFile(){
   fetch(window.location.href)
   .then(function(r){ return r.text(); })
   .then(function(html){
-    var seed = '<script>window.__JDATA__='+dataJSON+';<\/script>';
+    var cfgShareJSON = JSON.stringify((function(){var c=getCfg();return {webAppUrl:c.webAppUrl||'',driveFolderUrl:c.driveFolderUrl||'',linksPastas:c.linksPastas||{},rioPaths:c.rioPaths||{},vessel:c.vessel||{},netFilename:c.netFilename||'',netDateMode:c.netDateMode||'',autoSave:!!c.autoSave};})());
+    var seed = '<script>window.__JDATA__='+dataJSON+';window.__JCFG__='+cfgShareJSON+';<\/script>';
     var out  = html.replace('<head>', '<head>'+seed);
     var blob = new Blob([out], {type:'text/html'});
     var fname = 'jacaranda_'+new Date().toISOString().slice(0,10)+'.html';
@@ -8210,6 +8255,7 @@ function renderConfigPage(){
   });
   renderCfgLogo();
   renderRootStatus();
+  renderLinksPastas();
   renderDeptChips();
   renderRoleChips();
 }
@@ -8326,7 +8372,7 @@ async function sendToDrive(silent=false){
     regs:S.regs, crew:S.crew, fotos:S.fotos,
     empresas:S.empresas, oficina:S.oficina, desvios:S.desvios,
     inspecoes:S.inspecoes||[], embHistory:S.embHistory||[], relatorios:S.relatorios||[], rioCfg:S.rioCfg||{},
-    extras:{ ls:_extraLs, vessel:_cfgAll.vessel||{} }
+    extras:{ ls:_extraLs, vessel:_cfgAll.vessel||{}, cfgShare:{ linksPastas:_cfgAll.linksPastas||{}, rioPaths:_cfgAll.rioPaths||{}, driveFolderUrl:_cfgAll.driveFolderUrl||'', netFilename:_cfgAll.netFilename||'', netDateMode:_cfgAll.netDateMode||'', rootDirName:_cfgAll.rootDirName||'' } }
   };
   try{
     // Apps Script CORS: use no-cors mode, then verify with GET
@@ -8368,6 +8414,17 @@ function applyDriveData(data, silent){
   if(data.extras){
     if(data.extras.ls){ Object.keys(data.extras.ls).forEach(k=>{ try{localStorage.setItem(k,data.extras.ls[k]);}catch(e){} }); }
     if(data.extras.vessel){ const c=getCfg(); c.vessel=Object.assign({},c.vessel||{},data.extras.vessel); saveCfg(c); }
+    if(data.extras.cfgShare){
+      const c2=getCfg(); const cs=data.extras.cfgShare;
+      if(cs.linksPastas) c2.linksPastas=Object.assign({},c2.linksPastas||{},cs.linksPastas);
+      if(cs.rioPaths)    c2.rioPaths=Object.assign({},c2.rioPaths||{},cs.rioPaths);
+      if(cs.driveFolderUrl && !c2.driveFolderUrl) c2.driveFolderUrl=cs.driveFolderUrl;
+      if(cs.netFilename) c2.netFilename=cs.netFilename;
+      if(cs.netDateMode) c2.netDateMode=cs.netDateMode;
+      if(cs.rootDirName && !c2.rootDirName) c2.rootDirName=cs.rootDirName;
+      saveCfg(c2);
+      try{ renderLinksPastas(); rioPathsRender(); }catch(e){}
+    }
   }
   saveData(true);
   // Marca o momento do dado remoto como "última alteração local" p/ não re-empurrar em loop
@@ -9637,7 +9694,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.9.4';
+const APP_VERSION = '2.0.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
@@ -12797,6 +12854,22 @@ if(window.__JDATA_PENDING__){
   setTimeout(function(){
     if(confirm('📦 Este arquivo foi compartilhado de outro dispositivo.\n\nDeseja importar os dados desse dispositivo?\n\nOK = Importar  |  Cancelar = Manter dados atuais')){
       try{ localStorage.setItem('jac_v5', JSON.stringify(window.__JDATA_PENDING__)); loadData(); renderDash(); toast('✅ Dados importados!','ok'); }catch(e){}
+      try{
+        if(window.__JCFG__){
+          const c=getCfg(); const j=window.__JCFG__;
+          if(j.webAppUrl && !c.webAppUrl) c.webAppUrl=j.webAppUrl;
+          if(j.driveFolderUrl && !c.driveFolderUrl) c.driveFolderUrl=j.driveFolderUrl;
+          if(j.linksPastas) c.linksPastas=Object.assign({},c.linksPastas||{},j.linksPastas);
+          if(j.rioPaths) c.rioPaths=Object.assign({},c.rioPaths||{},j.rioPaths);
+          if(j.vessel) c.vessel=Object.assign({},c.vessel||{},j.vessel);
+          if(j.netFilename) c.netFilename=j.netFilename;
+          if(j.netDateMode) c.netDateMode=j.netDateMode;
+          if(j.autoSave!=null && c.autoSave==null) c.autoSave=j.autoSave;
+          saveCfg(c);
+          delete window.__JCFG__;
+          toast('🔗 Configuração e links das pastas aplicados do app compartilhado','ok');
+        }
+      }catch(e){}
     }
     delete window.__JDATA_PENDING__;
   }, 1000);
