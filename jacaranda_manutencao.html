@@ -943,6 +943,19 @@
           <div class="photo-grid" id="pg-reg" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
           <div class="sep"></div>
           <button class="btn btn-primary" onclick="saveReg()" style="width:100%;padding:14px;font-size:15px;font-weight:700;">💾 Salvar Registro</button>
+          <div style="margin-top:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;">
+            <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">📁 Salvar também na pasta do navio (subpasta "Novo Relatorio")</div>
+            <div class="form-row" style="margin-bottom:8px;">
+              <div class="form-group"><label style="font-size:10px;">Oficial que está fazendo o relatório</label>
+                <select class="form-control" id="np-oficial" onfocus="npPopulate()" onchange="npOficialChange()"></select>
+              </div>
+              <div class="form-group"><label style="font-size:10px;">Pasta pessoal (função)</label>
+                <select class="form-control" id="np-func"></select>
+              </div>
+            </div>
+            <button class="btn btn-green" onclick="saveRegNaPasta()" style="width:100%;">📁 Salvar Registro na pasta</button>
+            <div style="font-size:9.5px;color:var(--muted);margin-top:5px;">Salva o registro no app E grava o arquivo em: Pasta raiz / Novo Relatorio / &lt;FUNÇÃO&gt; / (a pasta raiz é definida pelo administrador em Configurações)</div>
+          </div>
         </div>
       </div>
       </div>
@@ -1240,6 +1253,12 @@
         <div class="panel" style="margin-bottom:0;border-top:3px solid var(--login-blue);">
           <div class="panel-header" style="font-size:13px;">💽 Pasta Local / Rede</div>
           <div style="padding:12px;">
+            <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+              <div style="font-weight:800;font-size:12px;color:#1e40af;margin-bottom:4px;">📂 Pasta Raiz do Navio (Administrador)</div>
+              <div style="font-size:10px;color:#1e3a8a;line-height:1.5;margin-bottom:8px;">Configure uma única vez a pasta principal (disco ou rede). Ela fica gravada no aparelho (vale após atualizações) e todos os salvamentos do app são direcionados automaticamente para as subpastas: <strong>Novo Relatorio/&lt;FUNÇÃO&gt;</strong>, <strong>Backups/&lt;ESCOPO&gt;</strong> e <strong>Medias Rio Amazonas</strong>.</div>
+              <button class="btn btn-primary btn-sm" onclick="adminPickRoot()" style="width:100%;margin-bottom:6px;">📂 Definir pasta raiz</button>
+              <div id="root-dir-status" style="font-size:10.5px;color:var(--text-dim);"></div>
+            </div>
             <div id="fs-status-box" style="border-radius:8px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--border2);background:var(--surface2);">
               <div style="display:flex;align-items:center;gap:8px;"><div id="fs-status-icon" style="font-size:20px;">📂</div><div style="flex:1;min-width:0;"><div id="fs-status-title" style="font-weight:700;font-size:12px;color:var(--login-blue);">Nenhuma pasta vinculada</div><div id="fs-status-path" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div></div></div>
             </div>
@@ -1253,7 +1272,8 @@
                 <option value="ITO">ITO — Imediato</option>
                 <option value="SCH">SCH — Subchefe</option>
                 <option value="PON">PON</option>
-                <option value="MAR">MAR — Marinheiro</option>
+                <option value="POM">POM</option>
+                <option value="MAR">MAR — Marinheiros e outros</option>
               </select>
             </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="pickFolder()" id="btn-pick-folder" style="flex:1;">📂 Escolher Pasta</button><button class="btn btn-green btn-sm" onclick="saveToFolder()" style="flex:1;">💾 Salvar</button></div>
@@ -2799,6 +2819,75 @@ function saveReg(){
     ts:Date.now()});
   S.tp.reg=[];document.getElementById('pg-reg').innerHTML='';
   saveData(true);clearRegForm();kpis();toast('✅ Registro salvo!','ok');
+}
+// ── NOVO REGISTRO → pasta do navio (Novo Relatorio/<FUNÇÃO>) ──
+function npPopulate(){
+  var selO=document.getElementById('np-oficial');
+  var selF=document.getElementById('np-func');
+  if(selF && !selF.options.length){
+    selF.innerHTML = JAC_FUNCS.map(function(c){ return '<option value="'+c+'">'+c+' — '+JAC_FUNC_LABELS[c]+'</option>'; }).join('');
+  }
+  if(selO && selO.options.length<= (S.crew||[]).length){ /* repopula sempre que focar */ }
+  if(selO){
+    var cur=selO.value;
+    selO.innerHTML = '<option value="">— selecione o oficial —</option>'
+      + (S.crew||[]).map(function(c){
+          var a=c.abbr||(ROLE_ABBR[c.fn]||String(c.fn||'').slice(0,3).toUpperCase());
+          return '<option value="'+c.id+'" data-abbr="'+escHtml(a)+'">['+escHtml(a)+'] '+escHtml(c.nm)+'</option>';
+        }).join('');
+    if(cur) selO.value=cur;
+  }
+}
+function npOficialChange(){
+  var selO=document.getElementById('np-oficial');
+  var selF=document.getElementById('np-func');
+  if(!selO||!selF) return;
+  var opt=selO.options[selO.selectedIndex];
+  if(opt && opt.dataset.abbr){ selF.value = jacFuncOfAbbr(opt.dataset.abbr); }
+}
+async function saveRegNaPasta(){
+  var s=document.getElementById('r-sem').value;
+  var titulo=document.getElementById('r-titulo').value.trim();
+  var desc=document.getElementById('r-atv').value.trim();
+  if(!s||!titulo){toast('⚠️ Preencha a semana e o título da atividade','warn');return;}
+  var selO=document.getElementById('np-oficial');
+  var selF=document.getElementById('np-func');
+  var oficial=null;
+  if(selO&&selO.value){ oficial=(S.crew||[]).find(function(c){return c.id===selO.value;}); }
+  if(!oficial){ toast('⚠️ Selecione o oficial que está fazendo o relatório','warn'); return; }
+  var func=(selF&&selF.value)||'GERAL';
+  var fotosData=(S.tp.reg||[]);
+  var reg={id:gid(),s:s,lb:'SEM '+s,d:document.getElementById('r-data').value,
+    dp:document.getElementById('r-dept').value,
+    titulo:titulo, a:desc, q:document.getElementById('r-eq-hidden')?.value||'',
+    st:document.getElementById('r-st').value,
+    l:document.getElementById('r-loc').value,
+    fotos:fotosData.map(function(p){return p.u;}),
+    fotosCaptions:fotosData.map(function(p){return p.caption||'';}),
+    oficial:{id:oficial.id,nm:oficial.nm,fn:oficial.fn,func:func},
+    ts:Date.now()};
+  // 1) salva no app (mesmo comportamento do Salvar Registro)
+  S.regs.push(reg);
+  S.tp.reg=[];var pg=document.getElementById('pg-reg');if(pg)pg.innerHTML='';
+  saveData(true);clearRegForm();kpis();
+  // 2) grava o arquivo na estrutura de pastas
+  var vcfg=(getCfg().vessel)||{};
+  var payload=JSON.stringify({tipo:'novo-registro',navio:vcfg.vessel||'M/V LOG-IN JACARANDÁ',
+    oficial:{nome:oficial.nm,funcao:oficial.fn,pasta:func},exp:new Date().toISOString(),reg:reg},null,2);
+  var dt=(reg.d||new Date().toISOString().slice(0,10)).replace(/-/g,'');
+  var hh=new Date().toTimeString().slice(0,5).replace(':','');
+  var fname='REG_'+String(reg.dp||'GERAL').replace(/[^\w]+/g,'-').toUpperCase()+'_SEM'+s+'_'+dt+'_'+hh+'.json';
+  var ok=await jacSaveStructured(['Novo Relatorio', func], fname, payload, 'application/json');
+  if(!ok){
+    // sem pasta raiz: baixa o arquivo e orienta
+    var blob=new Blob([payload],{type:'application/json'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;
+    document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
+    toast('✅ Registro salvo no app · arquivo baixado (configure a Pasta Raiz em Configurações p/ salvar direto)','ok');
+  } else {
+    toast('✅ Registro salvo no app e na pasta '+func+'!','ok');
+  }
 }
 function clearRegForm(){
   ['r-titulo','r-atv','r-loc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
@@ -4551,6 +4640,12 @@ async function rioSaveFile(filename, mime, content){
     }catch(e){
       toast('⚠️ Falha ao gravar na pasta ('+e.message+') — baixando para Downloads','warn');
     }
+  }
+  // Pasta raiz do administrador: RAIZ/Medias Rio Amazonas/{Viagens|Rotas}/
+  if(window._rootDir){
+    var sub = /^VIAGEM_/i.test(filename) ? ['Medias Rio Amazonas','Viagens'] : ['Medias Rio Amazonas','Rotas'];
+    var okR = await jacSaveStructured(sub, filename, content, mime);
+    if(okR) return 'root';
   }
   const blob = new Blob([content], {type:mime});
   const a = document.createElement('a');
@@ -7224,14 +7319,117 @@ function buildFileName(){
   const sc=bkpScope();
   return base+(sc!=='GERAL'?('_'+sc):'')+s+'.json';
 }
-// Escopo do backup: GERAL, setor (CVS/MAQ) ou função (ON/OM/ITO/SCH/PON/MAR)
+// ─────────────────────────────────────────────
+// PASTA RAIZ DO NAVIO (ADMINISTRADOR) — persistente
+// Estrutura: RAIZ/Novo Relatorio/<FUNÇÃO>/…, RAIZ/Backups/<ESCOPO>/…,
+//            RAIZ/Medias Rio Amazonas/{Viagens,Rotas}/…
+// ─────────────────────────────────────────────
+var JAC_FUNCS = ['GERAL','CVS','MAQ','ON','OM','ITO','SCH','PON','POM','MAR'];
+var JAC_FUNC_LABELS = {GERAL:'Geral',CVS:'Convés',MAQ:'Máquinas',ON:'Oficial de Náutica',OM:'Oficial de Máquinas',ITO:'Imediato',SCH:'Subchefe',PON:'PON',POM:'POM',MAR:'Marinheiros e outros'};
+window._rootDir = null;
+
+function idbOpen(){
+  return new Promise(function(res,rej){
+    var r=indexedDB.open('jac_fs',1);
+    r.onupgradeneeded=function(){ r.result.createObjectStore('h'); };
+    r.onsuccess=function(){ res(r.result); };
+    r.onerror=function(){ rej(r.error); };
+  });
+}
+async function idbSet(k,v){
+  var db=await idbOpen();
+  return new Promise(function(res,rej){
+    var tx=db.transaction('h','readwrite');
+    tx.objectStore('h').put(v,k);
+    tx.oncomplete=res; tx.onerror=function(){ rej(tx.error); };
+  });
+}
+async function idbGet(k){
+  var db=await idbOpen();
+  return new Promise(function(res,rej){
+    var tx=db.transaction('h','readonly');
+    var g=tx.objectStore('h').get(k);
+    g.onsuccess=function(){ res(g.result); };
+    g.onerror=function(){ rej(g.error); };
+  });
+}
+async function adminPickRoot(){
+  if(!window.showDirectoryPicker){
+    toast('⚠️ Escolher pasta só funciona no Chrome/Edge de computador ou no app desktop','warn');
+    return;
+  }
+  try{
+    window._rootDir = await window.showDirectoryPicker({mode:'readwrite'});
+    await idbSet('rootDir', window._rootDir);
+    var cfg=getCfg(); cfg.rootDirName=window._rootDir.name; saveCfg(cfg);
+    renderRootStatus();
+    toast('📂 Pasta raiz "'+window._rootDir.name+'" configurada — vale para todos os salvamentos','ok');
+  }catch(e){ /* cancelado */ }
+}
+async function restoreRootDir(){
+  try{
+    var h = await idbGet('rootDir');
+    if(!h) return;
+    window._rootDir = h;
+    renderRootStatus();
+  }catch(e){}
+}
+async function ensureRootPerm(){
+  if(!window._rootDir) return false;
+  try{
+    var p = await window._rootDir.queryPermission({mode:'readwrite'});
+    if(p!=='granted'){ p = await window._rootDir.requestPermission({mode:'readwrite'}); }
+    return p==='granted';
+  }catch(e){ return false; }
+}
+function renderRootStatus(){
+  var el=document.getElementById('root-dir-status');
+  if(!el) return;
+  var nm = window._rootDir ? window._rootDir.name : (getCfg().rootDirName||'');
+  el.innerHTML = nm
+    ? '✅ Pasta raiz: <strong>'+escHtml(nm)+'</strong> — os salvamentos vão para as subpastas automaticamente'
+    : '⚠️ Nenhuma pasta raiz configurada — arquivos irão para Downloads';
+}
+async function jacSaveStructured(subdirs, filename, content, mime){
+  if(!window._rootDir){
+    return false;
+  }
+  if(!await ensureRootPerm()){
+    toast('⚠️ Permissão de gravação negada na pasta raiz','warn');
+    return false;
+  }
+  try{
+    var dir = window._rootDir;
+    for(var i=0;i<subdirs.length;i++){
+      dir = await dir.getDirectoryHandle(subdirs[i], {create:true});
+    }
+    var fh = await dir.getFileHandle(filename, {create:true});
+    var w = await fh.createWritable();
+    await w.write(new Blob([content],{type:mime}));
+    await w.close();
+    toast('💾 Salvo em '+[window._rootDir.name].concat(subdirs).join('/')+'/'+filename,'ok');
+    return true;
+  }catch(e){
+    toast('⚠️ Falha ao gravar na pasta ('+e.message+')','warn');
+    return false;
+  }
+}
+function jacFuncOfAbbr(abbr){
+  abbr = String(abbr||'').toUpperCase();
+  for(var code in BKP_SCOPE_ALIAS){
+    if(BKP_SCOPE_ALIAS[code].indexOf(abbr)>=0) return code;
+  }
+  return 'MAR'; // marinheiros e outros
+}
+
+// Escopo do backup: GERAL, setor (CVS/MAQ) ou função (ON/OM/ITO/SCH/PON/POM/MAR)
 var BKP_SCOPE_ALIAS = {
   CVS:['CVS','CONV','CONVES','CONVÉS','DECK'],
   MAQ:['MAQ','MÁQ','MAQUINA','MÁQUINA','PRAÇA','PRACA','ENG'],
   ON:['ON'], OM:['OM'],
   ITO:['ITO','IMT','IMEDIATO'],
   SCH:['SCH','SCM','SCHE','SUBCHEFE'],
-  PON:['PON'], MAR:['MAR','MARINHEIRO']
+  PON:['PON'], POM:['POM'], MAR:['MAR','MARINHEIRO']
 };
 function bkpScope(){
   return document.getElementById('bkp-scope')?.value||'GERAL';
@@ -7261,6 +7459,11 @@ function buildBackupData(scope){
   return JSON.stringify({v:5,exp:new Date().toISOString(),scope:scope,regs:regs,crew:S.crew,fotos:S.fotos,empresas:S.empresas,oficina:oficina,desvios:S.desvios,inspecoes:S.inspecoes},null,2);
 }
 async function saveToFolder(){
+  // Pasta raiz do administrador tem prioridade: RAIZ/Backups/<ESCOPO>/
+  if(window._rootDir){
+    const ok=await jacSaveStructured(['Backups', bkpScope()], buildFileName(), buildBackupData(), 'application/json');
+    if(ok){ recordBackupHistory(buildFileName(),'Pasta raiz/Backups/'+bkpScope(),'Pasta estruturada'); return; }
+  }
   if(!_folderHandle){await initFolderHandle();}
   if(!_folderHandle){toast('Escolha uma pasta primeiro','warn');return;}
   try{
@@ -7732,6 +7935,7 @@ function renderConfigPage(){
     const el=document.getElementById('cfg-'+id);if(el&&vcfg[id])el.value=vcfg[id];
   });
   renderCfgLogo();
+  renderRootStatus();
   renderDeptChips();
   renderRoleChips();
 }
@@ -9159,7 +9363,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '1.8.1';
+const APP_VERSION = '1.9.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
@@ -12313,7 +12517,7 @@ const _importApply = {
 window.addEventListener('beforeunload', function(){ saveData(true); });
 // Auto-save every 60s as safety net  
 setInterval(function(){ saveData(true); }, 60000);
-loadData();checkInspFromURL();kpis();renderDash();fillWeekSel();renderDriveLinks();setTimeout(function(){try{autoStartupSync();}catch(e){}},1200);
+loadData();checkInspFromURL();kpis();renderDash();fillWeekSel();renderDriveLinks();try{restoreRootDir();}catch(e){}try{npPopulate();}catch(e){}setTimeout(function(){try{autoStartupSync();}catch(e){}},1200);
 // Check for embedded data from shared HTML
 if(window.__JDATA_PENDING__){
   setTimeout(function(){
