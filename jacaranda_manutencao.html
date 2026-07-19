@@ -1291,51 +1291,7 @@
         <div class="kpi-card" style="border-top:3px solid var(--warn);text-align:center;padding:12px;"><div class="kpi-val" id="st-dv" style="font-size:28px;color:var(--warn);">0</div><div class="kpi-label">Desvios</div></div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:14px;">
-        <div class="panel" style="margin-bottom:0;border-top:3px solid var(--login-blue);">
-          <div class="panel-header" style="font-size:13px;">💽 Pasta Local / Rede</div>
-          <div style="padding:12px;">
-            <div style="background:#fdf4ff;border:1px solid #d8b4fe;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
-              <div style="font-weight:800;font-size:12px;color:#7c3aed;margin-bottom:4px;">🔗 Links Fixos das Pastas (Administrador)</div>
-              <div style="font-size:10px;color:#6b21a8;line-height:1.5;margin-bottom:8px;">Configure os links/caminhos oficiais das pastas (Drive ou rede). Eles ficam <strong>fixos</strong>, viajam junto quando o app é compartilhado e são <strong>sincronizados online</strong> para todos os dispositivos via Drive.</div>
-              <div class="form-group" style="margin-bottom:6px;"><label style="font-size:10px;">💾 Pasta de Backups (link Drive ou caminho de rede)</label><input type="text" class="form-control" id="lk-backups" style="font-size:11px;" placeholder="https://drive.google.com/... ou \\SERVIDOR\Backups"></div>
-              <div class="form-group" style="margin-bottom:6px;"><label style="font-size:10px;">📋 Pasta de Inspeções</label><input type="text" class="form-control" id="lk-inspecoes" style="font-size:11px;" placeholder="link ou caminho"></div>
-              <div class="form-group" style="margin-bottom:6px;"><label style="font-size:10px;">📄 Pasta de Relatórios / Novo Registro</label><input type="text" class="form-control" id="lk-relatorios" style="font-size:11px;" placeholder="link ou caminho"></div>
-              <div class="form-group" style="margin-bottom:8px;"><label style="font-size:10px;">🌊 Pasta Médias Rio Amazonas</label><input type="text" class="form-control" id="lk-rio" style="font-size:11px;" placeholder="link ou caminho"></div>
-              <button class="btn btn-primary btn-sm" onclick="saveLinksPastas()" style="width:100%;">💾 Salvar links fixos</button>
-              <div id="lk-status" style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;"></div>
-            </div>
-            <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
-              <div style="font-weight:800;font-size:12px;color:#1e40af;margin-bottom:4px;">📂 Pasta Raiz do Navio (Administrador)</div>
-              <div style="font-size:10px;color:#1e3a8a;line-height:1.5;margin-bottom:8px;">Configure uma única vez a pasta principal (disco ou rede). Ela fica gravada no aparelho (vale após atualizações) e todos os salvamentos do app são direcionados automaticamente para as subpastas: <strong>Novo Relatorio/&lt;FUNÇÃO&gt;</strong>, <strong>Backups/&lt;ESCOPO&gt;</strong> e <strong>Medias Rio Amazonas</strong>.</div>
-              <button class="btn btn-primary btn-sm" onclick="adminPickRoot()" style="width:100%;margin-bottom:6px;">📂 Definir pasta raiz</button>
-              <div id="root-dir-status" style="font-size:10.5px;color:var(--text-dim);"></div>
-            </div>
-            <div id="fs-status-box" style="border-radius:8px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--border2);background:var(--surface2);">
-              <div style="display:flex;align-items:center;gap:8px;"><div id="fs-status-icon" style="font-size:20px;">📂</div><div style="flex:1;min-width:0;"><div id="fs-status-title" style="font-weight:700;font-size:12px;color:var(--login-blue);">Nenhuma pasta vinculada</div><div id="fs-status-path" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div></div></div>
-            </div>
-            <div class="form-group" style="margin-bottom:8px;"><label style="font-size:10px;">🗂️ Escopo do backup (setor / função)</label>
-              <select class="form-control" id="bkp-scope" style="font-size:11px;">
-                <option value="GERAL">GERAL — todos os setores</option>
-                <option value="CVS">CVS — Convés</option>
-                <option value="MAQ">MAQ — Máquinas</option>
-                <option value="ON">ON — Oficial de Náutica</option>
-                <option value="OM">OM — Oficial de Máquinas</option>
-                <option value="ITO">ITO — Imediato</option>
-                <option value="SCH">SCH — Subchefe</option>
-                <option value="PON">PON</option>
-                <option value="POM">POM</option>
-                <option value="CREW">CREW — Marinheiros e outras funções</option>
-              </select>
-            </div>
-            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="pickFolder()" id="btn-pick-folder" style="flex:1;">📂 Escolher Pasta</button><button class="btn btn-green btn-sm" onclick="saveToFolder()" style="flex:1;">💾 Salvar</button></div>
-            <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" onclick="loadFromFolder()" style="flex:1;">📥 Carregar</button><button class="btn btn-ghost btn-sm" onclick="exportJSON()" style="flex:1;">⬇️ Download JSON</button></div>
-            <div style="display:flex;gap:6px;margin-bottom:8px;"><input type="text" class="form-control" id="cfg-net-filename" placeholder="jacaranda_backup" style="font-size:11px;flex:1;"><select class="form-control" id="cfg-net-date" style="font-size:11px;max-width:100px;"><option value="daily">+data</option><option value="weekly">+semana</option><option value="none">fixo</option></select></div>
-            <button class="btn btn-ghost btn-sm" onclick="saveNetConfig()" style="width:100%;margin-bottom:8px;">💾 Salvar config</button>
-            <div id="fs-api-note" style="display:none;background:#FEF3C7;border:1px solid #FDE68A;border-radius:6px;padding:6px 8px;font-size:10px;color:#92400E;">⚠️ Use Chrome/Edge para salvar em pasta.</div>
-            <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin:8px 0 4px;">🕐 Últimos backups</div>
-            <div id="backup-history" style="max-height:90px;overflow-y:auto;font-size:10px;color:var(--text-dim);">—</div>
-          </div>
-        </div>
+        
         <div class="panel" style="margin-bottom:0;border-top:3px solid var(--login-green);">
           <div class="panel-header" style="font-size:13px;">☁️ Google Drive</div>
           <div style="padding:12px;">
@@ -1374,7 +1330,68 @@
             <div id="import-log" style="display:none;margin-top:8px;"><div id="import-log-body" style="background:#07182e;border-radius:8px;padding:10px;font-size:10px;font-family:monospace;max-height:80px;overflow-y:auto;line-height:1.6;color:#6DB847;"></div></div>
           </div>
         </div>
-        <div class="panel" style="margin-bottom:0;">
+        
+      </div>
+      <input type="file" id="json-import" accept=".json" style="display:none" onchange="loadJSON(this)">
+    </div>
+
+
+    <!-- CONFIGURAÇÕES -->
+    <div id="page-config" class="page">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:14px;">
+<div class="panel" style="margin-bottom:0;border-top:3px solid var(--login-blue);">
+          <div class="panel-header" style="font-size:13px;">💽 Pasta Local / Rede — Endereços de Arquivos (Administrador)</div>
+          <div style="padding:12px;">
+            <div id="admin-lock-bar" style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <span style="font-size:12px;font-weight:800;color:#b91c1c;">🔐 Área restrita — somente o administrador altera os endereços das pastas</span>
+              <button class="btn btn-primary btn-sm" onclick="adminUnlock()">🔓 Desbloquear com senha</button>
+              <button class="btn btn-ghost btn-sm" onclick="adminChangePass()">🔑 Alterar senha</button>
+            </div>
+            <div id="admin-area" style="display:none;">
+            <div style="background:#fdf4ff;border:1px solid #d8b4fe;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+              <div style="font-weight:800;font-size:12px;color:#7c3aed;margin-bottom:4px;">🔗 Links Fixos das Pastas (Administrador)</div>
+              <div style="font-size:10px;color:#6b21a8;line-height:1.5;margin-bottom:8px;">Configure os links/caminhos oficiais das pastas (Drive ou rede). Eles ficam <strong>fixos</strong>, viajam junto quando o app é compartilhado e são <strong>sincronizados online</strong> para todos os dispositivos via Drive.</div>
+              <div class="form-group" style="margin-bottom:6px;"><label style="font-size:10px;">💾 Pasta de Backups (link Drive ou caminho de rede)</label><input type="text" class="form-control" id="lk-backups" style="font-size:11px;" placeholder="https://drive.google.com/... ou \\SERVIDOR\Backups"></div>
+              <div class="form-group" style="margin-bottom:6px;"><label style="font-size:10px;">📋 Pasta de Inspeções</label><input type="text" class="form-control" id="lk-inspecoes" style="font-size:11px;" placeholder="link ou caminho"></div>
+              <div class="form-group" style="margin-bottom:6px;"><label style="font-size:10px;">📄 Pasta de Relatórios / Novo Registro</label><input type="text" class="form-control" id="lk-relatorios" style="font-size:11px;" placeholder="link ou caminho"></div>
+              <div class="form-group" style="margin-bottom:8px;"><label style="font-size:10px;">🌊 Pasta Médias Rio Amazonas</label><input type="text" class="form-control" id="lk-rio" style="font-size:11px;" placeholder="link ou caminho"></div>
+              <button class="btn btn-primary btn-sm" onclick="saveLinksPastas()" style="width:100%;">💾 Salvar links fixos</button>
+              <div id="lk-status" style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;"></div>
+            </div>
+            <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+              <div style="font-weight:800;font-size:12px;color:#1e40af;margin-bottom:4px;">📂 Pasta Raiz do Navio (Administrador)</div>
+              <div style="font-size:10px;color:#1e3a8a;line-height:1.5;margin-bottom:8px;">Configure uma única vez a pasta principal (disco ou rede). Ela fica gravada no aparelho (vale após atualizações) e todos os salvamentos do app são direcionados automaticamente para as subpastas: <strong>Novo Relatorio/&lt;FUNÇÃO&gt;</strong>, <strong>Backups/&lt;ESCOPO&gt;</strong> e <strong>Medias Rio Amazonas</strong>.</div>
+              <button class="btn btn-primary btn-sm" onclick="adminPickRoot()" style="width:100%;margin-bottom:6px;">📂 Definir pasta raiz</button>
+              <div id="root-dir-status" style="font-size:10.5px;color:var(--text-dim);"></div>
+            </div>
+            <div id="fs-status-box" style="border-radius:8px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--border2);background:var(--surface2);">
+              <div style="display:flex;align-items:center;gap:8px;"><div id="fs-status-icon" style="font-size:20px;">📂</div><div style="flex:1;min-width:0;"><div id="fs-status-title" style="font-weight:700;font-size:12px;color:var(--login-blue);">Nenhuma pasta vinculada</div><div id="fs-status-path" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div></div></div>
+            </div>
+            <div id="bkp-linkfixo" style="margin-bottom:8px;"></div>
+            <div class="form-group" style="margin-bottom:8px;"><label style="font-size:10px;">🗂️ Escopo do backup (setor / função)</label>
+              <select class="form-control" id="bkp-scope" style="font-size:11px;">
+                <option value="GERAL">GERAL — todos os setores</option>
+                <option value="CVS">CVS — Convés</option>
+                <option value="MAQ">MAQ — Máquinas</option>
+                <option value="ON">ON — Oficial de Náutica</option>
+                <option value="OM">OM — Oficial de Máquinas</option>
+                <option value="ITO">ITO — Imediato</option>
+                <option value="SCH">SCH — Subchefe</option>
+                <option value="PON">PON</option>
+                <option value="POM">POM</option>
+                <option value="CREW">CREW — Marinheiros e outras funções</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="pickFolder()" id="btn-pick-folder" style="flex:1;">📂 Escolher Pasta</button><button class="btn btn-green btn-sm" onclick="saveToFolder()" style="flex:1;">💾 Salvar</button></div>
+            <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" onclick="loadFromFolder()" style="flex:1;">📥 Carregar</button><button class="btn btn-ghost btn-sm" onclick="exportJSON()" style="flex:1;">⬇️ Download JSON</button></div>
+            <div style="display:flex;gap:6px;margin-bottom:8px;"><input type="text" class="form-control" id="cfg-net-filename" placeholder="jacaranda_backup" style="font-size:11px;flex:1;"><select class="form-control" id="cfg-net-date" style="font-size:11px;max-width:100px;"><option value="daily">+data</option><option value="weekly">+semana</option><option value="none">fixo</option></select></div>
+            <button class="btn btn-ghost btn-sm" onclick="saveNetConfig()" style="width:100%;margin-bottom:8px;">💾 Salvar config</button>
+            <div id="fs-api-note" style="display:none;background:#FEF3C7;border:1px solid #FDE68A;border-radius:6px;padding:6px 8px;font-size:10px;color:#92400E;">⚠️ Use Chrome/Edge para salvar em pasta.</div>
+            <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin:8px 0 4px;">🕐 Últimos backups</div>
+            <div id="backup-history" style="max-height:90px;overflow-y:auto;font-size:10px;color:var(--text-dim);">—</div>
+          </div></div>
+        </div>
+<div class="panel" style="margin-bottom:0;">
           <div class="panel-header" style="font-size:13px;">🗂️ Módulos por Departamento</div>
           <div style="padding:12px;">
             <div id="modulos-status" style="margin-bottom:10px;"></div>
@@ -1386,12 +1403,6 @@
           </div>
         </div>
       </div>
-      <input type="file" id="json-import" accept=".json" style="display:none" onchange="loadJSON(this)">
-    </div>
-
-
-    <!-- CONFIGURAÇÕES -->
-    <div id="page-config" class="page">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
 
         <!-- Navio -->
@@ -7590,6 +7601,7 @@ async function initFolderHandle(){
   updateFolderStatusUI(null);
 }
 async function pickFolder(){
+  if(!adminGuard()) return;
   if(!FS_SUPPORTED){
     toast('Use Chrome ou Edge para esta função','warn');
     const n=document.getElementById('fs-api-note');if(n)n.style.display='block';return;
@@ -7643,6 +7655,7 @@ async function idbGet(k){
   });
 }
 async function adminPickRoot(){
+  if(!adminGuard()) return;
   if(!window.showDirectoryPicker){
     toast('⚠️ Escolher pasta só funciona no Chrome/Edge de computador ou no app desktop','warn');
     return;
@@ -7671,8 +7684,48 @@ async function ensureRootPerm(){
     return p==='granted';
   }catch(e){ return false; }
 }
+// ── ADMINISTRADOR: senha para endereços de pastas ──
+function adminUnlock(){
+  var cfg=getCfg();
+  if(!cfg.adminPass){
+    var p1=prompt('🔐 Primeira configuração — crie a senha do administrador:');
+    if(!p1) return;
+    var p2=prompt('Confirme a senha:');
+    if(p1!==p2){ toast('⚠️ As senhas não conferem','warn'); return; }
+    cfg.adminPass=btoa(p1); saveCfg(cfg);
+    toast('🔑 Senha do administrador criada','ok');
+  } else {
+    var p=prompt('🔐 Senha do administrador:');
+    if(p==null) return;
+    if(btoa(p)!==cfg.adminPass){ toast('❌ Senha incorreta','err'); return; }
+  }
+  window._adminOk=true;
+  var area=document.getElementById('admin-area');
+  if(area) area.style.display='block';
+  toast('🔓 Área do administrador desbloqueada','ok');
+}
+function adminChangePass(){
+  var cfg=getCfg();
+  if(cfg.adminPass){
+    var atual=prompt('Senha atual do administrador:');
+    if(atual==null) return;
+    if(btoa(atual)!==cfg.adminPass){ toast('❌ Senha incorreta','err'); return; }
+  }
+  var p1=prompt('Nova senha do administrador:');
+  if(!p1) return;
+  var p2=prompt('Confirme a nova senha:');
+  if(p1!==p2){ toast('⚠️ As senhas não conferem','warn'); return; }
+  cfg.adminPass=btoa(p1); saveCfg(cfg);
+  toast('🔑 Senha do administrador alterada','ok');
+}
+function adminGuard(){
+  if(window._adminOk) return true;
+  toast('🔐 Desbloqueie com a senha do administrador (Configurações → Pasta Local/Rede)','warn');
+  return false;
+}
 var JAC_LINK_FIELDS = {backups:'lk-backups', inspecoes:'lk-inspecoes', relatorios:'lk-relatorios', rio:'lk-rio'};
 function saveLinksPastas(){
+  if(!adminGuard()) return;
   var cfg=getCfg(); cfg.linksPastas=cfg.linksPastas||{};
   Object.keys(JAC_LINK_FIELDS).forEach(function(k){
     var el=document.getElementById(JAC_LINK_FIELDS[k]);
@@ -7698,6 +7751,18 @@ function renderLinksPastas(){
         ? '<a href="'+escHtml(lp[k])+'" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 9px;">'+labels[k]+' ↗</a>'
         : '<span style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:3px 9px;font-size:10px;" title="'+escHtml(lp[k])+'">'+labels[k]+' 📁</span>';
     }).join('')||'<span style="font-size:10px;color:var(--muted);">Nenhum link configurado ainda.</span>';
+  }
+  var bk=document.getElementById('bkp-linkfixo');
+  if(bk){
+    if(lp.backups){
+      var isUrl=/^https?:/i.test(lp.backups);
+      bk.innerHTML='<div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:7px 10px;font-size:10.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
+        +'<span style="font-weight:800;color:#1e40af;">📌 Pasta oficial de Backups:</span>'
+        +(isUrl?'<a href="'+escHtml(lp.backups)+'" target="_blank" rel="noopener" style="font-weight:700;">Abrir ↗</a>':'<span class="mono" style="font-size:10px;">'+escHtml(lp.backups)+'</span>')
+        +'</div>';
+    } else {
+      bk.innerHTML='<div style="font-size:10px;color:var(--muted);">📌 Defina o link fixo da pasta de Backups (acima) para vincular o salvar geral.</div>';
+    }
   }
 }
 function renderRootStatus(){
@@ -7780,7 +7845,7 @@ async function saveToFolder(){
   // Pasta raiz do administrador tem prioridade: RAIZ/Backups/<ESCOPO>/
   if(window._rootDir){
     const ok=await jacSaveStructured(['Backups', bkpScope()], buildFileName(), buildBackupData(), 'application/json');
-    if(ok){ recordBackupHistory(buildFileName(),'Pasta raiz/Backups/'+bkpScope(),'Pasta estruturada'); return; }
+    if(ok){ var lpB=(getCfg().linksPastas||{}).backups||''; recordBackupHistory(buildFileName(),'Pasta raiz/Backups/'+bkpScope()+(lpB?' · '+lpB:''),'Pasta estruturada'); return; }
   }
   if(!_folderHandle){await initFolderHandle();}
   if(!_folderHandle){toast('Escolha uma pasta primeiro','warn');return;}
@@ -9694,7 +9759,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.1.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
