@@ -1296,7 +1296,7 @@
           <div class="panel-header" style="font-size:13px;">☁️ Google Drive</div>
           <div style="padding:12px;">
             <div id="drive-conn-status" style="border-radius:8px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--border2);background:var(--surface2);font-size:11px;"><div id="drive-conn-icon" style="font-size:18px;margin-bottom:4px;">☁️</div><div id="drive-conn-title" style="font-weight:700;color:var(--text-dim);">Não configurado</div><div id="drive-conn-url" style="font-size:10px;color:var(--muted);font-family:monospace;word-break:break-all;margin-top:2px;"></div></div>
-            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;"><button class="btn btn-green btn-sm" onclick="sendToDrive()" style="flex:1;">☁️ Salvar</button><button class="btn btn-ghost btn-sm" onclick="loadFromDrive()" style="flex:1;">⬇️ Carregar</button></div>
+            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;"><button class="btn btn-green btn-sm" onclick="sendToDrive()" style="flex:1;">☁️ Salvar</button><button class="btn btn-ghost btn-sm" onclick="loadFromDrive()" style="flex:1;">⬇️ Carregar</button><button class="btn btn-warn btn-sm" onclick="driveDiagnostico()" style="flex:1;">🩺 Diagnóstico</button></div>
             <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" onclick="testDriveConnection()" style="flex:1;">🔗 Testar</button><button class="btn btn-ghost btn-sm" onclick="openDriveLink()" style="flex:1;">🌐 Abrir Drive</button></div>
             <div id="drive-links-panel" style="margin-bottom:8px;"></div>
             <div id="drive-status" style="font-size:11px;padding:6px 8px;border-radius:5px;display:none;"></div>
@@ -8438,6 +8438,64 @@ function applyDriveDefaults(){
     if(mudou){ saveCfg(cfg); }
   }catch(e){}
 }
+async function driveTest(){
+  const cfg=getCfg();
+  if(!cfg.webAppUrl){ showDriveStatus('⚠️ Sem URL do Web App configurada.','err'); return; }
+  showDriveStatus('🧪 Testando conexão com o Web App...','info');
+  try{
+    const r=await fetch(cfg.webAppUrl+'?t='+Date.now());
+    const texto=await r.text();
+    if(texto.trim().startsWith('{')||texto.trim().startsWith('[')){
+      try{
+        const d=JSON.parse(texto);
+        if(d.error){ showDriveStatus('❌ O script respondeu com erro: '+d.error+' — revise o código do Apps Script (use o arquivo Codigo_AppsScript_Jacaranda.gs).','err'); return; }
+        showDriveStatus('✅ Conexão OK! O Web App respondeu JSON válido'+(d.exp?(' — último backup no Drive: '+new Date(d.exp).toLocaleString('pt-BR')):' (ainda sem backup salvo)')+'. Se o Salvar continua sem verificar, reimplante como NOVA VERSÃO.','ok');
+      }catch(e){
+        showDriveStatus('⚠️ Resposta não é JSON válido — o script implantado está desatualizado. Cole o Codigo_AppsScript_Jacaranda.gs e implante como NOVA VERSÃO.','err');
+      }
+    } else if(/accounts\.google|Fazer login|Sign in|<html/i.test(texto)){
+      showDriveStatus('❌ O Web App está pedindo LOGIN — a implantação não está pública. No Apps Script: Implantar → Gerenciar implantações → ✏️ → Quem pode acessar: "QUALQUER PESSOA" → Nova versão → Implantar.','err');
+    } else {
+      showDriveStatus('⚠️ Resposta inesperada do Web App ('+texto.slice(0,80)+'...). Reimplante o script como nova versão pública.','err');
+    }
+  }catch(e){
+    showDriveStatus('❌ Não foi possível alcançar o Web App ('+e.message+'). Verifique a internet ou se a URL /exec está correta (ela muda quando se cria uma implantação nova).','err');
+  }
+}
+// Diagnóstico do Drive: identifica exatamente o que está impedindo o salvamento
+async function driveDiagnostico(){
+  const cfg=getCfg();
+  const st=(msg,tipo)=>showDriveStatus(msg,tipo||'info');
+  if(!cfg.webAppUrl){ st('❌ PASSO 1 FALHOU: nenhuma URL do Web App configurada. Feche e reabra o app (a URL oficial é aplicada sozinha) ou cole-a em ⚙️ Configurações.','err'); return; }
+  st('🩺 Testando: '+cfg.webAppUrl.slice(0,60)+'…','info');
+  let resp, texto;
+  try{
+    resp = await fetch(cfg.webAppUrl+'?t='+Date.now());
+  }catch(e){
+    st('❌ SEM CONEXÃO com script.google.com ('+e.message+'). Verifique a internet do navio / firewall. O salvamento local e na pasta continuam funcionando.','err');
+    return;
+  }
+  try{ texto = await resp.text(); }catch(e){ texto=''; }
+  // Página de login/erro do Google = implantação sem acesso público
+  if(/accounts\.google\.com|Sign in|Fazer login|<html/i.test(texto) && !/^\s*\{/.test(texto)){
+    st('❌ ENCONTREI O PROBLEMA: o Web App está exigindo login do Google. Corrija a implantação: abra o script → Implantar → Gerenciar implantações → ✏️ → "Quem pode acessar" = QUALQUER PESSOA (não "com conta Google") → Implantar. Se gerar URL nova, cole em ⚙️ Configurações.','err');
+    return;
+  }
+  let dados=null;
+  try{ dados=JSON.parse(texto); }catch(e){
+    st('❌ O Web App respondeu, mas não em JSON (provável script errado ou implantação antiga). Reinstale o código do arquivo Code_AppsScript.gs (fornecido) e reimplante com acesso "Qualquer pessoa".','err');
+    return;
+  }
+  if(dados.error){
+    st('⚠️ O script respondeu com erro: "'+dados.error+'". Confira se o código do Code_AppsScript.gs foi colado por completo e se o arquivo do Drive existe.','err');
+    return;
+  }
+  if(dados.exp){
+    st('✅ CONEXÃO OK! Último backup gravado no Drive: '+new Date(dados.exp).toLocaleString('pt-BR')+' · '+((dados.regs||[]).length)+' registros. Se o "Salvar" ainda falhar, o problema é o tamanho (veja o aviso de MB) — teste também o botão ☁️ Salvar agora.','ok');
+  } else {
+    st('🟡 Conexão OK, mas o Drive ainda não tem backup salvo (resposta vazia). Toque em ☁️ Salvar para gravar o primeiro e depois rode o diagnóstico de novo — deve aparecer "✅ VERIFICADO".','info');
+  }
+}
 async function sendToDrive(silent=false){
   const cfg=getCfg();
   if(!cfg.webAppUrl){
@@ -8458,15 +8516,22 @@ async function sendToDrive(silent=false){
     inspecoes:S.inspecoes||[], embHistory:S.embHistory||[], relatorios:S.relatorios||[], rioCfg:S.rioCfg||{},
     extras:{ ls:_extraLs, vessel:_cfgAll.vessel||{}, cfgShare:{ linksPastas:_cfgAll.linksPastas||{}, rioPaths:_cfgAll.rioPaths||{}, driveFolderUrl:_cfgAll.driveFolderUrl||'', netFilename:_cfgAll.netFilename||'', netDateMode:_cfgAll.netDateMode||'', rootDirName:_cfgAll.rootDirName||'' } }
   };
-  const payloadStr=JSON.stringify(payload);
-  const tamMB=(payloadStr.length/1048576);
-  if(tamMB>45){
-    showDriveStatus('❌ Backup muito grande para o Web App ('+tamMB.toFixed(1)+' MB > 45 MB). Reduza fotos antigas ou exporte por escopo.','err');
-    if(!silent)toast('❌ Backup grande demais para o Drive ('+tamMB.toFixed(1)+' MB)','err');
+  const payloadStr = JSON.stringify(payload);
+  const tamMB = payloadStr.length / 1048576;
+
+  // Estratégia automática conforme tamanho:
+  // ≤ 45 MB  → envio direto (Apps Script Web App)
+  // 45-500MB → comprime fotos + tentativa chunked
+  // qualquer tamanho → oferece também o download local
+
+  if(tamMB > 45){
+    if(!silent) showDriveStatus(`⏳ Backup grande (${tamMB.toFixed(1)} MB) — comprimindo fotos e enviando em partes...`,'info');
+    await sendToDriveChunked(payload, payloadStr, tamMB, cfg, silent);
     return;
   }
-  // Verificação real: após o POST, faz um GET e confere o carimbo exp
-  const verificar=async function(){
+
+  // ── Envio direto (≤ 45 MB) ──
+  const verificar = async function(){
     try{
       const r=await fetch(cfg.webAppUrl+'?t='+Date.now());
       if(!r.ok) return false;
@@ -8475,33 +8540,28 @@ async function sendToDrive(silent=false){
     }catch(x){ return false; }
   };
   try{
-    // Apps Script CORS: use no-cors mode, then verify with GET
     const res=await fetch(cfg.webAppUrl,{
-      method:'POST',
-      body:payloadStr,
-      headers:{'Content-Type':'text/plain'}, // Apps Script needs text/plain for CORS
+      method:'POST', body:payloadStr,
+      headers:{'Content-Type':'text/plain'},
     });
     if(res.ok||res.type==='opaque'){
       const okVer=await verificar();
       const lastSync=new Date().toLocaleString('pt-BR');
-      cfg.lastSync=lastSync;saveCfg(cfg);
+      cfg.lastSync=lastSync; saveCfg(cfg);
       if(okVer){
         showDriveStatus(`✅ Salvo e VERIFICADO no Drive (${tamMB.toFixed(1)} MB) — ${lastSync}`,'ok');
         if(!silent)toast('☁️ Salvo no Drive (verificado)!','ok');
       } else {
-        showDriveStatus(`⚠️ Enviado, mas não foi possível confirmar a gravação. Verifique a implantação do Web App: Implantar → Gerenciar implantações → acesso "Qualquer pessoa". — ${lastSync}`,'err');
+        showDriveStatus(`⚠️ Enviado, mas não foi possível confirmar. Verifique a implantação: "Qualquer pessoa". — ${lastSync}`,'err');
         if(!silent)toast('⚠️ Envio sem confirmação do Drive — veja o status','warn');
       }
-    } else {
-      throw new Error(`HTTP ${res.status}`);
-    }
+    } else { throw new Error(`HTTP ${res.status}`); }
   }catch(e){
-    // Try no-cors fallback
     try{
       await fetch(cfg.webAppUrl,{method:'POST',mode:'no-cors',body:payloadStr,headers:{'Content-Type':'text/plain'}});
       const okVer2=await verificar();
       const lastSync=new Date().toLocaleString('pt-BR');
-      cfg.lastSync=lastSync;saveCfg(cfg);
+      cfg.lastSync=lastSync; saveCfg(cfg);
       if(okVer2){ showDriveStatus(`✅ Salvo e VERIFICADO no Drive — ${lastSync}`,'ok'); if(!silent)toast('☁️ Salvo no Drive (verificado)!','ok'); return; }
       showDriveStatus(`✅ Enviado (modo seguro). Última sincronização: ${lastSync}`,'ok');
       if(!silent)toast('☁️ Enviado ao Drive!','ok');
@@ -8511,6 +8571,93 @@ async function sendToDrive(silent=false){
     }
   }
 }
+
+// ── Envio chunked para backups grandes (> 45 MB) ──
+// Estratégia: separa as fotos (base64) do resto, envia texto primeiro,
+// depois as fotos em lotes de até 40 MB; o script remonta tudo no Drive.
+async function sendToDriveChunked(payload, payloadStrOrig, tamMBOrig, cfg, silent){
+  // 1) Comprime fotos (reduz quality para 0.65, máx 600px) se > 50 MB
+  let useFotos = payload.fotos || [];
+  if(tamMBOrig > 50){
+    showDriveStatus('🗜️ Comprimindo fotos para reduzir tamanho...','info');
+    useFotos = await comprimirFotos(useFotos, 600, 0.65);
+  }
+  const semFotos = Object.assign({}, payload, {fotos:[], _chunked:true, _fotoLen:useFotos.length});
+  const bodyBase = JSON.stringify(semFotos);
+  const CHUNK = 38 * 1048576; // 38 MB por lote de fotos
+
+  // 2) Envia o bloco principal (sem fotos)
+  const stepSend = async function(body, label){
+    try{
+      const res=await fetch(cfg.webAppUrl,{method:'POST',body,headers:{'Content-Type':'text/plain'}});
+      if(res.ok||res.type==='opaque'||res.status===0) return true;
+    }catch(e){}
+    try{
+      await fetch(cfg.webAppUrl,{method:'POST',mode:'no-cors',body,headers:{'Content-Type':'text/plain'}});
+      return true;
+    }catch(e2){ return false; }
+  };
+
+  showDriveStatus(`⏳ Enviando dados principais (${(bodyBase.length/1048576).toFixed(1)} MB)...`,'info');
+  const ok1 = await stepSend(bodyBase, 'dados principais');
+  if(!ok1){
+    showDriveStatus('❌ Falha no envio dos dados principais. Verifique a internet e o Web App.','err');
+    toast('❌ Falha no envio','err'); return;
+  }
+
+  // 3) Envia fotos em lotes
+  let lote=[], loteBytes=0, loteNum=0, total=useFotos.length;
+  for(let i=0;i<total;i++){
+    lote.push(useFotos[i]); loteBytes += (useFotos[i].u||'').length + (useFotos[i].desc||'').length + 60;
+    if(loteBytes >= CHUNK || i===total-1){
+      loteNum++;
+      const isLast = (i===total-1);
+      const chunk = JSON.stringify({_chunk:loteNum, _last:isLast, _exp:payload.exp, fotos:lote});
+      showDriveStatus(`⏳ Enviando fotos (lote ${loteNum} — ${(loteBytes/1048576).toFixed(1)} MB)...`,'info');
+      const okL = await stepSend(chunk, 'fotos lote '+loteNum);
+      if(!okL){ showDriveStatus(`❌ Falha no lote ${loteNum} de fotos. Tente reduzir a quantidade de fotos ou use o backup por escopo.`,'err'); return; }
+      lote=[]; loteBytes=0;
+    }
+  }
+
+  // 4) Verificação final
+  await new Promise(r=>setTimeout(r,2000));
+  let okVer=false;
+  try{
+    const rv=await fetch(cfg.webAppUrl+'?t='+Date.now());
+    if(rv.ok){ const dv=await rv.json(); okVer=dv&&dv.exp===payload.exp; }
+  }catch(x){}
+  const lastSync=new Date().toLocaleString('pt-BR');
+  cfg.lastSync=lastSync; saveCfg(cfg);
+  const tamFinal=(bodyBase.length+useFotos.reduce(function(a,f){return a+(f.u||'').length;},0))/1048576;
+  if(okVer){
+    showDriveStatus(`✅ Salvo e VERIFICADO no Drive em ${loteNum+1} partes (${tamFinal.toFixed(1)} MB comprimido) — ${lastSync}`,'ok');
+    toast('☁️ Backup grande salvo e verificado!','ok');
+  } else {
+    showDriveStatus(`✅ Enviado em ${loteNum+1} partes (${tamFinal.toFixed(1)} MB). Verificação pendente — o script pode demorar alguns segundos para remontar. Se persistir, use 📥 Carregar do Drive para confirmar. — ${lastSync}`,'ok');
+    toast('☁️ Envio em partes concluído!','ok');
+  }
+}
+
+async function comprimirFotos(fotos, maxPx, quality){
+  const result=[];
+  for(const f of fotos){
+    if(!f.u||!f.u.startsWith('data:image')){result.push(f);continue;}
+    try{
+      const img=await new Promise(function(res,rej){
+        const i=new Image(); i.onload=function(){res(i);}; i.onerror=rej; i.src=f.u;
+      });
+      const scale=Math.min(1, maxPx/Math.max(img.width,img.height));
+      const cv=document.createElement('canvas');
+      cv.width=Math.round(img.width*scale); cv.height=Math.round(img.height*scale);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      const newU=cv.toDataURL('image/jpeg', quality);
+      result.push(Object.assign({},f,{u:newU}));
+    }catch(e){ result.push(f); }
+  }
+  return result;
+}
+
 
 function applyDriveData(data, silent){
   S.regs=data.regs||[];S.crew=data.crew||[];S.fotos=data.fotos||[];
@@ -9802,7 +9949,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.1.2';
+const APP_VERSION = '2.2.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
