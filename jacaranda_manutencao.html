@@ -815,7 +815,7 @@
       <button class="btn btn-ghost btn-sm" onclick="exportPDF()">🖨 Imprimir</button><button class="btn btn-ghost btn-sm" onclick="toast('📄 No diálogo, escolha “Salvar como PDF” como destino','ok');exportPDF()">📄 Salvar PDF</button>
       <button class="btn btn-ghost btn-sm" onclick="exportHTMLFile()" title="Exporta o app com todos os dados para compartilhar com outro celular">📦 Compartilhar App</button>
       <button class="btn btn-ghost btn-sm" onclick="exportJSON()">⬇ Backup</button>
-      <button class="btn btn-primary btn-sm" onclick="saveData()">💾 Salvar</button>
+      <button class="btn btn-primary btn-sm" onclick="salvarTudo()" title="Salva localmente, na pasta de rede e no Google Drive ao mesmo tempo">💾 SALVAR</button>
     </div>
   </div>
 
@@ -865,7 +865,7 @@
           <button class="btn btn-ghost" onclick="showPage('semanal')">📅 Rel. Semanal</button>
           <button class="btn btn-ghost" onclick="showPage('inspecao')">🔍 Inspeções</button>
           <button class="btn btn-ghost" onclick="showPage('unificado')">📊 Rel. Unificado</button>
-          <button class="btn btn-ghost" onclick="saveData()">💾 Salvar</button>
+          <button class="btn btn-ghost" onclick="salvarTudo()">💾 SALVAR</button>
           <button class="btn btn-ghost" onclick="exportJSON()">⬇ Backup</button>
         </div>
       </div>
@@ -1362,8 +1362,12 @@
             <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
               <div style="font-weight:800;font-size:12px;color:#1e40af;margin-bottom:4px;">📂 Pasta Raiz do Navio (Administrador)</div>
               <div style="font-size:10px;color:#1e3a8a;line-height:1.5;margin-bottom:8px;">Configure uma única vez a pasta principal (disco ou rede). Ela fica gravada no aparelho (vale após atualizações) e todos os salvamentos do app são direcionados automaticamente para as subpastas: <strong>Novo Relatorio/&lt;FUNÇÃO&gt;</strong>, <strong>Backups/&lt;ESCOPO&gt;</strong> e <strong>Medias Rio Amazonas</strong>.</div>
-              <button class="btn btn-primary btn-sm" onclick="adminPickRoot()" style="width:100%;margin-bottom:6px;">📂 Definir pasta raiz</button>
-              <div id="root-dir-status" style="font-size:10.5px;color:var(--text-dim);"></div>
+              <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+                <button class="btn btn-primary btn-sm" onclick="adminPickRoot()" style="flex:1;">📂 Definir pasta raiz</button>
+                <button class="btn btn-green btn-sm" onclick="syncConfigFromDriveForce()" style="flex:1;" title="Baixa as configurações mais recentes do Google Drive (URL, links de pastas, dados do navio)">🔄 Atualizar da Web</button>
+              </div>
+              <div id="root-dir-status" style="font-size:10.5px;color:var(--text-dim);margin-bottom:4px;"></div>
+              <div id="sync-cfg-status" style="font-size:10.5px;color:var(--text-dim);"></div>
             </div>
             <div id="fs-status-box" style="border-radius:8px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--border2);background:var(--surface2);">
               <div style="display:flex;align-items:center;gap:8px;"><div id="fs-status-icon" style="font-size:20px;">📂</div><div style="flex:1;min-width:0;"><div id="fs-status-title" style="font-weight:700;font-size:12px;color:var(--login-blue);">Nenhuma pasta vinculada</div><div id="fs-status-path" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div></div></div>
@@ -2281,7 +2285,7 @@
           <div style="font-weight:700;color:var(--login-blue);font-family:'Barlow Condensed',sans-serif;font-size:15px;">RELATÓRIO</div>
           <div style="font-size:11px;color:var(--text-dim);">Relatório semanal</div>
         </div>
-        <div onclick="saveData();toast('✅ Salvo!','ok')" class="mob-action-card" style="border-color:var(--login-green);background:var(--login-green-xlt);">
+        <div onclick="salvarTudo()" class="mob-action-card" style="border-color:var(--login-green);background:var(--login-green-xlt);">
           <div style="font-size:32px;margin-bottom:6px;">💾</div>
           <div style="font-weight:700;color:var(--login-green-dk);font-family:'Barlow Condensed',sans-serif;font-size:15px;">SALVAR</div>
           <div style="font-size:11px;color:var(--text-dim);">Salvar dados agora</div>
@@ -2320,7 +2324,7 @@
     <div id="float-bar-body">
       <div id="float-bar-btns"></div>
       <div style="border-top:1px solid rgba(255,255,255,.15);margin-top:8px;padding-top:8px;display:flex;gap:6px;">
-        <button onclick="saveData();toast('✅ Salvo!','ok')"
+        <button onclick="salvarTudo()"
           style="flex:1;background:var(--login-green);border:none;color:#fff;border-radius:7px;padding:8px 4px;font-size:11px;font-weight:700;cursor:pointer;">💾 SALVAR</button>
         <button onclick="sendToDrive(true)"
           style="flex:1;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:7px;padding:8px 4px;font-size:11px;font-weight:700;cursor:pointer;">☁️ DRIVE</button>
@@ -8710,6 +8714,93 @@ async function loadFromDrive(){
   }
 }
 
+// ── SALVAR TUDO: local + pasta de rede + Google Drive em paralelo ──
+async function salvarTudo(){
+  // 1) Salva localmente sempre (rápido, síncrono)
+  saveData(true);
+  // 2) Status visual no topo
+  const topSt = function(msg){ try{ var el=document.getElementById('drive-status'); if(el){el.textContent=msg;el.style.display='block';} }catch(e){} };
+  topSt('💾 Salvando…');
+  const erros=[];
+  // 3) Pasta de rede (File System Access ou _rootDir)
+  const savedRede = await (async function(){
+    try{
+      if(window._rootDir){
+        const ok = await jacSaveStructured(['Backups', bkpScope()], buildFileName(), buildBackupData(), 'application/json');
+        if(ok){ recordBackupHistory(buildFileName(),'Rede: Backups/'+bkpScope(),'Salvar Tudo'); return true; }
+      } else if(window._folderHandle){
+        const perm=await window._folderHandle.requestPermission({mode:'readwrite'});
+        if(perm==='granted'){
+          const fn=buildFileName();
+          const fh=await window._folderHandle.getFileHandle(fn,{create:true});
+          const w=await fh.createWritable(); await w.write(buildBackupData()); await w.close();
+          recordBackupHistory(fn,window._folderHandle.name,'Salvar Tudo');
+          return true;
+        }
+      }
+    }catch(e){ erros.push('Rede: '+e.message); }
+    return false;
+  })();
+  // 4) Google Drive (em segundo plano, não bloqueia)
+  const cfg=getCfg();
+  var savedDrive = false;
+  if(cfg.webAppUrl && cfg.autoSave!==false){
+    try{
+      await sendToDrive(true);
+      savedDrive = true;
+    }catch(e){ erros.push('Drive: '+e.message); }
+  }
+  // 5) Resultado
+  const partes=[];
+  partes.push('✅ local');
+  if(savedRede) partes.push('📁 rede');
+  if(savedDrive) partes.push('☁️ Drive');
+  const msg = partes.join(' · ')+(erros.length?' ⚠️ '+erros.join('; '):'');
+  toast(msg,'ok');
+  topSt(msg);
+  setTimeout(function(){ topSt(''); },5000);
+}
+
+// ── SYNC DE CONFIGURAÇÃO DA WEB → modo app/desktop ──
+// Baixa as configurações (URL, links de pastas, dados do navio) do Drive
+// e aplica localmente sem sobrescrever configurações que já estejam setadas.
+async function syncConfigFromDrive(force){
+  const cfg=getCfg();
+  if(!cfg.webAppUrl) return; // sem URL configurada não há o que buscar
+  try{
+    const r=await fetch(cfg.webAppUrl+'?t='+Date.now()+'&cfgOnly=1');
+    if(!r.ok) return;
+    const d=await r.json();
+    if(!d||d.error) return;
+    var changed=false;
+    if(d.extras && d.extras.cfgShare){
+      const cs=d.extras.cfgShare;
+      if(cs.linksPastas && Object.keys(cs.linksPastas).length){
+        if(force || !cfg.linksPastas || !Object.keys(cfg.linksPastas).length){
+          cfg.linksPastas=Object.assign({},cfg.linksPastas||{},cs.linksPastas); changed=true;
+        }
+      }
+      if(cs.rioPaths){ cfg.rioPaths=Object.assign({},cfg.rioPaths||{},cs.rioPaths); changed=true; }
+      if(cs.vessel){ cfg.vessel=Object.assign({},cfg.vessel||{},cs.vessel); changed=true; }
+      if(cs.driveFolderUrl && !cfg.driveFolderUrl){ cfg.driveFolderUrl=cs.driveFolderUrl; changed=true; }
+    }
+    if(changed){
+      saveCfg(cfg);
+      try{ renderLinksPastas(); rioPathsRender(); renderCfgLogo(); }catch(e){}
+      var st=document.getElementById('sync-cfg-status');
+      if(st) st.innerHTML='🔄 Configuração atualizada da Web em '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    }
+  }catch(e){}
+}
+async function syncConfigFromDriveForce(){
+  var st=document.getElementById('sync-cfg-status');
+  if(st) st.innerHTML='⏳ Baixando configuração do Drive…';
+  await syncConfigFromDrive(true);
+  var st2=document.getElementById('sync-cfg-status');
+  if(st2 && !st2.innerHTML.includes('atualizada')) st2.innerHTML='⚠️ Não foi possível baixar — verifique a conexão e o Drive';
+  toast('🔄 Configuração sincronizada da Web','ok');
+}
+
 // ── AUTOSALVAR & SYNC ENTRE DISPOSITIVOS ──
 var _driveDebounce=null;
 function scheduleDriveSync(){
@@ -9949,7 +10040,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.2.0';
+const APP_VERSION = '2.2.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
@@ -13183,7 +13274,7 @@ const _importApply = {
 window.addEventListener('beforeunload', function(){ saveData(true); });
 // Auto-save every 60s as safety net  
 setInterval(function(){ saveData(true); }, 60000);
-loadData();checkInspFromURL();kpis();renderDash();fillWeekSel();renderDriveLinks();try{applyDriveDefaults();}catch(e){}try{restoreRootDir();}catch(e){}try{npPopulate();}catch(e){}setTimeout(function(){try{autoStartupSync();}catch(e){}},1200);
+loadData();checkInspFromURL();kpis();renderDash();fillWeekSel();renderDriveLinks();try{applyDriveDefaults();}catch(e){}try{syncConfigFromDrive();}catch(e){}try{restoreRootDir();}catch(e){}try{npPopulate();}catch(e){}setTimeout(function(){try{autoStartupSync();}catch(e){}},1200);
 // Check for embedded data from shared HTML
 if(window.__JDATA_PENDING__){
   setTimeout(function(){
