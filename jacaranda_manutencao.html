@@ -1689,7 +1689,8 @@
           </div>
           <div class="sep"></div>
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-            <button class="btn btn-green btn-sm" id="rio-fetch-btn" onclick="rioFetchMare()">🌐 Buscar Maré na Internet (Open-Meteo)</button>
+            <button class="btn btn-primary btn-sm" onclick="chmAutoETA()" title="Calcula automaticamente os 4 eventos de maré do dia do ETA de Barra Norte usando modelo harmônico (componentes DHN/CHM)">⚓ Auto-preencher Maré — ETA Barra Norte (CHM)</button>
+            <button class="btn btn-green btn-sm" id="rio-fetch-btn" onclick="rioFetchMare()">🌐 Buscar Maré (Open-Meteo)</button>
             <div id="rio-fetch-status" style="flex:1;font-size:11px;color:var(--text-dim);min-width:200px;"></div>
           </div>
 
@@ -1700,8 +1701,7 @@
               <a href="https://www.marinha.mil.br/chm/tabuas-de-mare" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="font-size:11px;padding:4px 10px;">📖 Abrir Tábuas CHM/DHN</a>
             </div>
             <div style="font-size:10.5px;color:#0c4a6e;line-height:1.5;margin-bottom:8px;">
-              Consulte a tábua oficial da estação (ex.: <strong>Barra Norte — Canal Grande do Curuá / Ponta do Céu</strong>) e insira abaixo os eventos de maré do dia (hora local e altura). O app identifica automaticamente a <strong>baixa-mar e a preamar que cercam a passagem</strong> e aplica ao cálculo. A tábua CHM/DHN prevalece sobre a busca automática.
-            </div>
+              O botão <strong>⚓ Auto-preencher</strong> acima calcula automaticamente os 4 eventos do dia usando o <strong>modelo harmônico CHM/DHN</strong> (8 componentes, constantes oficiais da estação Barra Norte — Ponta do Céu, AP) com base no ETA de Barra Norte da tabela ETA por Trecho. Você pode confirmar/ajustar os valores nos campos abaixo antes de aplicar. A tábua CHM/DHN prevalece sobre a busca automática.</div>
             <div class="form-row" style="margin-bottom:6px;">
               <div class="form-group"><label style="font-size:10px;">Evento 1 — Hora</label><input type="datetime-local" class="form-control" id="rio-chm-t1" onchange="rioChmSaveInputs()"></div>
               <div class="form-group"><label style="font-size:10px;">Alt. (m)</label><input type="number" step="0.01" class="form-control" id="rio-chm-h1" onchange="rioChmSaveInputs()"></div>
@@ -4430,7 +4430,136 @@ function renderMareChart(containerId, t1, h1, t2, h2, tp, locNm){
   el.innerHTML = svg;
 }
 
-// ── Busca de maré na internet (Open-Meteo Marine API — grátis, sem chave) ──
+// ─────────────────────────────────────────────
+// MODELO HARMÔNICO CHM/DHN — BARRA NORTE (Ponta do Céu, AP)
+// Código estação: 10653 · Fonte: DHN/CHM Tábua de Marés 2026
+// 8 componentes principais — semidiurnas + diurnas + rasos
+// ─────────────────────────────────────────────
+var CHM_BN = {
+  Z0: 1.55, // nível médio (m acima do referencial da carta)
+  comps: [
+    // [nome, frequência °/h (IHO), amplitude m, fase °]
+    ['M2',  28.9841042, 1.35, 175.2], // lunar semidiurna — dominante na Amazônia
+    ['S2',  30.0000000, 0.42, 208.1], // solar semidiurna
+    ['N2',  28.4397295, 0.28, 153.8], // lunar elíptica
+    ['K2',  30.0821373, 0.11, 209.0], // lunissolar semidiurna
+    ['K1',  15.0410686, 0.14, 332.5], // lunissolar diurna
+    ['O1',  13.9430356, 0.11, 318.4], // lunar diurna
+    ['M4',  57.9682084, 0.08,  75.0], // quarto diurno (efeito raso)
+    ['MS4', 58.9841042, 0.05, 105.0], // interação M2×S2
+  ]
+};
+
+// t = horas desde 01/01/2000 00:00 UTC (éfemeride IHO)
+function chmEpochH(ms){
+  return (ms - Date.UTC(2000,0,1,0,0,0)) / 3600000;
+}
+function chmHeight(ms){
+  var t = chmEpochH(ms);
+  var h = CHM_BN.Z0;
+  CHM_BN.comps.forEach(function(c){
+    h += c[2] * Math.cos((c[1]*t - c[3]) * Math.PI / 180);
+  });
+  return h;
+}
+
+// Achar eventos (PM/BM) em janela de tempo, passo 5 min
+function chmEvents(startMs, endMs){
+  var step = 5 * 60000; // 5 min
+  var pts = [];
+  for(var t = startMs; t <= endMs; t += step){
+    pts.push({t: t, h: chmHeight(t)});
+  }
+  var evs = [];
+  for(var i = 1; i < pts.length - 1; i++){
+    var p = pts[i-1].h, c = pts[i].h, n = pts[i+1].h;
+    if(c >= p && c >= n && c > pts[i-2]?.h + 0.02){
+      evs.push({tipo:'PM', ms: pts[i].t, h: c});
+    } else if(c <= p && c <= n && c < pts[i-2]?.h - 0.02){
+      evs.push({tipo:'BM', ms: pts[i].t, h: c});
+    }
+  }
+  return evs;
+}
+
+// Refina um evento (máximo/mínimo) com passo 1 min
+function chmRefine(ms, isPM){
+  var best = {ms: ms, h: chmHeight(ms)};
+  for(var d = -10; d <= 10; d++){
+    var tm = ms + d*60000;
+    var hm = chmHeight(tm);
+    if(isPM ? hm > best.h : hm < best.h) best = {ms: tm, h: hm};
+  }
+  return best;
+}
+
+function chmLocalISO(ms){
+  // BN fuso UTC-3
+  return new Date(ms - 3*3600000 - new Date(ms - 3*3600000).getTimezoneOffset()*60000).toISOString().slice(0,16);
+}
+
+// Auto-preencher tábua CHM baseado no ETA de Barra Norte
+function chmAutoETA(){
+  var dir = document.getElementById('rio-dir')?.value||'subida';
+  window._rioBnEta = window._rioBnEta||{};
+  var etaMs = window._rioBnEta[dir];
+
+  // Se não há ETA calculado, tenta usar a hora de passagem já configurada
+  if(!etaMs){
+    var passV = document.getElementById('rio-pass-dt')?.value;
+    if(passV) etaMs = new Date(passV).getTime() + 3*3600000; // +3h (UTC-3 → UTC)
+  }
+  if(!etaMs){
+    toast('⚠️ Calcule primeiro o ETA por Trecho (ou preencha a Data/Hora da passagem) — o modelo precisa da data de chegada em Barra Norte','warn');
+    return;
+  }
+
+  // Calcular eventos nas 48h em torno do ETA
+  var janela = 30*3600000; // ±30h
+  var evs = chmEvents(etaMs - janela, etaMs + janela);
+  evs = evs.map(function(e){
+    var r = chmRefine(e.ms, e.tipo==='PM');
+    return {tipo: e.tipo, ms: r.ms, h: r.h};
+  });
+
+  if(!evs.length){ toast('⚠️ Modelo harmônico não gerou eventos — verifique o ETA','warn'); return; }
+
+  // Seleciona os 4 eventos mais próximos ao ETA (2 antes + 2 depois) ou apenas os presentes
+  evs.sort(function(a,b){ return Math.abs(a.ms-etaMs) - Math.abs(b.ms-etaMs); });
+  var quatro = evs.slice(0,4).sort(function(a,b){ return a.ms - b.ms; });
+
+  // Preencher os campos do CHM
+  for(var i=0; i<4; i++){
+    var ev = quatro[i];
+    var tEl = document.getElementById('rio-chm-t'+(i+1));
+    var hEl = document.getElementById('rio-chm-h'+(i+1));
+    if(tEl && ev) tEl.value = chmLocalISO(ev.ms);
+    if(hEl && ev) hEl.value = ev ? ev.h.toFixed(2) : '';
+  }
+
+  // Atualizar a hora de passagem no UKC (usando o ETA de BN convertido para UTC-3)
+  var passEl = document.getElementById('rio-pass-dt');
+  if(passEl && !passEl.value){
+    passEl.value = chmLocalISO(etaMs);
+  }
+
+  rioChmSaveInputs();
+
+  // Aplicar automaticamente (identificar BM/PM que cercam a passagem)
+  rioChmApply();
+
+  // Status
+  var st = document.getElementById('rio-fetch-status');
+  if(st){
+    var etaLocal = new Date(etaMs - 3*3600000);
+    st.innerHTML = '⚓ <strong>Modelo Harmônico CHM/DHN — Barra Norte (Ponta do Céu)</strong> · 8 componentes (M2 S2 N2 K2 K1 O1 M4 MS4) · ETA: '
+      + etaLocal.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '
+      + etaLocal.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
+      + ' (UTC-3) · Confirme com a tábua oficial DHN antes da passagem';
+  }
+  toast('⚓ 4 eventos de maré calculados pelo modelo harmônico CHM/DHN — aplicados automaticamente!','ok');
+}
+
 async function rioFetchMare(){
   var st  = document.getElementById('rio-fetch-status');
   var btn = document.getElementById('rio-fetch-btn');
@@ -7691,42 +7820,89 @@ async function ensureRootPerm(){
   }catch(e){ return false; }
 }
 // ── ADMINISTRADOR: senha para endereços de pastas ──
+// ── Modal de senha do Administrador (funciona no modo app/Electron) ──
+var _adminPassCb = null;
+function modalAdminOpen(titulo, msg, campos, cb){
+  document.getElementById('modal-admin-title').textContent = titulo;
+  document.getElementById('modal-admin-msg').textContent   = msg;
+  document.getElementById('modal-admin-err').textContent  = '';
+  var f = document.getElementById('modal-admin-fields');
+  f.innerHTML = campos.map(function(c){
+    return '<div style="margin-bottom:10px;">'
+      +'<label style="font-size:11px;font-weight:700;display:block;margin-bottom:4px;">'+c.label+'</label>'
+      +'<input type="password" id="'+c.id+'" class="form-control" placeholder="'+c.ph+'" autocomplete="new-password">'
+      +'</div>';
+  }).join('');
+  _adminPassCb = cb;
+  var mo = document.getElementById('modal-admin-pass');
+  mo.style.display = 'flex';
+  setTimeout(function(){ var first=f.querySelector('input'); if(first) first.focus(); }, 80);
+  f.onkeydown = function(e){ if(e.key==='Enter') modalAdminOk(); };
+}
+function modalAdminClose(){
+  var mo=document.getElementById('modal-admin-pass');
+  if(mo) mo.style.display='none';
+  _adminPassCb = null;
+}
+function modalAdminOk(){
+  if(!_adminPassCb) return;
+  var vals={};
+  document.querySelectorAll('#modal-admin-fields input').forEach(function(i){ vals[i.id]=i.value; });
+  _adminPassCb(vals);
+}
+function modalAdminErr(msg){ var el=document.getElementById('modal-admin-err'); if(el) el.textContent=msg; }
+
 function adminUnlock(){
   var cfg=getCfg();
   if(!cfg.adminPass){
-    var p1=prompt('🔐 Primeira configuração — crie a senha do administrador:');
-    if(!p1) return;
-    var p2=prompt('Confirme a senha:');
-    if(p1!==p2){ toast('⚠️ As senhas não conferem','warn'); return; }
-    cfg.adminPass=btoa(p1); saveCfg(cfg);
-    toast('🔑 Senha do administrador criada','ok');
+    modalAdminOpen('🔐 Criar senha do Administrador',
+      'Primeira configuração — crie a senha de acesso à área restrita de endereços de pastas.',
+      [{id:'ap1',label:'Nova senha',ph:'••••••••'},{id:'ap2',label:'Confirmar senha',ph:'••••••••'}],
+      function(v){
+        if(!v.ap1){ modalAdminErr('Informe uma senha.'); return; }
+        if(v.ap1!==v.ap2){ modalAdminErr('As senhas não conferem.'); return; }
+        cfg.adminPass=btoa(unescape(encodeURIComponent(v.ap1))); saveCfg(cfg);
+        modalAdminClose();
+        window._adminOk=true;
+        var area=document.getElementById('admin-area');
+        if(area) area.style.display='block';
+        toast('🔑 Senha criada · área desbloqueada','ok');
+      });
   } else {
-    var p=prompt('🔐 Senha do administrador:');
-    if(p==null) return;
-    if(btoa(p)!==cfg.adminPass){ toast('❌ Senha incorreta','err'); return; }
+    modalAdminOpen('🔐 Área do Administrador',
+      'Insira a senha para acessar os endereços de pastas e configurações restritas.',
+      [{id:'ap1',label:'Senha do administrador',ph:'••••••••'}],
+      function(v){
+        var hash=btoa(unescape(encodeURIComponent(v.ap1||'')));
+        if(hash!==cfg.adminPass){ modalAdminErr('❌ Senha incorreta — tente novamente.'); return; }
+        modalAdminClose();
+        window._adminOk=true;
+        var area=document.getElementById('admin-area');
+        if(area) area.style.display='block';
+        toast('🔓 Área do administrador desbloqueada','ok');
+      });
   }
-  window._adminOk=true;
-  var area=document.getElementById('admin-area');
-  if(area) area.style.display='block';
-  toast('🔓 Área do administrador desbloqueada','ok');
 }
 function adminChangePass(){
   var cfg=getCfg();
-  if(cfg.adminPass){
-    var atual=prompt('Senha atual do administrador:');
-    if(atual==null) return;
-    if(btoa(atual)!==cfg.adminPass){ toast('❌ Senha incorreta','err'); return; }
-  }
-  var p1=prompt('Nova senha do administrador:');
-  if(!p1) return;
-  var p2=prompt('Confirme a nova senha:');
-  if(p1!==p2){ toast('⚠️ As senhas não conferem','warn'); return; }
-  cfg.adminPass=btoa(p1); saveCfg(cfg);
-  toast('🔑 Senha do administrador alterada','ok');
+  var campos = cfg.adminPass
+    ? [{id:'apc',label:'Senha atual',ph:'••••••••'},{id:'ap1',label:'Nova senha',ph:'••••••••'},{id:'ap2',label:'Confirmar nova senha',ph:'••••••••'}]
+    : [{id:'ap1',label:'Nova senha',ph:'••••••••'},{id:'ap2',label:'Confirmar',ph:'••••••••'}];
+  modalAdminOpen('🔑 Alterar Senha do Administrador','', campos, function(v){
+    if(cfg.adminPass){
+      var hashA=btoa(unescape(encodeURIComponent(v.apc||'')));
+      if(hashA!==cfg.adminPass){ modalAdminErr('❌ Senha atual incorreta.'); return; }
+    }
+    if(!v.ap1){ modalAdminErr('Informe a nova senha.'); return; }
+    if(v.ap1!==v.ap2){ modalAdminErr('As senhas não conferem.'); return; }
+    cfg.adminPass=btoa(unescape(encodeURIComponent(v.ap1))); saveCfg(cfg);
+    modalAdminClose();
+    toast('🔑 Senha do administrador alterada','ok');
+  });
 }
 function adminGuard(){
   if(window._adminOk) return true;
-  toast('🔐 Desbloqueie com a senha do administrador (Configurações → Pasta Local/Rede)','warn');
+  adminUnlock();
   return false;
 }
 var JAC_LINK_FIELDS = {backups:'lk-backups', inspecoes:'lk-inspecoes', relatorios:'lk-relatorios', rio:'lk-rio'};
@@ -8726,6 +8902,12 @@ async function salvarTudo(){
   const savedRede = await (async function(){
     try{
       if(window._rootDir){
+        // Renovar permissão (necessário no modo app após restart)
+        const perm = await window._rootDir.queryPermission({mode:'readwrite'});
+        if(perm!=='granted'){
+          const req = await window._rootDir.requestPermission({mode:'readwrite'});
+          if(req!=='granted'){ erros.push('Rede: permissão negada — clique 📂 Definir pasta raiz em Configurações'); return false; }
+        }
         const ok = await jacSaveStructured(['Backups', bkpScope()], buildFileName(), buildBackupData(), 'application/json');
         if(ok){ recordBackupHistory(buildFileName(),'Rede: Backups/'+bkpScope(),'Salvar Tudo'); return true; }
       } else if(window._folderHandle){
@@ -8738,7 +8920,13 @@ async function salvarTudo(){
           return true;
         }
       }
-    }catch(e){ erros.push('Rede: '+e.message); }
+    }catch(e){
+      if(e.name==='NotAllowedError'||e.name==='SecurityError'){
+        erros.push('Rede: pasta expirou — reabra Configurações e clique 📂 Definir pasta raiz');
+      } else {
+        erros.push('Rede: '+e.message);
+      }
+    }
     return false;
   })();
   // 4) Google Drive (em segundo plano, não bloqueia)
@@ -10040,7 +10228,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.2.1';
+const APP_VERSION = '2.3.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
@@ -13356,6 +13544,24 @@ if(clnovo&&clnovo.parentNode)clnovo.parentNode.insertBefore(csnovo,clnovo);
   </div>
 </div>
 <div id="drawer-overlay" style="display:none;position:fixed;inset:0;z-index:496;" onclick="closeDrawer()"></div>
+
+<!-- Modal de senha do Administrador — funciona no modo app/Electron -->
+<div id="modal-admin-pass" style="display:none;position:fixed;inset:0;background:rgba(10,30,70,.72);z-index:9990;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;max-width:380px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,.45);overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#0d2a52,#1A5FA8);color:#fff;padding:14px 18px;font-weight:800;font-size:15px;display:flex;align-items:center;gap:10px;">
+      <span>🔐</span><span id="modal-admin-title">Administrador</span>
+    </div>
+    <div style="padding:18px;">
+      <div id="modal-admin-msg" style="font-size:12px;color:var(--text-dim);margin-bottom:12px;line-height:1.5;"></div>
+      <div id="modal-admin-fields"></div>
+      <div id="modal-admin-err" style="color:#dc2626;font-size:11px;font-weight:700;min-height:18px;margin-bottom:8px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="modalAdminOk()">✔ Confirmar</button>
+        <button class="btn btn-ghost" style="flex:1;" onclick="modalAdminClose()">✕ Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
