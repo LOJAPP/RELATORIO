@@ -1571,7 +1571,13 @@
               <input type="number" step="0.1" class="form-control" id="rio-vel" value="15" oninput="rioSaveCfg();rioBuildETA();">
             </div>
           </div>
-          <button class="btn btn-primary" onclick="rioBuildETA()" style="width:100%;">🧮 Calcular ETA por Trecho</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="rioBuildETA()" style="flex:2;">🧮 Calcular ETA por Trecho</button>
+            <label class="btn btn-ghost btn-sm" style="cursor:pointer;flex:1;justify-content:center;display:flex;align-items:center;gap:4px;" title="Importar rota RTZ do ECDIS e calcular ETA automaticamente">
+              📂 Importar rota ECDIS
+              <input type="file" accept=".rtz,.xml,.gpx,.kml,.csv" style="display:none;" onchange="rioImportECDIS(this)">
+            </label>
+          </div>
           <div style="font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.5;">
             ✏️ <strong>Todos os waypoints são editáveis</strong>: em qualquer linha ajuste a <strong>distância</strong>, a <strong>velocidade</strong>, o <strong>tempo</strong> ou o <strong>ETA</strong> — ao editar qualquer campo, os trechos seguintes recalculam automaticamente em cascata. A velocidade editada passa a valer daquele trecho em diante; ETA/tempo fixam a chegada real no ponto. Os pontos-chave da linha (⭐ Pecém, Barra Norte, Macapá, Itacoatiara, Manaus) aparecem destacados.
           </div>
@@ -1704,10 +1710,20 @@
           <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #7dd3fc;border-radius:10px;padding:12px;margin-bottom:12px;">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
               <span style="font-weight:800;font-size:12px;color:#075985;">⚓ Tábua de Marés CHM — Marinha do Brasil (fonte oficial)</span>
-              <a href="https://www.marinha.mil.br/chm/tabuas-de-mare" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="font-size:11px;padding:4px 10px;">📖 Abrir Tábuas CHM/DHN</a>
+              <a href="https://www.marinha.mil.br/chm/tabuas-de-mare" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="font-size:11px;padding:4px 10px;">📖 Tábuas CHM/DHN</a>
+              <a href="https://assets.marinha.mil.br/chm/sites/www.marinha.mil.br.chm/files/dados_de_mare/1%20-BARRA%20NORTE%20-%20ARCO%20LAMOSO%20-%202026%20-%2013%20-%2015.pdf" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 10px;">📄 PDF BN 2026</a>
+            </div>
+            <div style="background:#fff;border:1px solid #bae6fd;border-radius:8px;padding:9px 12px;margin-bottom:10px;">
+              <div style="font-size:11px;font-weight:800;color:#0369a1;margin-bottom:5px;">📋 Colar texto da tábua (copiar do PDF ou site CHM)</div>
+              <textarea id="chm-txt-input" rows="5" placeholder="Cole aqui o texto da tábua CHM/DHN para o dia da passagem — ex:
+07 22 01:10 1.6 BM 07:55 3.4 PM 14:25 -0.2 BM 20:10 3.8 PM
+ou
+22  01h10  1.6  07h55  3.4  14h25  0.2  20h10  3.8
+ou qualquer formato com horas e alturas..." style="width:100%;font-size:11px;font-family:monospace;border:1px solid var(--border);border-radius:6px;padding:6px;resize:vertical;"></textarea>
+              <button class="btn btn-primary btn-sm" style="width:100%;margin-top:6px;" onclick="chmParseTxt()">🔍 Extrair eventos do texto e preencher automaticamente</button>
             </div>
             <div style="font-size:10.5px;color:#0c4a6e;line-height:1.5;margin-bottom:8px;">
-              O botão <strong>⚓ Auto-preencher</strong> acima calcula automaticamente os 4 eventos do dia usando o <strong>modelo harmônico CHM/DHN</strong> (8 componentes, constantes oficiais da estação Barra Norte — Ponta do Céu, AP) com base no ETA de Barra Norte da tabela ETA por Trecho. Você pode confirmar/ajustar os valores nos campos abaixo antes de aplicar. A tábua CHM/DHN prevalece sobre a busca automática.</div>
+              O botão <strong>⚓ Auto-preencher</strong> calcula automaticamente os 4 eventos do dia usando o <strong>modelo harmônico CHM/DHN</strong> (8 componentes, constantes oficiais da estação Barra Norte — Ponta do Céu, AP) com base no ETA de Barra Norte da tabela ETA por Trecho. Você pode confirmar/ajustar os valores nos campos abaixo antes de aplicar. A tábua CHM/DHN prevalece sobre a busca automática.</div>
             <div class="form-row" style="margin-bottom:6px;">
               <div class="form-group"><label style="font-size:10px;">Evento 1 — Hora</label><input type="datetime-local" class="form-control" id="rio-chm-t1" onchange="rioChmSaveInputs()"></div>
               <div class="form-group"><label style="font-size:10px;">Alt. (m)</label><input type="number" step="0.01" class="form-control" id="rio-chm-h1" onchange="rioChmSaveInputs()"></div>
@@ -4448,6 +4464,128 @@ function renderMareChart(containerId, t1, h1, t2, h2, tp, locNm){
     + '</svg>';
 
   el.innerHTML = svg;
+}
+
+// ─────────────────────────────────────────────
+// PARSER DE TEXTO DA TÁBUA CHM/DHN
+// Aceita qualquer formato colado: PDF, site, variados
+// ─────────────────────────────────────────────
+function chmParseTxt(){
+  var txt=(document.getElementById('chm-txt-input')||{}).value||'';
+  if(!txt.trim()){toast('⚠️ Cole o texto da tábua antes de extrair','warn');return;}
+  txt=txt.replace(/[hH]:/g,':').replace(/[hH](?=\d)/g,':').replace(/[—–]/g,'-').replace(/,/g,'.');
+  var dir=(document.getElementById('rio-dir')||{value:'subida'}).value;
+  window._rioBnEta=window._rioBnEta||{};
+  var etaMs=window._rioBnEta[dir];
+  var ano=new Date().getUTCFullYear();
+  var dayRe=/(\d{1,2})[\/-](\d{1,2})/; var dayM=dayRe.exec(txt);
+  var mes=dayM?parseInt(dayM[2]):(new Date().getUTCMonth()+1);
+  var dia=dayM?parseInt(dayM[1]):(etaMs?new Date(etaMs-3*3600000).getUTCDate():new Date().getUTCDate());
+  var re1=/(\d{1,2}):(\d{2})\s*([+-]?\d+[.,]?\d*)/g;
+  var events=[],m;
+  while((m=re1.exec(txt))!==null){
+    var hh=parseInt(m[1]),mm=parseInt(m[2]),ht=parseFloat(m[3].replace(',','.'));
+    if(hh>=0&&hh<=23&&mm>=0&&mm<=59&&!isNaN(ht)&&Math.abs(ht)<=7)events.push({hh:hh,mm:mm,h:ht});
+  }
+  if(!events.length){
+    var re2=/(\d+[.,]\d+)\s*m?\s*(\d{1,2}):(\d{2})/g;
+    while((m=re2.exec(txt))!==null){
+      var ht2=parseFloat(m[1].replace(',','.')),hh2=parseInt(m[2]),mm2=parseInt(m[3]);
+      if(hh2>=0&&hh2<=23&&mm2>=0&&mm2<=59&&!isNaN(ht2)&&Math.abs(ht2)<=7)events.push({hh:hh2,mm:mm2,h:ht2});
+    }
+  }
+  if(!events.length){toast('⚠️ Nenhum evento extraído. Formato esperado: "HH:MM 1.6" ou "1.6 HH:MM". Cole a linha do dia.','warn');return;}
+  events.sort(function(a,b){return a.hh*60+a.mm-(b.hh*60+b.mm);});
+  var z=function(n){return ('0'+n).slice(-2);};
+  for(var i=0;i<4;i++){
+    var ev=events[i];
+    var tEl=document.getElementById('rio-chm-t'+(i+1));
+    var hEl=document.getElementById('rio-chm-h'+(i+1));
+    if(tEl)tEl.value=ev?z(ano)+'-'+z(mes)+'-'+z(dia)+'T'+z(ev.hh)+':'+z(ev.mm):'';
+    if(hEl)hEl.value=ev?ev.h.toFixed(2):'';
+  }
+  var pe=document.getElementById('rio-pass-dt');
+  if(pe&&!pe.value&&etaMs)pe.value=chmToLocalISO(etaMs);
+  rioChmSaveInputs();rioChmApply();
+  var ta=document.getElementById('chm-txt-input');if(ta)ta.value='';
+  var st=document.getElementById('rio-fetch-status');
+  if(st)st.innerHTML='⚓ <strong>Tábua CHM/DHN (texto colado)</strong> · '+events.slice(0,4).map(function(e){return z(e.hh)+':'+z(e.mm)+' ('+e.h.toFixed(2)+'m)';}).join(' · ')+' · Fonte oficial Marinha do Brasil';
+  toast('✅ '+Math.min(events.length,4)+' eventos extraídos da tábua CHM e aplicados!','ok');
+}
+
+// ─────────────────────────────────────────────
+// IMPORTAR ROTA ECDIS → ETA AUTOMÁTICO
+// ─────────────────────────────────────────────
+function rioImportECDIS(inp){
+  var f=inp.files&&inp.files[0];if(!f)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      var txt=ev.target.result,ext=(f.name.split('.').pop()||'').toLowerCase(),wps=null;
+      if(ext==='csv')wps=rioECDISParseCSV(txt);
+      else{var xml=new DOMParser().parseFromString(txt,'text/xml');
+        if(xml.getElementsByTagName('parsererror').length)throw new Error('XML inválido');
+        if(ext==='gpx'||xml.documentElement.nodeName.toLowerCase()==='gpx')wps=rioECDISParseGPX(xml);
+        else if(ext==='kml'||xml.documentElement.nodeName.toLowerCase()==='kml')wps=rioECDISParseKML(xml);
+        else wps=rioECDISParseRTZ(xml);
+      }
+      if(!wps||!wps.length){toast('⚠️ Nenhum waypoint encontrado','warn');return;}
+      rioAplicarRotaECDIS(wps,f.name.replace(/\.[^.]+$/,''));
+    }catch(e){toast('❌ Erro: '+e.message,'err');}
+    inp.value='';
+  };
+  reader.readAsText(f);
+}
+function rioECDISParseRTZ(xml){var nodes=xml.getElementsByTagName('waypoint'),wps=[];for(var i=0;i<nodes.length;i++){var pos=nodes[i].getElementsByTagName('position')[0];if(!pos)continue;var leg=nodes[i].getElementsByTagName('leg')[0];var spd=leg?(parseFloat(leg.getAttribute('planSpeedMax')||leg.getAttribute('planSpeed')||'')):NaN;wps.push({name:nodes[i].getAttribute('name')||('WP'+(i+1)),lat:parseFloat(pos.getAttribute('lat')),lon:parseFloat(pos.getAttribute('lon')),vel:isNaN(spd)?'':spd});}return wps;}
+function rioECDISParseGPX(xml){var pts=xml.getElementsByTagName('rtept');if(!pts.length)pts=xml.getElementsByTagName('trkpt');var wps=[];for(var i=0;i<pts.length;i++){var nm=pts[i].getElementsByTagName('name')[0];wps.push({name:nm?nm.textContent.trim():('WP'+(i+1)),lat:parseFloat(pts[i].getAttribute('lat')),lon:parseFloat(pts[i].getAttribute('lon')),vel:''});}return wps;}
+function rioECDISParseKML(xml){var wps=[],pms=xml.getElementsByTagName('Placemark');for(var i=0;i<pms.length;i++){var pt=pms[i].getElementsByTagName('Point')[0];if(!pt)continue;var c=pt.getElementsByTagName('coordinates')[0];if(!c)continue;var p=c.textContent.trim().split(',');var nm=pms[i].getElementsByTagName('name')[0];wps.push({name:nm?nm.textContent.trim():('WP'+(wps.length+1)),lat:parseFloat(p[1]),lon:parseFloat(p[0]),vel:''});}return wps;}
+function rioECDISParseCSV(txt){var lines=txt.split(/\r?\n/).filter(function(l){return l.trim();}),sep=lines[0].indexOf(';')>=0?';':',',head=lines[0].toLowerCase().split(sep).map(function(s){return s.trim();});var iN=head.findIndex(function(h){return /name|wp/.test(h);}),iLa=head.findIndex(function(h){return /lat/.test(h);}),iLo=head.findIndex(function(h){return /lon|lng/.test(h);}),iV=head.findIndex(function(h){return /vel|speed/.test(h);}),start=(iLa>=0&&iLo>=0)?1:0;if(!start){iN=0;iLa=1;iLo=2;iV=3;}var wps=[];for(var i=start;i<lines.length;i++){var c=lines[i].split(sep),la=parseFloat((c[iLa]||'').replace(',','.')),lo=parseFloat((c[iLo]||'').replace(',','.'));if(isNaN(la)||isNaN(lo))continue;var v=iV>=0?parseFloat((c[iV]||'').replace(',','.')):NaN;wps.push({name:(c[iN]||'WP'+(wps.length+1)).trim(),lat:la,lon:lo,vel:isNaN(v)?'':v});}return wps;}
+function rioHaversineNm(la1,lo1,la2,lo2){var R=3440.065,r=Math.PI/180,dLa=(la2-la1)*r,dLo=(lo2-lo1)*r,a=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(la1*r)*Math.cos(la2*r)*Math.sin(dLo/2)*Math.sin(dLo/2);return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+function rioAplicarRotaECDIS(wps,rotaNome){
+  var totalNm=0,segs=[];
+  for(var i=1;i<wps.length;i++){var d=rioHaversineNm(wps[i-1].lat,wps[i-1].lon,wps[i].lat,wps[i].lon);totalNm+=d;segs.push(d);}
+  var vel=parseFloat(document.getElementById('rio-vel')&&document.getElementById('rio-vel').value)||15;
+  var dtv=document.getElementById('rio-dt')&&document.getElementById('rio-dt').value;
+  var t0=dtv?new Date(dtv).getTime():Date.now();
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9995;display:flex;align-items:center;justify-content:center;padding:16px;';
+  var z=function(n){return ('0'+n).slice(-2);};
+  var rows=wps.slice(0,50).map(function(w,i){
+    var d=i===0?0:segs[i-1]||0,cumNm=segs.slice(0,i).reduce(function(a,b){return a+b;},0)+d,h=cumNm/vel;
+    var et=new Date(t0+h*3600000);
+    return '<tr style="font-size:11px;"><td style="padding:3px 8px;">'+(i+1)+'</td><td style="padding:3px 8px;font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(w.name)+'</td><td class="mono" style="padding:3px 8px;text-align:right;">'+(i===0?'—':d.toFixed(1))+'</td><td class="mono" style="padding:3px 8px;text-align:right;color:var(--login-blue);">'+z(et.getDate())+'/'+z(et.getMonth()+1)+' '+z(et.getHours())+':'+z(et.getMinutes())+'</td></tr>';
+  }).join('');
+  ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:540px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.4);">'
+    +'<div style="background:linear-gradient(135deg,#0d2a52,#1A5FA8);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:8px;">'
+    +'<span style="flex:1;font-weight:800;">🗺️ '+escHtml(rotaNome)+' · '+wps.length+' waypoints · '+totalNm.toFixed(1)+' NM</span>'
+    +'<button onclick="var __ov=document.getElementById(&apos;ecdisOv&apos;);if(__ov)__ov.remove();" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;">✕</button></div>'
+    +'<div style="padding:12px;">'
+    +'<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">'+vel+' nós · saída: '+(dtv||'agora')+' · ETAs calculados automaticamente (hora local do dispositivo)</div>'
+    +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f1f5f9;font-size:11px;"><th style="padding:4px 8px;">#</th><th>Waypoint</th><th style="text-align:right;">NM</th><th style="text-align:right;">ETA</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div style="display:flex;gap:8px;margin-top:10px;">'
+    +'<button class="btn btn-primary" style="flex:1;" onclick="rioAplicarRotaECDISConfirmar(window._rtzImportData)">✔ Usar no planejador</button>'
+    +'<button class="btn btn-ghost" style="flex:1;" onclick="var __ov=document.getElementById(&apos;ecdisOv&apos;);if(__ov)__ov.remove();">Cancelar</button></div></div></div>';
+  window._rtzImportData={wps:wps,segs:segs,totalNm:totalNm,rotaNome:rotaNome};
+  document.body.appendChild(ov);
+}
+function rioAplicarRotaECDISConfirmar(data){
+  if(!data||!data.wps)return;
+  var __ov=document.getElementById('ecdisOv');if(__ov)__ov.remove();;
+  var route={name:data.rotaNome,wps:data.wps.map(function(w){return {name:w.name,lat:w.lat,lon:w.lon,vel:w.vel||''};})};
+  try{localStorage.setItem('jac_rtz_route',JSON.stringify(route));}catch(e){}
+  var vel=parseFloat(document.getElementById('rio-vel')&&document.getElementById('rio-vel').value)||15;
+  var dtv=document.getElementById('rio-dt')&&document.getElementById('rio-dt').value;
+  var legs=[],prevEta='';
+  for(var i=1;i<data.wps.length;i++){
+    var saida=i===1?(dtv||''):prevEta,d=data.segs[i-1]||0,h=d/vel;
+    var etaMs=saida?new Date(saida).getTime()+h*3600000:0;
+    prevEta=etaMs?rioMsToLocalISO(etaMs):'';
+    legs.push({de:data.wps[i-1].name,para:data.wps[i].name,saida:saida,dist:parseFloat(d.toFixed(2)),vel:vel,_sug:false});
+  }
+  try{localStorage.setItem('jac_rio_portos',JSON.stringify(legs));}catch(e){}
+  rioPortosRender();rtzRender();if(typeof rtzLibRender==='function')rtzLibRender();
+  toast('✅ Rota "'+data.rotaNome+'" — ETAs automáticos no planejador','ok');
+  if(typeof rioTabSwitch==='function')rioTabSwitch('ecdis');
 }
 
 // ─────────────────────────────────────────────
@@ -10232,7 +10370,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.3.2';
+const APP_VERSION = '2.4.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
