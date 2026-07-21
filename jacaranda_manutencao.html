@@ -4455,134 +4455,114 @@ function renderMareChart(containerId, t1, h1, t2, h2, tp, locNm){
 // Código estação: 10653 · Fonte: DHN/CHM Tábua de Marés 2026
 // 8 componentes principais — semidiurnas + diurnas + rasos
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// MODELO HARMÔNICO CHM/DHN — BARRA NORTE (Ponta do Céu, AP)
+// Código estação: 10653 · Fonte: DHN/CHM Tábua de Marés 2026
+// ─────────────────────────────────────────────
 var CHM_BN = {
-  Z0: 1.55, // nível médio (m acima do referencial da carta)
+  Z0: 1.55,
   comps: [
-    // [nome, frequência °/h (IHO), amplitude m, fase °]
-    ['M2',  28.9841042, 1.35, 175.2], // lunar semidiurna — dominante na Amazônia
-    ['S2',  30.0000000, 0.42, 208.1], // solar semidiurna
-    ['N2',  28.4397295, 0.28, 153.8], // lunar elíptica
-    ['K2',  30.0821373, 0.11, 209.0], // lunissolar semidiurna
-    ['K1',  15.0410686, 0.14, 332.5], // lunissolar diurna
-    ['O1',  13.9430356, 0.11, 318.4], // lunar diurna
-    ['M4',  57.9682084, 0.08,  75.0], // quarto diurno (efeito raso)
-    ['MS4', 58.9841042, 0.05, 105.0], // interação M2×S2
+    ['M2',  28.9841042, 1.35, 175.2],
+    ['S2',  30.0000000, 0.42, 208.1],
+    ['N2',  28.4397295, 0.28, 153.8],
+    ['K2',  30.0821373, 0.11, 209.0],
+    ['K1',  15.0410686, 0.14, 332.5],
+    ['O1',  13.9430356, 0.11, 318.4],
+    ['M4',  57.9682084, 0.08,  75.0],
+    ['MS4', 58.9841042, 0.05, 105.0]
   ]
 };
+var CHM_REF_MS = 946684800000;
 
-// t = horas desde 01/01/2000 00:00 UTC (éfemeride IHO)
-function chmEpochH(ms){
-  return (ms - Date.UTC(2000,0,1,0,0,0)) / 3600000;
-}
 function chmHeight(ms){
-  var t = chmEpochH(ms);
+  var t = (ms - CHM_REF_MS) / 3600000;
   var h = CHM_BN.Z0;
-  CHM_BN.comps.forEach(function(c){
+  for(var i=0; i<CHM_BN.comps.length; i++){
+    var c = CHM_BN.comps[i];
     h += c[2] * Math.cos((c[1]*t - c[3]) * Math.PI / 180);
-  });
+  }
   return h;
 }
-
-// Achar eventos (PM/BM) em janela de tempo, passo 5 min
 function chmEvents(startMs, endMs){
-  var step = 5 * 60000; // 5 min
+  var step = 5*60000;
   var pts = [];
-  for(var t = startMs; t <= endMs; t += step){
-    pts.push({t: t, h: chmHeight(t)});
-  }
+  for(var t=startMs; t<=endMs; t+=step) pts.push([t, chmHeight(t)]);
   var evs = [];
-  for(var i = 1; i < pts.length - 1; i++){
-    var p = pts[i-1].h, c = pts[i].h, n = pts[i+1].h;
-    if(c >= p && c >= n && c > pts[i-2]?.h + 0.02){
-      evs.push({tipo:'PM', ms: pts[i].t, h: c});
-    } else if(c <= p && c <= n && c < pts[i-2]?.h - 0.02){
-      evs.push({tipo:'BM', ms: pts[i].t, h: c});
+  for(var i=2; i<pts.length-2; i++){
+    var h2=pts[i-2][1], h1=pts[i-1][1], hc=pts[i][1], hn1=pts[i+1][1], hn2=pts[i+2][1];
+    if(hc>=h1 && hc>=hn1 && hc>=h2 && hc>=hn2){
+      if(!evs.length || pts[i][0]-evs[evs.length-1].ms > 90*60000)
+        evs.push({tipo:'PM', ms:pts[i][0], h:hc});
+    } else if(hc<=h1 && hc<=hn1 && hc<=h2 && hc<=hn2){
+      if(!evs.length || pts[i][0]-evs[evs.length-1].ms > 90*60000)
+        evs.push({tipo:'BM', ms:pts[i][0], h:hc});
     }
   }
   return evs;
 }
-
-// Refina um evento (máximo/mínimo) com passo 1 min
 function chmRefine(ms, isPM){
-  var best = {ms: ms, h: chmHeight(ms)};
-  for(var d = -10; d <= 10; d++){
-    var tm = ms + d*60000;
-    var hm = chmHeight(tm);
-    if(isPM ? hm > best.h : hm < best.h) best = {ms: tm, h: hm};
+  var best={ms:ms, h:chmHeight(ms)};
+  for(var d=-20; d<=20; d++){
+    var tm=ms+d*60000, hm=chmHeight(tm);
+    if(isPM ? hm>best.h : hm<best.h) best={ms:tm, h:hm};
   }
   return best;
 }
-
-function chmLocalISO(ms){
-  // Converte timestamp UTC para datetime-local no fuso UTC-3 (Barra Norte)
-  var d = new Date(ms - 3*3600000);
-  var pad = function(n){ return String(n).padStart(2,'0'); };
-  return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate())
-        +'T'+pad(d.getUTCHours())+':'+pad(d.getUTCMinutes());
+function chmToLocalISO(msUTC){
+  var d=new Date(msUTC-3*3600000);
+  var z=function(n){return ('0'+n).slice(-2);};
+  return d.getUTCFullYear()+'-'+z(d.getUTCMonth()+1)+'-'+z(d.getUTCDate())
+        +'T'+z(d.getUTCHours())+':'+z(d.getUTCMinutes());
 }
-
-// Auto-preencher tábua CHM baseado no ETA de Barra Norte
 function chmAutoETA(){
-  var dir = document.getElementById('rio-dir')?.value||'subida';
+  var dir=(document.getElementById('rio-dir')||{value:'subida'}).value;
   window._rioBnEta = window._rioBnEta||{};
-  // _rioBnEta guarda o ms de EXIBIÇÃO (hora local UTC-3), converter para UTC
-  var etaMs = window._rioBnEta[dir] ? window._rioBnEta[dir] + 3*3600000 : null;
-
-  // Se não há ETA calculado, tenta usar a hora de passagem já configurada
-  if(!etaMs){
-    var passV = document.getElementById('rio-pass-dt')?.value;
-    if(passV) etaMs = new Date(passV).getTime(); // campo datetime-local já é UTC da hora local
+  // _rioBnEta guarda ms UTC interno (antes do offset de display UTC-3)
+  var etaUtcMs = window._rioBnEta[dir] || null;
+  if(!etaUtcMs){
+    var pe=document.getElementById('rio-pass-dt');
+    if(pe && pe.value){
+      // datetime-local sem Z = hora local do navegador → converter para UTC
+      var d0=new Date(pe.value);
+      // Adicionar 3h para ir de UTC-3 para UTC (fuso do navio)
+      etaUtcMs = d0.getTime() + 3*3600000;
+    }
   }
-  if(!etaMs){
-    toast('⚠️ Calcule primeiro o ETA por Trecho (ou preencha a Data/Hora da passagem) — o modelo precisa da data de chegada em Barra Norte','warn');
+  if(!etaUtcMs){
+    toast('⚠️ Calcule o ETA por Trecho antes, ou preencha a Data/Hora da passagem em Barra Norte','warn');
     return;
   }
-
-  // Calcular eventos nas 48h em torno do ETA
-  var janela = 30*3600000; // ±30h
-  var evs = chmEvents(etaMs - janela, etaMs + janela);
-  evs = evs.map(function(e){
-    var r = chmRefine(e.ms, e.tipo==='PM');
-    return {tipo: e.tipo, ms: r.ms, h: r.h};
+  var rawEvs = chmEvents(etaUtcMs - 36*3600000, etaUtcMs + 36*3600000);
+  if(!rawEvs.length){ toast('⚠️ Modelo harmônico sem eventos — verifique o ETA de Barra Norte','err'); return; }
+  var refined = rawEvs.map(function(e){
+    var r=chmRefine(e.ms, e.tipo==='PM');
+    return {tipo:e.tipo, ms:r.ms, h:r.h};
   });
-
-  if(!evs.length){ toast('⚠️ Modelo harmônico não gerou eventos — verifique o ETA','warn'); return; }
-
-  // Seleciona os 4 eventos mais próximos ao ETA (2 antes + 2 depois) ou apenas os presentes
-  evs.sort(function(a,b){ return Math.abs(a.ms-etaMs) - Math.abs(b.ms-etaMs); });
-  var quatro = evs.slice(0,4).sort(function(a,b){ return a.ms - b.ms; });
-
-  // Preencher os campos do CHM
+  refined.sort(function(a,b){ return Math.abs(a.ms-etaUtcMs)-Math.abs(b.ms-etaUtcMs); });
+  var quatro = refined.slice(0,4).sort(function(a,b){ return a.ms-b.ms; });
   for(var i=0; i<4; i++){
-    var ev = quatro[i];
-    var tEl = document.getElementById('rio-chm-t'+(i+1));
-    var hEl = document.getElementById('rio-chm-h'+(i+1));
-    if(tEl && ev) tEl.value = chmLocalISO(ev.ms);
-    if(hEl && ev) hEl.value = ev ? ev.h.toFixed(2) : '';
+    var ev=quatro[i];
+    var tEl=document.getElementById('rio-chm-t'+(i+1));
+    var hEl=document.getElementById('rio-chm-h'+(i+1));
+    if(tEl) tEl.value = ev ? chmToLocalISO(ev.ms) : '';
+    if(hEl) hEl.value = ev ? ev.h.toFixed(2) : '';
   }
-
-  // Atualizar a hora de passagem no UKC (usando o ETA de BN convertido para UTC-3)
-  var passEl = document.getElementById('rio-pass-dt');
-  if(passEl && !passEl.value){
-    passEl.value = chmLocalISO(etaMs);
-  }
-
+  var pe2=document.getElementById('rio-pass-dt');
+  if(pe2 && !pe2.value) pe2.value = chmToLocalISO(etaUtcMs);
   rioChmSaveInputs();
-
-  // Aplicar automaticamente (identificar BM/PM que cercam a passagem)
   rioChmApply();
-
-  // Status
-  var st = document.getElementById('rio-fetch-status');
+  var st=document.getElementById('rio-fetch-status');
   if(st){
-    var etaLocal = new Date(etaMs - 3*3600000);
-    st.innerHTML = '⚓ <strong>Modelo Harmônico CHM/DHN — Barra Norte (Ponta do Céu)</strong> · 8 componentes (M2 S2 N2 K2 K1 O1 M4 MS4) · ETA: '
-      + etaLocal.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '
-      + etaLocal.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
-      + ' (UTC-3) · Confirme com a tábua oficial DHN antes da passagem';
+    var z=function(n){return ('0'+n).slice(-2);};
+    var evStrs=quatro.map(function(e){
+      var d2=new Date(e.ms-3*3600000);
+      return e.tipo+' '+z(d2.getUTCDate())+'/'+z(d2.getUTCMonth()+1)+' '+z(d2.getUTCHours())+':'+z(d2.getUTCMinutes())+' ('+e.h.toFixed(2)+'m)';
+    });
+    st.innerHTML='⚓ <strong>CHM/DHN Barra Norte</strong> · '+evStrs.join(' · ')+' · <em>Confirme com a tábua DHN</em>';
   }
-  toast('⚓ 4 eventos de maré calculados pelo modelo harmônico CHM/DHN — aplicados automaticamente!','ok');
+  toast('⚓ '+quatro.length+' eventos CHM preenchidos automaticamente!','ok');
 }
+
 
 async function rioFetchMare(){
   var st  = document.getElementById('rio-fetch-status');
@@ -10252,7 +10232,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.3.1';
+const APP_VERSION = '2.3.2';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
