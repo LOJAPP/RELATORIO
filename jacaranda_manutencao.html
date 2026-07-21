@@ -4541,78 +4541,130 @@ function rioECDISParseGPX(xml){var pts=xml.getElementsByTagName('rtept');if(!pts
 function rioECDISParseKML(xml){var wps=[],pms=xml.getElementsByTagName('Placemark');for(var i=0;i<pms.length;i++){var pt=pms[i].getElementsByTagName('Point')[0];if(!pt)continue;var c=pt.getElementsByTagName('coordinates')[0];if(!c)continue;var p=c.textContent.trim().split(',');var nm=pms[i].getElementsByTagName('name')[0];wps.push({name:nm?nm.textContent.trim():('WP'+(wps.length+1)),lat:parseFloat(p[1]),lon:parseFloat(p[0]),vel:''});}return wps;}
 function rioECDISParseCSV(txt){var lines=txt.split(/\r?\n/).filter(function(l){return l.trim();}),sep=lines[0].indexOf(';')>=0?';':',',head=lines[0].toLowerCase().split(sep).map(function(s){return s.trim();});var iN=head.findIndex(function(h){return /name|wp/.test(h);}),iLa=head.findIndex(function(h){return /lat/.test(h);}),iLo=head.findIndex(function(h){return /lon|lng/.test(h);}),iV=head.findIndex(function(h){return /vel|speed/.test(h);}),start=(iLa>=0&&iLo>=0)?1:0;if(!start){iN=0;iLa=1;iLo=2;iV=3;}var wps=[];for(var i=start;i<lines.length;i++){var c=lines[i].split(sep),la=parseFloat((c[iLa]||'').replace(',','.')),lo=parseFloat((c[iLo]||'').replace(',','.'));if(isNaN(la)||isNaN(lo))continue;var v=iV>=0?parseFloat((c[iV]||'').replace(',','.')):NaN;wps.push({name:(c[iN]||'WP'+(wps.length+1)).trim(),lat:la,lon:lo,vel:isNaN(v)?'':v});}return wps;}
 function rioHaversineNm(la1,lo1,la2,lo2){var R=3440.065,r=Math.PI/180,dLa=(la2-la1)*r,dLo=(lo2-lo1)*r,a=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(la1*r)*Math.cos(la2*r)*Math.sin(dLo/2)*Math.sin(dLo/2);return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
-function rioAplicarRotaECDIS(wps,rotaNome){
-  var totalNm=0,segs=[];
-  for(var i=1;i<wps.length;i++){var d=rioHaversineNm(wps[i-1].lat,wps[i-1].lon,wps[i].lat,wps[i].lon);totalNm+=d;segs.push(d);}
-  var vel=parseFloat(document.getElementById('rio-vel')&&document.getElementById('rio-vel').value)||15;
-  var dtv=document.getElementById('rio-dt')&&document.getElementById('rio-dt').value;
-  var t0=dtv?new Date(dtv).getTime():Date.now();
-  var ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9995;display:flex;align-items:center;justify-content:center;padding:16px;';
-  var z=function(n){return ('0'+n).slice(-2);};
-  var rows=wps.slice(0,50).map(function(w,i){
-    var d=i===0?0:segs[i-1]||0,cumNm=segs.slice(0,i).reduce(function(a,b){return a+b;},0)+d,h=cumNm/vel;
-    var et=new Date(t0+h*3600000);
-    return '<tr style="font-size:11px;"><td style="padding:3px 8px;">'+(i+1)+'</td><td style="padding:3px 8px;font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(w.name)+'</td><td class="mono" style="padding:3px 8px;text-align:right;">'+(i===0?'—':d.toFixed(1))+'</td><td class="mono" style="padding:3px 8px;text-align:right;color:var(--login-blue);">'+z(et.getDate())+'/'+z(et.getMonth()+1)+' '+z(et.getHours())+':'+z(et.getMinutes())+'</td></tr>';
-  }).join('');
-  ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:540px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.4);">'
-    +'<div style="background:linear-gradient(135deg,#0d2a52,#1A5FA8);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:8px;">'
-    +'<span style="flex:1;font-weight:800;">🗺️ '+escHtml(rotaNome)+' · '+wps.length+' waypoints · '+totalNm.toFixed(1)+' NM</span>'
-    +'<button onclick="var __ov=document.getElementById(&apos;ecdisOv&apos;);if(__ov)__ov.remove();" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;">✕</button></div>'
-    +'<div style="padding:12px;">'
-    +'<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">'+vel+' nós · saída: '+(dtv||'agora')+' · ETAs calculados automaticamente (hora local do dispositivo)</div>'
-    +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f1f5f9;font-size:11px;"><th style="padding:4px 8px;">#</th><th>Waypoint</th><th style="text-align:right;">NM</th><th style="text-align:right;">ETA</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
-    +'<div style="display:flex;gap:8px;margin-top:10px;">'
-    +'<button class="btn btn-primary" style="flex:1;" onclick="rioAplicarRotaECDISConfirmar(window._rtzImportData)">✔ Usar no planejador</button>'
-    +'<button class="btn btn-ghost" style="flex:1;" onclick="var __ov=document.getElementById(&apos;ecdisOv&apos;);if(__ov)__ov.remove();">Cancelar</button></div></div></div>';
-  window._rtzImportData={wps:wps,segs:segs,totalNm:totalNm,rotaNome:rotaNome};
-  document.body.appendChild(ov);
-}
-function rioAplicarRotaECDISConfirmar(data){
-  if(!data||!data.wps)return;
-  var __ov=document.getElementById('ecdisOv');if(__ov)__ov.remove();;
-  var route={name:data.rotaNome,wps:data.wps.map(function(w){return {name:w.name,lat:w.lat,lon:w.lon,vel:w.vel||''};})};
-  try{localStorage.setItem('jac_rtz_route',JSON.stringify(route));}catch(e){}
-  var vel=parseFloat(document.getElementById('rio-vel')&&document.getElementById('rio-vel').value)||15;
-  var dtv=document.getElementById('rio-dt')&&document.getElementById('rio-dt').value;
-  var legs=[],prevEta='';
-  for(var i=1;i<data.wps.length;i++){
-    var saida=i===1?(dtv||''):prevEta,d=data.segs[i-1]||0,h=d/vel;
-    var etaMs=saida?new Date(saida).getTime()+h*3600000:0;
-    prevEta=etaMs?rioMsToLocalISO(etaMs):'';
-    legs.push({de:data.wps[i-1].name,para:data.wps[i].name,saida:saida,dist:parseFloat(d.toFixed(2)),vel:vel,_sug:false});
-  }
-  try{localStorage.setItem('jac_rio_portos',JSON.stringify(legs));}catch(e){}
-  rioPortosRender();rtzRender();if(typeof rtzLibRender==='function')rtzLibRender();
-  toast('✅ Rota "'+data.rotaNome+'" — ETAs automáticos no planejador','ok');
-  if(typeof rioTabSwitch==='function')rioTabSwitch('ecdis');
+function rioFecharModalECDIS(){
+  var ov=document.getElementById('ecdisOv');
+  if(ov) ov.remove();
 }
 
-// ─────────────────────────────────────────────
-// MODELO HARMÔNICO CHM/DHN — BARRA NORTE (Ponta do Céu, AP)
-// Código estação: 10653 · Fonte: DHN/CHM Tábua de Marés 2026
-// 8 componentes principais — semidiurnas + diurnas + rasos
-// ─────────────────────────────────────────────
-// ─────────────────────────────────────────────
-// MODELO HARMÔNICO CHM/DHN — BARRA NORTE (Ponta do Céu, AP)
-// Código estação: 10653 · Fonte: DHN/CHM Tábua de Marés 2026
-// ─────────────────────────────────────────────
-var CHM_BN = {
-  Z0: 1.55,
-  // Constantes harmônicas com fatores nodais DHN aplicados para 2026
-  // N(nodo lunar 01/01/2026)=219.3° · Fonte: DHN/CHM Tábua Barra Norte Arco Lamoso
-  comps: [
-    ['M2',  28.9841042, 1.3500, 175.20],
-    ['S2',  30.0000000, 0.4200, 208.10],
-    ['N2',  28.4397295, 0.2800, 153.80],
-    ['K2',  30.0821373, 0.0864, 393.03],
-    ['K1',  15.0410686, 0.1200, 337.38],
-    ['O1',  13.9430356, 0.0947, 310.41],
-    ['M4',  57.9682084, 0.0800,  75.00],
-    ['MS4', 58.9841042, 0.0500, 105.00]
-  ]
-};
-var CHM_REF_MS = 946684800000;
+function rioAplicarRotaECDIS(wps, rotaNome){
+  var totalNm=0, segs=[];
+  for(var i=1;i<wps.length;i++){
+    var d=rioHaversineNm(wps[i-1].lat,wps[i-1].lon,wps[i].lat,wps[i].lon);
+    totalNm+=d; segs.push(d);
+  }
+  var velEl=document.getElementById('rio-vel');
+  var vel=parseFloat(velEl&&velEl.value)||15;
+  var dtEl=document.getElementById('rio-dt');
+  var dtv=dtEl&&dtEl.value;
+  var t0=dtv?new Date(dtv).getTime():Date.now();
+
+  var old=document.getElementById('ecdisOv');
+  if(old) old.remove();
+
+  var ov=document.createElement('div');
+  ov.id='ecdisOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9995;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.onclick=function(e){ if(e.target===ov) rioFecharModalECDIS(); };
+
+  var z=function(n){ return ('0'+n).slice(-2); };
+  var tbody='';
+  for(var i=0;i<Math.min(wps.length,60);i++){
+    var d=i===0?0:(segs[i-1]||0);
+    var cumNm=0; for(var j=0;j<i;j++) cumNm+=segs[j]||0;
+    var eta=new Date(t0+(cumNm+d)/vel*3600000);
+    tbody+='<tr style="font-size:11px;">'
+      +'<td style="padding:3px 8px;">'+(i+1)+'</td>'
+      +'<td style="padding:3px 8px;font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(wps[i].name)+'</td>'
+      +'<td class="mono" style="padding:3px 8px;text-align:right;">'+(i===0?'—':d.toFixed(1))+'</td>'
+      +'<td class="mono" style="padding:3px 8px;text-align:right;color:var(--login-blue);">'+z(eta.getDate())+'/'+z(eta.getMonth()+1)+' '+z(eta.getHours())+':'+z(eta.getMinutes())+'</td>'
+      +'</tr>';
+  }
+
+  // Montar innerHTML do painel interno (sem onclick inline)
+  var inner=document.createElement('div');
+  inner.style.cssText='background:#fff;border-radius:14px;max-width:540px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.4);';
+
+  var head=document.createElement('div');
+  head.style.cssText='background:linear-gradient(135deg,#0d2a52,#1A5FA8);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:8px;';
+
+  var titulo=document.createElement('span');
+  titulo.style.flex='1';
+  titulo.style.fontWeight='800';
+  titulo.textContent='🗺️ '+rotaNome+' · '+wps.length+' waypoints · '+totalNm.toFixed(1)+' NM';
+  head.appendChild(titulo);
+
+  var btnX=document.createElement('button');
+  btnX.textContent='✕';
+  btnX.style.cssText='background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:16px;font-weight:700;';
+  btnX.onclick=function(){ rioFecharModalECDIS(); };
+  head.appendChild(btnX);
+  inner.appendChild(head);
+
+  var body=document.createElement('div');
+  body.style.padding='12px';
+  body.innerHTML='<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">'+vel+' nós · saída: '+(dtv||'agora')+'</div>'
+    +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">'
+    +'<thead><tr style="background:#f1f5f9;font-size:11px;">'
+    +'<th style="padding:4px 8px;">#</th><th>Waypoint</th>'
+    +'<th style="text-align:right;">NM</th><th style="text-align:right;">ETA</th>'
+    +'</tr></thead><tbody>'+tbody+'</tbody></table></div>';
+
+  var btnRow=document.createElement('div');
+  btnRow.style.cssText='display:flex;gap:8px;margin-top:10px;';
+
+  var btnOk=document.createElement('button');
+  btnOk.className='btn btn-primary';
+  btnOk.style.flex='1';
+  btnOk.textContent='✔ Usar no planejador';
+  btnOk.onclick=function(){ rioAplicarRotaECDISConfirmar(window._rtzImportData); };
+  btnRow.appendChild(btnOk);
+
+  var btnCancel=document.createElement('button');
+  btnCancel.className='btn btn-ghost';
+  btnCancel.style.flex='1';
+  btnCancel.textContent='✕ Cancelar';
+  btnCancel.onclick=function(){ rioFecharModalECDIS(); };
+  btnRow.appendChild(btnCancel);
+
+  body.appendChild(btnRow);
+  inner.appendChild(body);
+  ov.appendChild(inner);
+
+  window._rtzImportData={wps:wps, segs:segs, totalNm:totalNm, rotaNome:rotaNome};
+  document.body.appendChild(ov);
+}
+
+function rioAplicarRotaECDISConfirmar(data){
+  if(!data||!data.wps) return;
+  rioFecharModalECDIS();
+  var route={name:data.rotaNome, wps:[]};
+  for(var i=0;i<data.wps.length;i++){
+    var w=data.wps[i];
+    route.wps.push({name:w.name, lat:w.lat, lon:w.lon, vel:w.vel||''});
+  }
+  try{ localStorage.setItem('jac_rtz_route', JSON.stringify(route)); }catch(e){}
+  var velEl=document.getElementById('rio-vel');
+  var vel=parseFloat(velEl&&velEl.value)||15;
+  var dtEl=document.getElementById('rio-dt');
+  var dtv=dtEl&&dtEl.value;
+  var legs=[], prevEta='';
+  for(var i=1;i<data.wps.length;i++){
+    var saida=i===1?(dtv||''):prevEta;
+    var d=data.segs[i-1]||0;
+    var etaMs=saida?new Date(saida).getTime()+d/vel*3600000:0;
+    prevEta=etaMs?rioMsToLocalISO(etaMs):'';
+    legs.push({de:data.wps[i-1].name, para:data.wps[i].name,
+               saida:saida, dist:parseFloat(d.toFixed(2)), vel:vel, _sug:false});
+  }
+  try{ localStorage.setItem('jac_rio_portos', JSON.stringify(legs)); }catch(e){}
+  rioPortosRender();
+  rtzRender();
+  if(typeof rtzLibRender==='function') rtzLibRender();
+  toast('✅ Rota "'+data.rotaNome+'" — '+data.wps.length+' wp · ETAs no planejador','ok');
+  if(typeof rioTabSwitch==='function') rioTabSwitch('ecdis');
+}
+
+
 
 function chmHeight(ms){
   var t = (ms - CHM_REF_MS) / 3600000;
@@ -10372,7 +10424,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.5.0';
+const APP_VERSION = '2.5.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
