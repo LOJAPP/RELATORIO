@@ -4239,6 +4239,55 @@ function rioBuildETA(){
       ? '💡 <strong>Subida:</strong> Da BN até P. Céu com 55 RPM (~16 nós). Reduzir 6 nós em Óbidos/Juruti/Parintins. Mudança de fuso -3 → -4 após Macapá.'
       : '💡 <strong>Descida:</strong> A favor da corrente (Amazonas). Veloc. típica 17–22 nós (rio) e 13–15 nós (litoral). Mudança de fuso -4 → -3 antes de Macapá.';
   }
+
+  // Adicionar waypoints ECDIS importados como trechos extras (se houver rota carregada)
+  rioECDISInjectETA(out, vel0, dt);
+}
+
+function rioECDISInjectETA(container, vel, dtv){
+  var el = document.getElementById('rio-ecdis-eta-extra');
+  if(el) el.remove();
+  try{
+    var rtz = JSON.parse(localStorage.getItem('jac_rtz_route')||'null');
+    if(!rtz||!rtz.wps||rtz.wps.length<2) return;
+    var t0 = dtv ? new Date(dtv).getTime() : Date.now();
+    var z=function(n){return ('0'+n).slice(-2);};
+    var rows='', cumD=0;
+    for(var i=0;i<rtz.wps.length;i++){
+      var w=rtz.wps[i];
+      var d=0;
+      if(i>0) d=rioHaversineNm(rtz.wps[i-1].lat,rtz.wps[i-1].lon,w.lat,w.lon);
+      cumD+=d;
+      var v=parseFloat(w.vel)||vel;
+      var etaMs=t0+cumD/v*3600000;
+      var et=new Date(etaMs);
+      var lat=rtzFmtCoordLocal(w.lat,'lat'), lon=rtzFmtCoordLocal(w.lon,'lon');
+      rows+='<tr style="font-size:11px;background:'+(i%2===0?'#f8fafc':'#fff')+'">'
+        +'<td style="padding:3px 8px;">'+(i+1)+'</td>'
+        +'<td style="padding:3px 8px;font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(w.name)+'</td>'
+        +'<td class="mono" style="padding:3px 8px;font-size:10px;">'+lat+'</td>'
+        +'<td class="mono" style="padding:3px 8px;font-size:10px;">'+lon+'</td>'
+        +'<td class="mono" style="padding:3px 8px;text-align:right;">'+(i===0?'—':d.toFixed(1))+'</td>'
+        +'<td class="mono" style="padding:3px 8px;text-align:right;">'+cumD.toFixed(1)+'</td>'
+        +'<td class="mono" style="padding:3px 8px;text-align:right;color:var(--login-blue);">'+z(et.getDate())+'/'+z(et.getMonth()+1)+' '+z(et.getHours())+':'+z(et.getMinutes())+'</td>'
+        +'</tr>';
+    }
+    var div=document.createElement('div');
+    div.id='rio-ecdis-eta-extra';
+    div.style.cssText='margin-top:12px;background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;overflow:hidden;';
+    div.innerHTML='<div style="padding:8px 12px;font-weight:800;font-size:12px;color:#1e40af;border-bottom:1px solid #bfdbfe;">🗺️ Waypoints ECDIS: '+escHtml(rtz.name)+' ('+rtz.wps.length+' pontos · '+cumD.toFixed(1)+' NM) — ETA com '+vel.toFixed(1)+' nós</div>'
+      +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#dbeafe;font-size:11px;">'
+      +'<th style="padding:4px 8px;">#</th><th>Waypoint</th><th>Lat</th><th>Lon</th>'
+      +'<th style="text-align:right;">NM</th><th style="text-align:right;">Acum.</th><th style="text-align:right;">ETA</th>'
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    if(container) container.parentNode.insertBefore(div, container.nextSibling);
+  }catch(e){}
+}
+
+function rtzFmtCoordLocal(v,axis){
+  var abs=Math.abs(v); var d=Math.floor(abs); var m=(abs-d)*60;
+  var h=(axis==='lat')?(v>=0?'N':'S'):(v>=0?'E':'W');
+  return d+'°'+m.toFixed(2)+"'"+h;
 }
 
 function rioOvr(keyId, field, val){
@@ -4615,8 +4664,15 @@ function rioAplicarRotaECDIS(wps, rotaNome){
   var btnOk=document.createElement('button');
   btnOk.className='btn btn-primary';
   btnOk.style.flex='1';
-  btnOk.textContent='✔ Usar no planejador';
-  btnOk.onclick=function(){ rioAplicarRotaECDISConfirmar(window._rtzImportData); };
+  btnOk.textContent='✔ Substituir planejador';
+  btnOk.onclick=function(){ rioAplicarRotaECDISConfirmar(window._rtzImportData,false); };
+
+  var btnMerge=document.createElement('button');
+  btnMerge.className='btn btn-green';
+  btnMerge.style.flex='1';
+  btnMerge.textContent='➕ Adicionar waypoints (sem repetir)';
+  btnMerge.onclick=function(){ rioAplicarRotaECDISConfirmar(window._rtzImportData,true); };
+  btnRow.appendChild(btnMerge);
   btnRow.appendChild(btnOk);
 
   var btnCancel=document.createElement('button');
@@ -4634,68 +4690,81 @@ function rioAplicarRotaECDIS(wps, rotaNome){
   document.body.appendChild(ov);
 }
 
-function rioAplicarRotaECDISConfirmar(data){
+function rioAplicarRotaECDISConfirmar(data, merge){
   if(!data||!data.wps) return;
   rioFecharModalECDIS();
 
-  // Salvar como rota ECDIS ativa (para visualização na aba ECDIS)
-  var route={name:data.rotaNome, wps:[]};
-  for(var i=0;i<data.wps.length;i++){
-    var w=data.wps[i];
-    route.wps.push({name:w.name,lat:w.lat,lon:w.lon,vel:w.vel||''});
-  }
+  var velEl=document.getElementById('rio-vel');
+  var vel=parseFloat(velEl&&velEl.value)||15;
+  var dtEl=document.getElementById('rio-dt');
+  var dtv=dtEl&&dtEl.value;
+
+  // Salvar rota ECDIS ativa
+  var route={name:data.rotaNome, wps:data.wps.map(function(w){
+    return {name:w.name,lat:w.lat,lon:w.lon,vel:w.vel||''};
+  })};
   try{ localStorage.setItem('jac_rtz_route',JSON.stringify(route)); }catch(e){}
 
-  // Salvar também na biblioteca de rotas
-  var lib = rtzLibAll();
-  lib[data.rotaNome] = {name:data.rotaNome, wps:route.wps, savedAt:new Date().toISOString()};
+  // Salvar na biblioteca
+  var lib=rtzLibAll();
+  lib[data.rotaNome]={name:data.rotaNome,wps:route.wps,savedAt:new Date().toISOString()};
   rtzLibPersist(lib);
 
-  // Obter velocidade e data/hora de saída
-  var velEl = document.getElementById('rio-vel');
-  var vel   = parseFloat(velEl&&velEl.value)||15;
-  var dtEl  = document.getElementById('rio-dt');
-  var dtv   = dtEl&&dtEl.value;
-
-  // Construir legs para o planejador ETA entre portos
-  var legs=[], prevEta='';
+  // Construir legs novos
+  var newLegs=[];
+  var prevEta='';
   for(var i=1;i<data.wps.length;i++){
-    var saida = i===1?(dtv||''):prevEta;
-    var d     = data.segs[i-1]||0;
-    var etaMs = saida?new Date(saida).getTime()+d/vel*3600000:0;
-    prevEta   = etaMs ? rioMsToLocalISO(etaMs) : '';
-    // Verificar se há distância memorizada entre estes dois pontos
-    var dc = rioDistCustomLoad();
-    var key = data.wps[i-1].name+'>'+data.wps[i].name;
-    if(d>0){ dc[key]=parseFloat(d.toFixed(2)); rioDistCustomSave(dc); }
-    legs.push({
-      de:   data.wps[i-1].name,
-      para: data.wps[i].name,
-      saida:saida,
-      dist: parseFloat(d.toFixed(2)),
-      vel:  vel,
-      _sug: false
+    var saida=i===1?(dtv||''):prevEta;
+    var d=data.segs[i-1]||0;
+    var etaMs=saida?new Date(saida).getTime()+d/vel*3600000:0;
+    prevEta=etaMs?rioMsToLocalISO(etaMs):'';
+    // Memorizar distância
+    if(d>0){
+      var dc=rioDistCustomLoad();
+      dc[data.wps[i-1].name+'>'+data.wps[i].name]=parseFloat(d.toFixed(2));
+      rioDistCustomSave(dc);
+    }
+    newLegs.push({
+      de:data.wps[i-1].name, para:data.wps[i].name,
+      saida:saida, dist:parseFloat(d.toFixed(2)), vel:vel, _sug:false
     });
   }
-  try{ localStorage.setItem('jac_rio_portos',JSON.stringify(legs)); }catch(e){}
 
-  // Renderizar ambos os módulos
+  var finalLegs=newLegs;
+  if(merge){
+    // Merge: adicionar só waypoints que ainda não existem (por nome)
+    var existing=rioPortosLoad();
+    // Nomes já presentes
+    var nomes={};
+    existing.forEach(function(l){ nomes[l.de]=true; nomes[l.para]=true; });
+    // Adicionar apenas legs cujos pontos não existem ainda
+    var added=0;
+    newLegs.forEach(function(l){
+      if(!nomes[l.de]||!nomes[l.para]){
+        existing.push(l);
+        nomes[l.de]=true; nomes[l.para]=true;
+        added++;
+      }
+    });
+    finalLegs=existing;
+    toast('➕ '+added+' trecho(s) novo(s) adicionado(s) à rota','ok');
+  } else {
+    toast('✅ Rota "'+data.rotaNome+'" — '+data.wps.length+' wp · '+data.totalNm.toFixed(0)+' NM','ok');
+  }
+
+  try{ localStorage.setItem('jac_rio_portos',JSON.stringify(finalLegs)); }catch(e){}
+
   rioPortosRender();
   rtzRender();
   if(typeof rtzLibRender==='function') rtzLibRender();
 
-  toast('✅ Rota "'+data.rotaNome+'" importada — '+data.wps.length+' waypoints · '
-       +data.totalNm.toFixed(0)+' NM · ETAs no planejador · salva na biblioteca','ok');
-
-  // Mostrar o planejador (aba ETA)
+  // Voltar para aba ETA e rolar para planejador
   if(typeof rioTabSwitch==='function') rioTabSwitch('eta');
-  // Rolar para o planejador
   setTimeout(function(){
     var el=document.getElementById('rio-portos-body');
     if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
   },300);
 }
-
 
 
 function chmHeight(ms){
@@ -5720,6 +5789,19 @@ function rioChmEvents(){
 }
 function rioChmApply(){
   var st = document.getElementById('rio-chm-status');
+  // Se hora de passagem estiver vazia, preencher com ETA de Barra Norte
+  var passEl = document.getElementById('rio-pass-dt');
+  if(passEl && !passEl.value){
+    var dir2=(document.getElementById('rio-dir')||{value:'subida'}).value;
+    window._rioBnEta=window._rioBnEta||{};
+    var etaBn=window._rioBnEta[dir2];
+    if(etaBn){
+      var z=function(n){return ('0'+n).slice(-2);};
+      var d2=new Date(etaBn-3*3600000);
+      passEl.value=d2.getUTCFullYear()+'-'+z(d2.getUTCMonth()+1)+'-'+z(d2.getUTCDate())
+                  +'T'+z(d2.getUTCHours())+':'+z(d2.getUTCMinutes());
+    }
+  }
   var evs = rioChmEvents();
   if(evs.length<2){
     if(st){ st.style.color='var(--danger)'; st.textContent='⚠️ Insira pelo menos 2 eventos (hora + altura) da tábua CHM.'; }
@@ -10477,7 +10559,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.5.2';
+const APP_VERSION = '2.5.3';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
