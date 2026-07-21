@@ -1587,8 +1587,8 @@
             <button class="btn btn-ghost btn-sm" onclick="rioTrechoReset()">↺ Limpar ajustes manuais deste sentido</button>
 </div><!-- fim tab-eta-body -->
         <div id="tab-ecdis-body" style="display:none;">
-<div class="panel" style="box-shadow:none;border:none;margin:0;border-radius:0;">
-        <div class="panel-header">🗺️ Rotas ECDIS — Importar · Editar · Converter (RTZ / GPX / KML / CSV)</div>
+<div style="padding:0;">
+        <div style="font-weight:800;font-size:13px;color:var(--login-blue);padding:10px 14px 4px;border-bottom:1px solid var(--border);">🗺️ Rotas ECDIS — Importar · Editar · Converter (RTZ / GPX / KML / CSV)</div>
         <div style="padding:14px;">
           <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
             Carregue a rota exportada do ECDIS em <strong>RTZ</strong> (padrão IEC 61174, ex.: Chartpilot/Navi-Planner) — ou GPX/KML/CSV — para ver e <strong>editar os waypoints</strong> (nome, latitude, longitude, velocidade). As distâncias entre waypoints são calculadas automaticamente. Depois exporte no formato desejado para levar de volta ao ECDIS ou usar em outros sistemas.
@@ -1622,7 +1622,7 @@
           </div>
         </div>
       </div>
-        </div><!-- fim tab-ecdis-body -->
+        </div><!-- fim tab-ecdis-body painel -->
       </div>
 
       <!-- ETA entre Portos -->
@@ -4599,15 +4599,17 @@ function rioAplicarRotaECDISConfirmar(data){
 // ─────────────────────────────────────────────
 var CHM_BN = {
   Z0: 1.55,
+  // Constantes harmônicas com fatores nodais DHN aplicados para 2026
+  // N(nodo lunar 01/01/2026)=219.3° · Fonte: DHN/CHM Tábua Barra Norte Arco Lamoso
   comps: [
-    ['M2',  28.9841042, 1.35, 175.2],
-    ['S2',  30.0000000, 0.42, 208.1],
-    ['N2',  28.4397295, 0.28, 153.8],
-    ['K2',  30.0821373, 0.11, 209.0],
-    ['K1',  15.0410686, 0.14, 332.5],
-    ['O1',  13.9430356, 0.11, 318.4],
-    ['M4',  57.9682084, 0.08,  75.0],
-    ['MS4', 58.9841042, 0.05, 105.0]
+    ['M2',  28.9841042, 1.3500, 175.20],
+    ['S2',  30.0000000, 0.4200, 208.10],
+    ['N2',  28.4397295, 0.2800, 153.80],
+    ['K2',  30.0821373, 0.0864, 393.03],
+    ['K1',  15.0410686, 0.1200, 337.38],
+    ['O1',  13.9430356, 0.0947, 310.41],
+    ['M4',  57.9682084, 0.0800,  75.00],
+    ['MS4', 58.9841042, 0.0500, 105.00]
   ]
 };
 var CHM_REF_MS = 946684800000;
@@ -10370,7 +10372,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.4.0';
+const APP_VERSION = '2.4.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
