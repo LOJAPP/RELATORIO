@@ -1545,9 +1545,14 @@
         </div>
       </div>
 
-      <!-- ETA por Trecho — unificado com distâncias/waypoints, editável nos pontos-chave -->
+      <!-- ETA + Rotas ECDIS — painel unificado -->
       <div class="panel">
-        <div class="panel-header">🧮 ETA por Trecho — Rota Completa (editável em Pecém · Barra Norte · Macapá · Itacoatiara · Manaus)</div>
+        <div class="panel-header">🧮 ETA por Trecho & Rotas ECDIS — Rota Completa · Waypoints · Distâncias</div>
+        <div style="display:flex;gap:0;border-bottom:2px solid var(--border);background:#f8fafc;">
+          <button id="tab-eta-btn" onclick="rioTabSwitch('eta')" style="flex:1;padding:9px 6px;font-size:12px;font-weight:800;border:none;background:var(--login-blue);color:#fff;cursor:pointer;border-radius:0;">🧮 ETA por Trecho</button>
+          <button id="tab-ecdis-btn" onclick="rioTabSwitch('ecdis')" style="flex:1;padding:9px 6px;font-size:12px;font-weight:700;border:none;background:#f8fafc;color:var(--text-dim);cursor:pointer;border-radius:0;">🗺️ Rota ECDIS / Waypoints</button>
+        </div>
+        <div id="tab-eta-body">
         <div style="padding:14px;">
           <div class="form-row">
             <div class="form-group"><label>Sentido</label>
@@ -1574,37 +1579,9 @@
           <div id="rio-eta-notas" style="margin-top:8px;font-size:11px;color:var(--text-dim);"></div>
           <div style="margin-top:8px;">
             <button class="btn btn-ghost btn-sm" onclick="rioTrechoReset()">↺ Limpar ajustes manuais deste sentido</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ETA entre Portos -->
-      <div class="panel">
-        <div class="panel-header">⚓ ETA entre Portos — Planejador de Pernas (PEC · BN · MCP · ITA · MAO · VIX · SSZ · SUA · SSA · NVT)</div>
-        <div style="padding:14px;">
-          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
-            Monte a viagem porto a porto: escolha <strong>De → Para</strong>, informe a <strong>data/hora de saída</strong>, a <strong>distância</strong> e a <strong>velocidade</strong> — o <strong>ETA</strong> é calculado na hora. Distâncias conhecidas da Linha Amazonas são sugeridas automaticamente (pode sobrescrever). Se a saída de um trecho ficar vazia, ela é <strong>encadeada</strong> automaticamente ao ETA do trecho anterior. Tudo fica salvo no aparelho.
-          </div>
-          <div id="rio-portos-body"></div>
-          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="rioPortoAdd()">➕ Adicionar trecho</button>
-            <button class="btn btn-green btn-sm" onclick="rioPortoNovoToggle()">🆕 Agregar porto à lista</button>
-            <button class="btn btn-ghost btn-sm" onclick="rioPortosReset()">↺ Limpar planejador</button>
-          </div>
-          <div id="rio-porto-novo" style="display:none;margin-top:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;">
-            <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">🆕 Novo porto para a lista De/Para</div>
-            <div class="form-row" style="margin-bottom:8px;">
-              <div class="form-group"><label style="font-size:10px;">Código (2–5 letras)</label><input type="text" class="form-control" id="rio-porto-novo-id" maxlength="5" placeholder="Ex: BEL" style="text-transform:uppercase;"></div>
-              <div class="form-group" style="flex:2;"><label style="font-size:10px;">Nome do porto</label><input type="text" class="form-control" id="rio-porto-novo-nm" placeholder="Ex: Belém - PA"></div>
-            </div>
-            <button class="btn btn-primary btn-sm" onclick="rioPortoCustomAdd()">✔ Salvar porto</button>
-            <div id="rio-portos-custom-list" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Rotas ECDIS (RTZ) -->
-      <div class="panel">
+</div><!-- fim tab-eta-body -->
+        <div id="tab-ecdis-body" style="display:none;">
+<div class="panel" style="box-shadow:none;border:none;margin:0;border-radius:0;">
         <div class="panel-header">🗺️ Rotas ECDIS — Importar · Editar · Converter (RTZ / GPX / KML / CSV)</div>
         <div style="padding:14px;">
           <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
@@ -1639,6 +1616,35 @@
           </div>
         </div>
       </div>
+        </div><!-- fim tab-ecdis-body -->
+      </div>
+
+      <!-- ETA entre Portos -->
+      <div class="panel">
+        <div class="panel-header">⚓ ETA entre Portos — Planejador de Pernas (PEC · BN · MCP · ITA · MAO · VIX · SSZ · SUA · SSA · NVT)</div>
+        <div style="padding:14px;">
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
+            Monte a viagem porto a porto: escolha <strong>De → Para</strong>, informe a <strong>data/hora de saída</strong>, a <strong>distância</strong> e a <strong>velocidade</strong> — o <strong>ETA</strong> é calculado na hora. Distâncias conhecidas da Linha Amazonas são sugeridas automaticamente (pode sobrescrever). Se a saída de um trecho ficar vazia, ela é <strong>encadeada</strong> automaticamente ao ETA do trecho anterior. Tudo fica salvo no aparelho.
+          </div>
+          <div id="rio-portos-body"></div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="rioPortoAdd()">➕ Adicionar trecho</button>
+            <button class="btn btn-green btn-sm" onclick="rioPortoNovoToggle()">🆕 Agregar porto à lista</button>
+            <button class="btn btn-ghost btn-sm" onclick="rioPortosReset()">↺ Limpar planejador</button>
+          </div>
+          <div id="rio-porto-novo" style="display:none;margin-top:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;">
+            <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">🆕 Novo porto para a lista De/Para</div>
+            <div class="form-row" style="margin-bottom:8px;">
+              <div class="form-group"><label style="font-size:10px;">Código (2–5 letras)</label><input type="text" class="form-control" id="rio-porto-novo-id" maxlength="5" placeholder="Ex: BEL" style="text-transform:uppercase;"></div>
+              <div class="form-group" style="flex:2;"><label style="font-size:10px;">Nome do porto</label><input type="text" class="form-control" id="rio-porto-novo-nm" placeholder="Ex: Belém - PA"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="rioPortoCustomAdd()">✔ Salvar porto</button>
+            <div id="rio-portos-custom-list" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;"></div>
+          </div>
+        </div>
+      </div>
+
+
 
       <!-- Painel Visual de Maré — Barra Norte -->
       <div class="panel" style="overflow:hidden;">
@@ -4061,6 +4067,20 @@ function rioTideAt(t, t1, h1, t2, h2){
   return h1 + (h2-h1) * (1 - Math.cos(Math.PI*x)) / 2;
 }
 
+function rioTabSwitch(tab){
+  var eta   = document.getElementById('tab-eta-body');
+  var ecdis = document.getElementById('tab-ecdis-body');
+  var bEta  = document.getElementById('tab-eta-btn');
+  var bEcdis= document.getElementById('tab-ecdis-btn');
+  if(!eta||!ecdis) return;
+  var isEta = (tab==='eta');
+  eta.style.display   = isEta ? '' : 'none';
+  ecdis.style.display = isEta ? 'none' : '';
+  if(bEta)  { bEta.style.background=isEta?'var(--login-blue)':'#f8fafc'; bEta.style.color=isEta?'#fff':'var(--text-dim)'; bEta.style.fontWeight=isEta?'800':'700'; }
+  if(bEcdis){ bEcdis.style.background=isEta?'#f8fafc':'var(--login-blue)'; bEcdis.style.color=isEta?'var(--text-dim)':'#fff'; bEcdis.style.fontWeight=isEta?'700':'800'; }
+  if(!isEta && typeof rtzRender==='function') rtzRender();
+  if(!isEta && typeof rtzLibRender==='function') rtzLibRender();
+}
 function rioKeyIdOf(w){
   if(w.key==='bn') return 'bn';
   if(w.key==='mcp') return 'mcp';
@@ -4494,20 +4514,24 @@ function chmRefine(ms, isPM){
 }
 
 function chmLocalISO(ms){
-  // BN fuso UTC-3
-  return new Date(ms - 3*3600000 - new Date(ms - 3*3600000).getTimezoneOffset()*60000).toISOString().slice(0,16);
+  // Converte timestamp UTC para datetime-local no fuso UTC-3 (Barra Norte)
+  var d = new Date(ms - 3*3600000);
+  var pad = function(n){ return String(n).padStart(2,'0'); };
+  return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate())
+        +'T'+pad(d.getUTCHours())+':'+pad(d.getUTCMinutes());
 }
 
 // Auto-preencher tábua CHM baseado no ETA de Barra Norte
 function chmAutoETA(){
   var dir = document.getElementById('rio-dir')?.value||'subida';
   window._rioBnEta = window._rioBnEta||{};
-  var etaMs = window._rioBnEta[dir];
+  // _rioBnEta guarda o ms de EXIBIÇÃO (hora local UTC-3), converter para UTC
+  var etaMs = window._rioBnEta[dir] ? window._rioBnEta[dir] + 3*3600000 : null;
 
   // Se não há ETA calculado, tenta usar a hora de passagem já configurada
   if(!etaMs){
     var passV = document.getElementById('rio-pass-dt')?.value;
-    if(passV) etaMs = new Date(passV).getTime() + 3*3600000; // +3h (UTC-3 → UTC)
+    if(passV) etaMs = new Date(passV).getTime(); // campo datetime-local já é UTC da hora local
   }
   if(!etaMs){
     toast('⚠️ Calcule primeiro o ETA por Trecho (ou preencha a Data/Hora da passagem) — o modelo precisa da data de chegada em Barra Norte','warn');
@@ -10228,7 +10252,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.3.0';
+const APP_VERSION = '2.3.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
