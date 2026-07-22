@@ -1592,6 +1592,16 @@
           <div id="rio-ecdis-eta-extra"></div>
         </div>
 
+          <!-- Barra de ações: adicionar ponto, gerenciar extras -->
+          <div id="rio-eta-actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;">
+            <span style="font-size:11px;font-weight:800;color:var(--text-dim);">➕ Adicionar waypoint após Barra Norte:</span>
+            <button class="btn btn-primary btn-sm" onclick="rioExtrasAbrirModal()">📍 Selecionar da rota ECDIS</button>
+            <button class="btn btn-ghost btn-sm" onclick="rioExtrasAddManual()">✏️ Inserir manualmente</button>
+            <button class="btn btn-ghost btn-sm" onclick="rioExtrasClear()">🗑️ Limpar extras</button>
+            <span style="font-size:10px;color:var(--muted);">Os waypoints extras aparecem na tabela de ETA, editáveis e removíveis</span>
+          </div>
+        </div>
+
         <!-- ABA: ETA entre Portos -->
         <div id="rtab-porto-body" style="display:none;padding:14px;">
           <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">
@@ -4094,7 +4104,142 @@ function rioTideAt(t, t1, h1, t2, h2){
   return h1 + (h2-h1) * (1 - Math.cos(Math.PI*x)) / 2;
 }
 
-// ── ABAS DO PLANEJADOR UNIFICADO ──
+// ─────────────────────────────────────────────
+// WAYPOINTS EXTRAS (após Barra Norte) + ALTERNATIVAS
+// ─────────────────────────────────────────────
+function rioExtrasLoad(){
+  try{ return JSON.parse(localStorage.getItem('jac_rio_extras')||'{}'); }catch(e){ return {}; }
+}
+function rioExtrasSave(all){ try{ localStorage.setItem('jac_rio_extras',JSON.stringify(all)); }catch(e){} }
+function rioExtrasDir(){
+  return (document.getElementById('rio-dir')||{value:'subida'}).value||'subida';
+}
+
+function rioExtraRemove(idx){
+  var dir=rioExtrasDir(), all=rioExtrasLoad();
+  var ex=all[dir]||[];
+  ex.splice(idx,1); all[dir]=ex;
+  rioExtrasSave(all); rioBuildETA();
+  toast('🗑️ Waypoint extra removido','ok');
+}
+function rioExtraOvr(idx, field, val){
+  var dir=rioExtrasDir(), all=rioExtrasLoad();
+  var ex=all[dir]||[];
+  if(!ex[idx]) return;
+  if(field==='dist'||field==='vel') ex[idx][field]=parseFloat(val)||0;
+  else ex[idx][field]=val;
+  all[dir]=ex; rioExtrasSave(all); rioBuildETA();
+}
+function rioExtrasClear(){
+  if(!confirm('Limpar todos os waypoints extras?')) return;
+  var dir=rioExtrasDir(), all=rioExtrasLoad();
+  delete all[dir]; rioExtrasSave(all); rioBuildETA();
+  toast('🗑️ Waypoints extras limpos','ok');
+}
+function rioExtrasAddManual(){
+  modalAdminOpen('📍 Inserir waypoint extra','Informe o nome e a distância (NM) até este ponto desde o anterior:',
+    [{id:'ex-nm',label:'Nome do ponto',ph:'ex: Ancoragem BN, Ponto ECDIS...'},
+     {id:'ex-dist',label:'Distância desde o ponto anterior (NM)',ph:'ex: 12.5'},
+     {id:'ex-vel',label:'Velocidade neste trecho (nós)',ph:'ex: 16'}],
+    function(v){
+      var nm=v['ex-nm'].trim();
+      if(!nm){ modalAdminErr('Informe o nome'); return; }
+      var dist=parseFloat(v['ex-dist'])||0;
+      var vel=parseFloat(v['ex-vel'])||15;
+      var dir=rioExtrasDir(), all=rioExtrasLoad();
+      if(!all[dir]) all[dir]=[];
+      all[dir].push({nm:nm, dist:dist, vel:vel});
+      rioExtrasSave(all); modalAdminClose(); rioBuildETA();
+      toast('📍 "'+nm+'" adicionado após BN','ok');
+    });
+}
+
+function rioExtrasAbrirModal(){
+  try{
+    var rtz=JSON.parse(localStorage.getItem('jac_rtz_route')||'null');
+    if(!rtz||!rtz.wps||rtz.wps.length<2){
+      toast('⚠️ Nenhuma rota ECDIS carregada — importe na aba 🗺️ Waypoints','warn');
+      return;
+    }
+    var old=document.getElementById('modalExtrasOv'); if(old) old.remove();
+    var ov=document.createElement('div');
+    ov.id='modalExtrasOv';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9995;display:flex;align-items:center;justify-content:center;padding:16px;';
+    ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+    var dir=rioExtrasDir();
+    var curVel=parseFloat((document.getElementById('rio-vel')||{}).value)||15;
+
+    // Calcular distâncias entre waypoints
+    var wps=rtz.wps;
+    var rows='';
+    for(var i=1;i<wps.length;i++){
+      var d=rioHaversineNm(wps[i-1].lat,wps[i-1].lon,wps[i].lat,wps[i].lon);
+      var lat=rtzFmtCoord(wps[i].lat,true), lon=rtzFmtCoord(wps[i].lon,false);
+      rows+='<tr style="cursor:pointer;border-bottom:1px solid #e2e8f0;" onclick="rioExtrasAddFromECDIS('+i+','+d.toFixed(3)+','+curVel+')">'
+        +'<td style="padding:6px 8px;font-weight:600;font-size:12px;">'+escHtml(wps[i].name)+'</td>'
+        +'<td class="mono" style="padding:6px 8px;font-size:11px;color:var(--text-dim);">'+lat+'</td>'
+        +'<td class="mono" style="padding:6px 8px;font-size:11px;color:var(--text-dim);">'+lon+'</td>'
+        +'<td class="mono" style="padding:6px 8px;font-size:11px;text-align:right;">'+d.toFixed(1)+' NM</td>'
+        +'<td style="padding:6px 8px;"><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();rioExtrasAddFromECDIS('+i+','+d.toFixed(3)+','+curVel+')">➕</button></td>'
+        +'</tr>';
+    }
+    var inner=document.createElement('div');
+    inner.style.cssText='background:#fff;border-radius:14px;max-width:580px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.4);';
+    inner.innerHTML=
+      '<div style="background:linear-gradient(135deg,#0d2a52,#1A5FA8);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:8px;">'
+      +'<span style="flex:1;font-weight:800;">🗺️ Adicionar WP após BN — '+escHtml(rtz.name)+' ('+wps.length+' pontos)</span>'
+      +'<button onclick="document.getElementById(&apos;modalExtrasOv&apos;).remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:16px;">✕</button></div>'
+      +'<div style="padding:10px 14px;font-size:11px;color:var(--text-dim);">Clique em ➕ ou na linha para adicionar o waypoint ao ETA por Trecho (após Barra Norte). A distância é calculada automaticamente pelo haversine.</div>'
+      +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f1f5f9;font-size:11px;">'
+      +'<th style="padding:6px 8px;">Waypoint</th><th>Lat</th><th>Lon</th><th style="text-align:right;">NM (do anterior)</th><th></th>'
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+      +'<div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;">'
+      +'<button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById(&apos;modalExtrasOv&apos;).remove()">Fechar</button>'
+      +'<button class="btn btn-primary" style="flex:1;" onclick="rioExtrasAddTodos()">➕ Adicionar todos os WPs</button>'
+      +'</div>';
+    ov.appendChild(inner);
+    window._rtzModalData={wps:wps, dir:dir, vel:curVel};
+    document.body.appendChild(ov);
+  }catch(e){ toast('❌ '+e.message,'err'); }
+}
+function rioExtrasAddFromECDIS(idx, dist, vel){
+  var data=window._rtzModalData; if(!data) return;
+  var w=data.wps[idx]; if(!w) return;
+  var dir=data.dir, all=rioExtrasLoad();
+  if(!all[dir]) all[dir]=[];
+  // Verificar se já existe
+  if(all[dir].find(function(e){return e.nm===w.name;})){
+    toast('⚠️ "'+w.name+'" já está na lista','warn'); return;
+  }
+  all[dir].push({nm:w.name, dist:parseFloat(dist.toFixed(2)), vel:parseFloat(vel)||15, lat:w.lat, lon:w.lon});
+  rioExtrasSave(all); rioBuildETA();
+  toast('📍 "'+w.name+'" adicionado após BN','ok');
+}
+function rioExtrasAddTodos(){
+  var data=window._rtzModalData; if(!data) return;
+  var dir=data.dir, all=rioExtrasLoad();
+  if(!all[dir]) all[dir]=[];
+  var nomes={}; all[dir].forEach(function(e){nomes[e.nm]=true;});
+  var added=0;
+  for(var i=1;i<data.wps.length;i++){
+    var w=data.wps[i]; if(nomes[w.nm]) continue;
+    var d=i===1?rioHaversineNm(data.wps[0].lat,data.wps[0].lon,w.lat,w.lon)
+               :rioHaversineNm(data.wps[i-1].lat,data.wps[i-1].lon,w.lat,w.lon);
+    all[dir].push({nm:w.name,dist:parseFloat(d.toFixed(2)),vel:data.vel,lat:w.lat,lon:w.lon}); added++;
+  }
+  rioExtrasSave(all);
+  var ov=document.getElementById('modalExtrasOv'); if(ov) ov.remove();
+  rioBuildETA();
+  toast('📍 '+added+' waypoints adicionados após BN','ok');
+}
+
+// Portos alternativos (destinos alternativos desde BN)
+function rioAltPortos(){
+  var dir=(document.getElementById('rio-dir')||{value:'subida'}).value;
+  var wpts=dir==='subida'?RIO_SUBIDA:RIO_DESCIDA;
+  return wpts.filter(function(w){return w.alt;});
+}
+
 function rTabSwitch(tab){
   ['eta','porto','wpts'].forEach(function(t){
     var body=document.getElementById('rtab-'+t+'-body');
@@ -4277,7 +4422,34 @@ function rioBuildETA(){
 
     if(!w.alt && w.key==='bn'){
       window._rioBnEta[dir] = displayMs;
-      // WPs ECDIS injetados abaixo da tabela via rioECDISInjectETA()
+      // Injetar waypoints extras após BN
+      var extras = rioExtrasLoad()[dir]||[];
+      if(extras.length){
+        var tEx=internalMs, cumDEx=0;
+        extras.forEach(function(ex,ei){
+          var dEx=ex.dist||0;
+          var vEx=parseFloat(ex.vel)||curVel;
+          cumDEx+=dEx; tEx+=dEx/vEx*3600000;
+          var dispEx=tEx+(w.fuso-startFuso-(-3+startFuso/1))*3600000+(-3)*3600000;
+          // simples: usar o mesmo fusoDelta de BN
+          var fusoExDelta=(w.fuso-startFuso)*3600000;
+          dispEx=tEx+fusoExDelta;
+          var anyEdEx=(ex.dist>0||ex.vel>0||ex.eta);
+          var etaExCell='<input type="datetime-local" class="form-control" style="min-width:160px;font-size:11px;padding:4px;" value="'+rioMsToLocalISO(dispEx)+'" onchange="rioExtraOvr('+ei+',\'eta\',this.value)">';
+          var distExCell='<input type="number" step="0.1" min="0" class="form-control" style="width:80px;font-size:11px;padding:4px;text-align:right;" value="'+dEx.toFixed(1)+'" onchange="rioExtraOvr('+ei+',\'dist\',this.value)">';
+          var velExCell='<input type="number" step="0.1" min="1" class="form-control" style="width:70px;font-size:11px;padding:4px;text-align:right;" value="'+vEx.toFixed(1)+'" onchange="rioExtraOvr('+ei+',\'vel\',this.value)">';
+          var tempoExCell='<span class="mono" style="font-size:11px;">'+(dEx/vEx).toFixed(2)+'</span>';
+          rows+='<tr style="background:linear-gradient(90deg,#fefce8,#fffbeb);border-left:3px solid #f59e0b;">'
+            +'<td style="font-size:11px;color:#92400e;padding:3px 6px;">📍 '+escHtml(ex.nm||'WP extra')+'</td>'
+            +'<td style="text-align:right;">'+distExCell+'</td>'
+            +'<td class="mono" style="text-align:right;">'+cumDEx.toFixed(1)+'</td>'
+            +'<td style="text-align:right;">'+velExCell+'</td>'
+            +'<td style="text-align:right;">'+tempoExCell+'</td>'
+            +'<td style="text-align:right;">'+etaExCell+'</td>'
+            +'<td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="padding:2px 7px;color:var(--danger);" onclick="rioExtraRemove('+ei+')">✕</button></td>'
+            +'</tr>';
+        });
+      }
     }
 
     var isKey = !!keyId;
@@ -4310,13 +4482,13 @@ function rioBuildETA(){
       + '<td style="text-align:right;">'+tempoCell+'</td>'
       + '<td style="text-align:right;">'+etaCell+'</td>'
       + '<td class="mono" style="text-align:center;color:var(--muted);font-size:10px;">UTC'+w.fuso+'</td>'
-      + '</tr>';
+      + '<td></td></tr>';
   }
 
   var totalH = (t - t0)/3600000;
   out.innerHTML = '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;overflow:auto;">'
     + '<table class="tbl" style="width:100%;font-size:12px;min-width:760px;"><thead><tr>'
-    + '<th>Ponto / Waypoint</th><th style="text-align:right;">Trecho (nm)</th><th style="text-align:right;">Acum. (nm)</th><th style="text-align:right;">Vel (nós)</th><th style="text-align:right;">Tempo (h)</th><th style="text-align:right;">ETA (hora local)</th><th style="text-align:center;">Fuso</th></tr></thead>'
+    + '<th style=\"min-width:160px;\">Ponto / Waypoint</th><th style=\"text-align:right;\">Trecho (nm)</th><th style=\"text-align:right;\">Acum. (nm)</th><th style=\"text-align:right;\">Vel (nós)</th><th style=\"text-align:right;\">Tempo (h)</th><th style=\"text-align:right;\">ETA (hora local)</th><th style=\"text-align:center;\">Fuso</th><th></th></tr></thead>'
     + '<tbody>'+rows+'</tbody></table></div>'
     + '<div style="margin-top:8px;padding:8px 12px;background:var(--login-blue-xlt);border-radius:6px;font-size:12px;display:flex;gap:14px;flex-wrap:wrap;">'
     + '<span>📊 <strong>Total (rota principal):</strong> '+cumD.toFixed(1)+' NM em '+totalH.toFixed(1)+' h</span>'
@@ -10682,7 +10854,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.6.2';
+const APP_VERSION = '2.7.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
