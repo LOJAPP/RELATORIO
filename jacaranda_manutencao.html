@@ -1443,6 +1443,18 @@
             <div id="drive-config-status" style="margin-bottom:12px;"></div>
             <div class="form-group"><label>URL do Web App (Google Apps Script)</label><input type="text" class="form-control" id="cfg-webapp-url" placeholder="https://script.google.com/macros/s/..."></div>
             <div class="form-group"><label>URL da Pasta no Drive</label><input type="text" class="form-control" id="cfg-drive-folder-url" placeholder="https://drive.google.com/drive/folders/..."></div>
+            <!-- Opções para backups grandes (>50MB) -->
+            <div style="margin-top:10px;padding:12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;">
+              <div style="font-weight:800;font-size:12px;color:#92400e;margin-bottom:8px;">📦 Backup de arquivos grandes (&gt;45 MB)</div>
+              <div style="font-size:11px;color:#78350f;margin-bottom:10px;">Escolha uma das 3 estratégias para salvar backups com muitas fotos:</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-primary btn-sm" onclick="cloudSplitFotos()" title="Salva o backup em 2 arquivos: dados sem fotos + fotos separadas">📋 Separar fotos do backup</button>
+                <button class="btn btn-ghost btn-sm" onclick="cloudS3Config()" title="Salvar diretamente num bucket S3/R2 via CORS">☁️ Config S3 / Cloudflare R2</button>
+                <button class="btn btn-ghost btn-sm" onclick="cloudGitHubConfig()" title="Salvar backup num repositório GitHub privado via API">🐙 Config GitHub (privado)</button>
+                <button class="btn btn-ghost btn-sm" onclick="cloudDownloadSplit()" title="Baixar o backup dividido em partes menores">⬇️ Baixar em partes</button>
+              </div>
+              <div id="cloud-alt-status" style="font-size:11px;margin-top:8px;color:var(--text-dim);"></div>
+            </div>
             <div class="form-group"><label>Auto-sync (minutos, 0 = desativado)</label><input type="number" class="form-control" id="cfg-auto-interval" placeholder="0" min="0" max="60"></div>
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;margin-bottom:10px;cursor:pointer;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:9px 12px;">
               <input type="checkbox" id="cfg-autosave" style="width:17px;height:17px;">
@@ -4851,6 +4863,125 @@ function renderMareChart(containerId, t1, h1, t2, h2, tp, locNm){
 }
 
 // ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// CLOUD ALTERNATIVA — Backups > 45 MB
+// Estratégias: separar fotos | S3/R2 | GitHub | partes
+// ═══════════════════════════════════════════════════════
+function cloudSt(msg, type){
+  var el=document.getElementById('cloud-alt-status');
+  if(el){ el.textContent=msg; el.style.color=type==='err'?'var(--danger)':type==='ok'?'var(--login-green)':'var(--text-dim)'; }
+}
+function cloudSplitFotos(){
+  try{
+    var dados=JSON.parse(buildBackupData());
+    var fotos=dados.fotos||[];
+    if(!fotos.length){ cloudSt('Nenhuma foto no backup.','info'); return; }
+    var semF=Object.assign({},dados,{fotos:[],_fotosSeparadas:true,_fotosLen:fotos.length});
+    var b1=new Blob([JSON.stringify(semF,null,2)],{type:'application/json'});
+    var a1=document.createElement('a'); a1.href=URL.createObjectURL(b1);
+    a1.download=buildFileName().replace('.json','_DADOS.json'); a1.click(); URL.revokeObjectURL(a1.href);
+    var sF={v:5,_fotoChunk:true,exp:dados.exp,fotos:fotos};
+    var b2=new Blob([JSON.stringify(sF,null,2)],{type:'application/json'});
+    setTimeout(function(){
+      var a2=document.createElement('a'); a2.href=URL.createObjectURL(b2);
+      a2.download=buildFileName().replace('.json','_FOTOS.json'); a2.click(); URL.revokeObjectURL(a2.href);
+    },600);
+    cloudSt('OK — _DADOS.json ('+(b1.size/1e6).toFixed(1)+'MB) + _FOTOS.json ('+(b2.size/1e6).toFixed(1)+'MB) baixados. Suba ambos ao Drive.','ok');
+  }catch(e){ cloudSt('Erro: '+e.message,'err'); }
+}
+function cloudDownloadSplit(){
+  try{
+    var dados=JSON.parse(buildBackupData());
+    var fotos=dados.fotos||[];
+    var CHUNK=40;
+    var base=Object.assign({},dados,{fotos:[],_partes:Math.ceil(fotos.length/CHUNK)||0,_fotosLen:fotos.length});
+    var b0=new Blob([JSON.stringify(base,null,2)],{type:'application/json'});
+    var a0=document.createElement('a'); a0.href=URL.createObjectURL(b0);
+    a0.download=buildFileName().replace('.json','_p0_dados.json'); a0.click();
+    var total=Math.ceil(fotos.length/CHUNK);
+    for(var i=0;i<total;i++){
+      (function(idx){
+        setTimeout(function(){
+          var lote=fotos.slice(idx*CHUNK,(idx+1)*CHUNK);
+          var parte={_fotoChunk:true,_parte:idx+1,_de:total,exp:base.exp,fotos:lote};
+          var b=new Blob([JSON.stringify(parte)],{type:'application/json'});
+          var a=document.createElement('a'); a.href=URL.createObjectURL(b);
+          a.download=buildFileName().replace('.json','_p'+(idx+1)+'_fotos.json'); a.click();
+          if(idx===total-1) cloudSt('OK — '+(total+1)+' partes baixadas! Suba todas ao Drive.','ok');
+        },(idx+1)*700);
+      })(i);
+    }
+    if(!total) cloudSt('OK — backup sem fotos baixado ('+(b0.size/1e6).toFixed(1)+' MB)','ok');
+  }catch(e){ cloudSt('Erro: '+e.message,'err'); }
+}
+function cloudGitHubConfig(){
+  modalAdminOpen('GitHub — Backup privado (gratis, max 100MB/arquivo)',
+    'Cria/atualiza um arquivo de backup num repositório privado do GitHub via API.',
+    [{id:'gh-token',label:'Personal Access Token (escopo: repo)',ph:'ghp_...'},
+     {id:'gh-repo',label:'Repositorio (usuario/nome)',ph:'jose/jac-backups'},
+     {id:'gh-branch',label:'Branch',ph:'main'}],
+    function(v){
+      var tk=v['gh-token'].trim(), rp=v['gh-repo'].trim(), br=v['gh-branch'].trim()||'main';
+      if(!tk||!rp){ modalAdminErr('Preencha token e repositório'); return; }
+      var cfg=getCfg(); cfg.githubToken=tk; cfg.githubRepo=rp; cfg.githubBranch=br;
+      saveCfg(cfg); modalAdminClose(); cloudGitHubSave();
+    });
+}
+async function cloudGitHubSave(){
+  var cfg=getCfg();
+  if(!cfg.githubToken||!cfg.githubRepo){ cloudSt('Configure GitHub primeiro','err'); return; }
+  cloudSt('Enviando para GitHub...','info');
+  try{
+    var content=buildBackupData();
+    var b64=btoa(unescape(encodeURIComponent(content)));
+    var path='backups/'+buildFileName();
+    var branch=cfg.githubBranch||'main';
+    var sha=null;
+    try{
+      var chk=await fetch('https://api.github.com/repos/'+cfg.githubRepo+'/contents/'+path+'?ref='+branch,
+        {headers:{'Authorization':'token '+cfg.githubToken,'Accept':'application/vnd.github.v3+json'}});
+      if(chk.ok){ var cj=await chk.json(); sha=cj.sha; }
+    }catch(e){}
+    var body={message:'Backup '+new Date().toLocaleString('pt-BR'),content:b64,branch:branch};
+    if(sha) body.sha=sha;
+    var r=await fetch('https://api.github.com/repos/'+cfg.githubRepo+'/contents/'+path,
+      {method:'PUT',headers:{'Authorization':'token '+cfg.githubToken,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(r.ok){
+      cloudSt('Salvo no GitHub: '+path,'ok');
+      if(typeof recordBackupHistory==='function') recordBackupHistory(path,'GitHub','GitHub');
+    } else {
+      var ej=await r.json(); cloudSt('GitHub erro: '+(ej.message||r.status),'err');
+    }
+  }catch(e){ cloudSt('Erro: '+e.message,'err'); }
+}
+function cloudS3Config(){
+  modalAdminOpen('S3 / Cloudflare R2 — Bucket (R2 = 10GB grátis)',
+    'Envia o backup via HTTP PUT para um bucket S3 ou R2. O bucket precisa ter CORS habilitado para PUT.',
+    [{id:'s3-url',label:'URL base do bucket (com barra no fim)',ph:'https://xxx.r2.cloudflarestorage.com/jac/'}],
+    function(v){
+      var url=v['s3-url'].trim();
+      if(!url){ modalAdminErr('Informe a URL'); return; }
+      var cfg=getCfg(); cfg.s3Url=url; saveCfg(cfg); modalAdminClose(); cloudS3Save();
+    });
+}
+async function cloudS3Save(){
+  var cfg=getCfg();
+  if(!cfg.s3Url){ cloudSt('Configure S3/R2 primeiro','err'); return; }
+  cloudSt('Enviando para S3/R2...','info');
+  try{
+    var content=buildBackupData();
+    var url=cfg.s3Url.replace(/\/?$/,'')+'/'+buildFileName();
+    var r=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:content});
+    if(r.ok||r.status===200||r.status===204){
+      cloudSt('Salvo em S3/R2: '+url,'ok');
+      if(typeof recordBackupHistory==='function') recordBackupHistory(buildFileName(),'S3/R2','S3');
+    } else {
+      cloudSt('S3/R2 erro '+r.status+': verifique o CORS do bucket','err');
+    }
+  }catch(e){ cloudSt('Erro CORS ou rede: '+e.message,'err'); }
+}
+
+
 // PARSER DE TEXTO DA TÁBUA CHM/DHN
 // Aceita qualquer formato colado: PDF, site, variados
 // ─────────────────────────────────────────────
