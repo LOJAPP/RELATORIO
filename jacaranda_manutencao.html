@@ -4422,36 +4422,33 @@ function rioBuildETA(){
 
     if(!w.alt && w.key==='bn'){
       window._rioBnEta[dir] = displayMs;
-      // Injetar waypoints extras após BN
+      // WPs extras: acumulados em variável, injetados APÓS o row de BN
       var extras = rioExtrasLoad()[dir]||[];
+      var rowsExtrasBN='';
       if(extras.length){
         var tEx=internalMs, cumDEx=0;
         extras.forEach(function(ex,ei){
           var dEx=ex.dist||0;
           var vEx=parseFloat(ex.vel)||curVel;
           cumDEx+=dEx; tEx+=dEx/vEx*3600000;
-          var dispEx=tEx+(w.fuso-startFuso-(-3+startFuso/1))*3600000+(-3)*3600000;
-          // simples: usar o mesmo fusoDelta de BN
           var fusoExDelta=(w.fuso-startFuso)*3600000;
-          dispEx=tEx+fusoExDelta;
-          var anyEdEx=(ex.dist>0||ex.vel>0||ex.eta);
-          var etaExCell='<input type="datetime-local" class="form-control" style="min-width:160px;font-size:11px;padding:4px;" value="'+rioMsToLocalISO(dispEx)+'" onchange="rioExtraOvr('+ei+',\'eta\',this.value)">';
-          var distExCell='<input type="number" step="0.1" min="0" class="form-control" style="width:80px;font-size:11px;padding:4px;text-align:right;" value="'+dEx.toFixed(1)+'" onchange="rioExtraOvr('+ei+',\'dist\',this.value)">';
-          var velExCell='<input type="number" step="0.1" min="1" class="form-control" style="width:70px;font-size:11px;padding:4px;text-align:right;" value="'+vEx.toFixed(1)+'" onchange="rioExtraOvr('+ei+',\'vel\',this.value)">';
-          var tempoExCell='<span class="mono" style="font-size:11px;">'+(dEx/vEx).toFixed(2)+'</span>';
-          rows+='<tr style="background:linear-gradient(90deg,#fefce8,#fffbeb);border-left:3px solid #f59e0b;">'
-            +'<td style="font-size:11px;color:#92400e;padding:3px 6px;">📍 '+escHtml(ex.nm||'WP extra')+'</td>'
+          var dispEx=tEx+fusoExDelta;
+          var distExCell='<input type="number" step="0.1" min="0" class="form-control" style="width:80px;font-size:11px;padding:4px 5px;text-align:right;" value="'+dEx.toFixed(1)+'" onchange="rioExtraOvr('+ei+',\'dist\',this.value)">';
+          var velExCell='<input type="number" step="0.5" min="1" max="30" class="form-control" style="width:70px;font-size:11px;padding:4px 5px;text-align:right;" value="'+vEx.toFixed(1)+'" onchange="rioExtraOvr('+ei+',\'vel\',this.value)">';
+          var tempoEx=(dEx/vEx).toFixed(2);
+          rowsExtrasBN+='<tr style="background:#fef9c3;border-left:3px solid #f59e0b;">'
+            +'<td style="font-size:11px;color:#78350f;padding:4px 6px;font-weight:700;">📍 '+escHtml(ex.nm||'WP extra')+'</td>'
             +'<td style="text-align:right;">'+distExCell+'</td>'
-            +'<td class="mono" style="text-align:right;">'+cumDEx.toFixed(1)+'</td>'
+            +'<td class="mono" style="text-align:right;font-size:11px;">'+cumDEx.toFixed(1)+'</td>'
             +'<td style="text-align:right;">'+velExCell+'</td>'
-            +'<td style="text-align:right;">'+tempoExCell+'</td>'
-            +'<td style="text-align:right;">'+etaExCell+'</td>'
-            +'<td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="padding:2px 7px;color:var(--danger);" onclick="rioExtraRemove('+ei+')">✕</button></td>'
+            +'<td class="mono" style="text-align:right;font-size:11px;">'+tempoEx+'</td>'
+            +'<td style="text-align:right;"><input type="datetime-local" class="form-control" style="min-width:160px;font-size:11px;padding:4px;" value="'+rioMsToLocalISO(dispEx)+'"></td>'
+            +'<td class="mono" style="text-align:center;font-size:10px;color:var(--muted);">UTC'+w.fuso+'</td>'
+            +'<td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="padding:2px 7px;color:var(--danger);" onclick="rioExtraRemove('+ei+')" title="Remover">✕</button></td>'
             +'</tr>';
         });
       }
     }
-
     var isKey = !!keyId;
     var rowStyle = isKey
       ? 'background:linear-gradient(90deg,#ecfeff,#f0fdff 70%);border-left:3px solid #0891b2;'
@@ -4483,6 +4480,8 @@ function rioBuildETA(){
       + '<td style="text-align:right;">'+etaCell+'</td>'
       + '<td class="mono" style="text-align:center;color:var(--muted);font-size:10px;">UTC'+w.fuso+'</td>'
       + '<td></td></tr>';
+    // Injetar extras APÓS o row de BN
+    if(!w.alt && w.key==='bn' && typeof rowsExtrasBN!=='undefined') rows+=rowsExtrasBN;
   }
 
   var totalH = (t - t0)/3600000;
@@ -5861,67 +5860,114 @@ function rtzRender(){
   if(!el) return;
   var r = rtzLoad();
   var nameEl = document.getElementById('rtz-route-name');
-  if(nameEl) nameEl.innerHTML = r.wps.length ? '🧭 <input type="text" class="form-control" style="display:inline-block;width:auto;min-width:160px;font-size:12px;padding:4px 8px;font-weight:800;" value="'+escHtml(r.name)+'" onchange="rtzRename(this.value)">' : '';
+  if(nameEl) nameEl.innerHTML = r.wps.length
+    ? '🧭 <input type="text" class="form-control" style="display:inline-block;width:auto;min-width:160px;font-size:12px;padding:4px 8px;font-weight:800;" value="'+escHtml(r.name)+'" onchange="rtzRename(this.value)">'
+    : '';
+
   if(!r.wps.length){
     el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:12px;background:#f8fafc;border:1px dashed var(--border);border-radius:10px;">📂 Importe um arquivo RTZ do ECDIS ou crie uma nova rota para começar</div>';
     return;
   }
-  var total=0;
+
+  // Velocidade global (do campo rio-vel, ou última vel configurada)
+  var velGlobal = parseFloat((document.getElementById('rio-vel')||{}).value)||15;
+  var dtv = (document.getElementById('rio-dt')||{}).value;
+  var t0 = dtv ? new Date(dtv).getTime() : Date.now();
+
+  var total=0, cumEta=t0;
   var gm = function(v){ var abs=Math.abs(v); var d=Math.floor(abs); var m=(abs-d)*60; if(m>=59.9995){d+=1;m=0;} return {d:d, m:m}; };
+  var z = function(n){ return ('0'+n).slice(-2); };
+
   var rows = r.wps.map(function(w,i){
     var dist = i===0?0:rtzHaversineNm(r.wps[i-1].lat, r.wps[i-1].lon, w.lat, w.lon);
     total += dist;
     var la=gm(w.lat), lo=gm(w.lon);
     var laH=w.lat>=0?'N':'S', loH=w.lon>=0?'E':'W';
+
+    // Velocidade: do WP ou global
+    var wVel = parseFloat(w.vel)||velGlobal;
+    // ETA cumulativo
+    if(i>0) cumEta += dist/wVel*3600000;
+    var etaDate = new Date(cumEta);
+    var etaStr = z(etaDate.getDate())+'/'+z(etaDate.getMonth()+1)
+                +' '+z(etaDate.getHours())+':'+z(etaDate.getMinutes());
+
     var latCell = '<div style="display:flex;gap:3px;align-items:center;">'
-      + '<input type="number" min="0" max="90" step="1" class="form-control" style="width:52px;font-size:11px;padding:4px 4px;text-align:right;" value="'+la.d+'" id="rtz-lat-d-'+i+'" onchange="rtzUpdGm('+i+',\'lat\')" title="Graus">'
+      + '<input type="number" min="0" max="90" step="1" class="form-control" style="width:52px;font-size:11px;padding:4px 4px;text-align:right;" value="'+la.d+'" id="rtz-lat-d-'+i+'" onchange="rtzUpdGm('+i+',&apos;lat&apos;)" title="Graus">'
       + '<span style="font-size:10px;color:var(--muted);">°</span>'
-      + '<input type="number" min="0" max="59.999" step="0.001" class="form-control" style="width:72px;font-size:11px;padding:4px 4px;text-align:right;" value="'+la.m.toFixed(3)+'" id="rtz-lat-m-'+i+'" onchange="rtzUpdGm('+i+',\'lat\')" title="Minutos decimais">'
-      + '<span style="font-size:10px;color:var(--muted);">\u2032</span>'
-      + '<select class="form-control" style="width:48px;font-size:11px;padding:4px 2px;" id="rtz-lat-h-'+i+'" onchange="rtzUpdGm('+i+',\'lat\')" title="Hemisfério"><option'+(laH==='N'?' selected':'')+'>N</option><option'+(laH==='S'?' selected':'')+'>S</option></select>'
-      + '</div>';
+      + '<input type="number" min="0" max="59.999" step="0.001" class="form-control" style="width:72px;font-size:11px;padding:4px 4px;text-align:right;" value="'+la.m.toFixed(3)+'" id="rtz-lat-m-'+i+'" onchange="rtzUpdGm('+i+',&apos;lat&apos;)" title="Minutos decimais">'
+      + '<select class="form-control" style="width:46px;font-size:11px;padding:4px 2px;" id="rtz-lat-h-'+i+'" onchange="rtzUpdGm('+i+',&apos;lat&apos;)">'
+      + '<option value="N"'+(w.lat>=0?' selected':'')+'>N</option>'
+      + '<option value="S"'+(w.lat<0?' selected':'')+'>S</option>'
+      + '</select></div>';
+
     var lonCell = '<div style="display:flex;gap:3px;align-items:center;">'
-      + '<input type="number" min="0" max="180" step="1" class="form-control" style="width:56px;font-size:11px;padding:4px 4px;text-align:right;" value="'+lo.d+'" id="rtz-lon-d-'+i+'" onchange="rtzUpdGm('+i+',\'lon\')" title="Graus">'
+      + '<input type="number" min="0" max="180" step="1" class="form-control" style="width:56px;font-size:11px;padding:4px 4px;text-align:right;" value="'+lo.d+'" id="rtz-lon-d-'+i+'" onchange="rtzUpdGm('+i+',&apos;lon&apos;)" title="Graus">'
       + '<span style="font-size:10px;color:var(--muted);">°</span>'
-      + '<input type="number" min="0" max="59.999" step="0.001" class="form-control" style="width:72px;font-size:11px;padding:4px 4px;text-align:right;" value="'+lo.m.toFixed(3)+'" id="rtz-lon-m-'+i+'" onchange="rtzUpdGm('+i+',\'lon\')" title="Minutos decimais">'
-      + '<span style="font-size:10px;color:var(--muted);">\u2032</span>'
-      + '<select class="form-control" style="width:48px;font-size:11px;padding:4px 2px;" id="rtz-lon-h-'+i+'" onchange="rtzUpdGm('+i+',\'lon\')" title="Hemisfério"><option'+(loH==='E'?' selected':'')+'>E</option><option'+(loH==='W'?' selected':'')+'>W</option></select>'
-      + '</div>';
-    return '<tr>'
-      + '<td class="mono" style="color:var(--muted);">'+(i+1)+'</td>'
-      + '<td><input type="text" class="form-control" style="min-width:110px;font-size:11px;padding:4px 6px;" value="'+escHtml(w.name)+'" onchange="rtzUpd('+i+',\'name\',this.value)"></td>'
-      + '<td>'+latCell+'</td>'
-      + '<td>'+lonCell+'</td>'
-      + '<td><input type="number" step="0.1" min="0" class="form-control" style="width:66px;font-size:11px;padding:4px 6px;text-align:right;" value="'+(w.vel===''?'':w.vel)+'" placeholder="—" onchange="rtzUpd('+i+',\'vel\',this.value)"></td>'
-      + '<td class="mono" style="text-align:right;">'+(i===0?'—':dist.toFixed(2))+'</td>'
-      + '<td class="mono" style="text-align:right;color:var(--text-dim);">'+total.toFixed(1)+'</td>'
-      + '<td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="padding:2px 7px;color:var(--danger);" onclick="rtzDel('+i+')" title="Remover">✕</button></td>'
+      + '<input type="number" min="0" max="59.999" step="0.001" class="form-control" style="width:72px;font-size:11px;padding:4px 4px;text-align:right;" value="'+lo.m.toFixed(3)+'" id="rtz-lon-m-'+i+'" onchange="rtzUpdGm('+i+',&apos;lon&apos;)" title="Minutos decimais">'
+      + '<select class="form-control" style="width:46px;font-size:11px;padding:4px 2px;" id="rtz-lon-h-'+i+'" onchange="rtzUpdGm('+i+',&apos;lon&apos;)">'
+      + '<option value="E"'+(w.lon>=0?' selected':'')+'>E</option>'
+      + '<option value="W"'+(w.lon<0?' selected':'')+'>W</option>'
+      + '</select></div>';
+
+    // Campo de velocidade do WP — se vazio usa velGlobal
+    var velCell = '<input type="number" step="0.5" min="1" max="30" class="form-control" style="width:65px;font-size:11px;padding:4px 4px;text-align:right;" value="'+(w.vel===''?'':wVel.toFixed(1))+'" placeholder="'+velGlobal.toFixed(1)+'" id="rtz-vel-'+i+'" onchange="rtzUpd('+i+',&apos;vel&apos;,this.value)" title="Velocidade neste trecho (vazio = global)">';
+
+    // ETA
+    var etaCell = i===0
+      ? '<span class="mono" style="color:var(--text-dim);font-size:10.5px;">'+etaStr+'</span>'
+      : '<span class="mono" style="color:var(--login-blue);font-weight:700;font-size:11px;">'+etaStr+'</span>';
+
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      + '<td style="padding:4px 6px;font-size:11px;font-weight:700;text-align:center;color:var(--text-dim);">'+(i+1)+'</td>'
+      + '<td style="padding:4px 6px;"><input type="text" class="form-control" style="font-size:11px;padding:4px;" value="'+escHtml(w.name)+'" onchange="rtzUpd('+i+',&apos;name&apos;,this.value)"></td>'
+      + '<td style="padding:4px 6px;">'+latCell+'</td>'
+      + '<td style="padding:4px 6px;">'+lonCell+'</td>'
+      + '<td style="padding:4px 6px;text-align:right;">'+velCell+'</td>'
+      + '<td class="mono" style="padding:4px 6px;text-align:right;font-size:11px;">'+(i===0?'—':dist.toFixed(2))+'</td>'
+      + '<td class="mono" style="padding:4px 6px;text-align:right;font-size:11px;">'+total.toFixed(1)+'</td>'
+      + '<td style="padding:4px 6px;text-align:center;">'+etaCell+'</td>'
+      + '<td style="padding:4px 6px;text-align:center;"><button class="btn btn-ghost btn-sm" style="padding:2px 7px;color:var(--danger);" onclick="rtzDel('+i+')" title="Remover">✕</button></td>'
       + '</tr>';
   }).join('');
-  el.innerHTML = '<div style="overflow-x:auto;"><table class="tbl" style="width:100%;font-size:12px;min-width:860px;">'
-    + '<thead><tr><th>#</th><th>Waypoint</th><th>Latitude (° ′ N/S)</th><th>Longitude (° ′ E/W)</th><th style="text-align:right;">Vel (nós)</th><th style="text-align:right;">Trecho (nm)</th><th style="text-align:right;">Acum. (nm)</th><th></th></tr></thead>'
-    + '<tbody>'+rows+'</tbody></table></div>'
-    + '<div style="margin-top:8px;padding:8px 12px;background:var(--login-blue-xlt);border-radius:6px;font-size:12px;">📏 <strong>'+r.wps.length+' waypoints</strong> · distância total '+total.toFixed(1)+' NM (loxodromia/haversine)</div>';
+
+  // Linha de chegada
+  var chegDate = new Date(cumEta);
+  var chegStr = z(chegDate.getDate())+'/'+z(chegDate.getMonth()+1)+' '+z(chegDate.getHours())+':'+z(chegDate.getMinutes());
+
+  el.innerHTML = '<div style="padding:8px 12px;background:#f8fafc;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
+    + '<span style="font-size:11px;font-weight:800;">Velocidade global:</span>'
+    + '<input type="number" step="0.5" min="1" max="30" class="form-control" style="width:75px;font-size:12px;padding:5px;" value="'+velGlobal.toFixed(1)+'" onchange="rtzSetVelGlobal(this.value)" title="Aplicar esta velocidade a todos os WPs sem vel. individual">'
+    + '<span style="font-size:10.5px;color:var(--text-dim);">nós (aplica a todos os WPs sem velocidade individual)</span>'
+    + '<button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="rtzAddWp()">➕ Waypoint</button>'
+    + '</div>'
+    + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:700px;">'
+    + '<thead><tr style="background:#f1f5f9;font-size:11px;">'
+    + '<th style="padding:4px 6px;">#</th><th>Nome</th>'
+    + "<th>Lat (&#176;&#39; N/S)</th><th>Lon (&#176;&#39; E/W)</th>"
+    + '<th style="text-align:right;">Vel (nós)</th>'
+    + '<th style="text-align:right;">NM</th><th style="text-align:right;">Acum.</th>'
+    + '<th style="text-align:right;">ETA</th><th></th>'
+    + '</tr></thead><tbody>'+rows+'</tbody>'
+    + '<tfoot><tr style="background:#fef3c7;border-top:2px solid #f59e0b;">'
+    + '<td colspan="6" style="padding:5px 8px;font-weight:800;color:#92400e;font-size:12px;">🏁 Chegada: '+(r.wps.length>0?escHtml(r.wps[r.wps.length-1].name):'—')+'</td>'
+    + '<td class="mono" style="text-align:right;font-weight:800;font-size:12px;">'+total.toFixed(1)+' NM</td>'
+    + '<td class="mono" style="text-align:right;font-weight:800;color:var(--login-blue);font-size:12px;">'+chegStr+'</td>'
+    + '<td></td></tr></tfoot>'
+    + '</table></div>'
+    + '<div style="padding:8px 12px;background:var(--login-blue-xlt);border-top:1px solid var(--border);font-size:11px;color:var(--text-dim);">'
+    + '📊 '+r.wps.length+' waypoints · '+total.toFixed(1)+' NM total · vel. global '+velGlobal.toFixed(1)+' nós</div>';
 }
-function rtzUpdWpVel(wi, val){
-  var r=rtzLoad(); if(!r.wps[wi]) return;
-  r.wps[wi].vel=parseFloat(val)||'';
-  rtzSave(r); rioBuildETA();
+
+function rtzSetVelGlobal(val){
+  var v=parseFloat(val); if(!(v>0)) return;
+  // Atualizar campo rio-vel (velocidade global do planejador)
+  var velEl=document.getElementById('rio-vel'); if(velEl){ velEl.value=v.toFixed(1); }
+  rtzRender(); rioBuildETA();
+  toast('⚙️ Velocidade global: '+v+' nós aplicada','ok');
 }
-function rtzUpdGm(i, axis){
-  var d = parseFloat((document.getElementById('rtz-'+axis+'-d-'+i)||{}).value)||0;
-  var m = parseFloat((document.getElementById('rtz-'+axis+'-m-'+i)||{}).value)||0;
-  var h = (document.getElementById('rtz-'+axis+'-h-'+i)||{}).value||(axis==='lat'?'N':'E');
-  if(m>=60){ m=59.999; }
-  var maxD = axis==='lat'?90:180;
-  if(d>maxD){ d=maxD; m=0; }
-  var dec = (d + m/60) * ((h==='S'||h==='W')?-1:1);
-  var r = rtzLoad();
-  if(!r.wps[i]) return;
-  r.wps[i][axis] = dec;
-  rtzSave(r);
-  rtzRender();
-}
+
+
 function rtzRename(v){ var r=rtzLoad(); r.name=v||'ROTA'; rtzSave(r); }
 function rtzUpd(i, field, val){
   var r = rtzLoad();
@@ -10854,7 +10900,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.7.0';
+const APP_VERSION = '2.7.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
