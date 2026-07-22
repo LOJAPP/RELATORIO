@@ -4152,7 +4152,8 @@ function rioExtrasAddManual(){
       var vel=parseFloat(v['ex-vel'])||15;
       var dir=rioExtrasDir(), all=rioExtrasLoad();
       if(!all[dir]) all[dir]=[];
-      all[dir].push({nm:nm, dist:dist, vel:vel});
+      var velDefault=parseFloat((document.getElementById('rio-vel')||{}).value)||15;
+      all[dir].push({nm:nm, dist:dist, vel:vel||velDefault});
       rioExtrasSave(all); modalAdminClose(); rioBuildETA();
       toast('📍 "'+nm+'" adicionado após BN','ok');
     });
@@ -4487,10 +4488,10 @@ function rioBuildETA(){
       var extras = rioExtrasLoad()[dir]||[];
       var rowsExtrasBN='';
       if(extras.length){
-        var tEx=internalMs, cumDEx=0;
+        var tEx=internalMs, cumDEx=cumD; // começa no acumulado até BN
         extras.forEach(function(ex,ei){
           var dEx=ex.dist||0;
-          var vEx=parseFloat(ex.vel)||curVel;
+          var vEx=(ex.vel&&parseFloat(ex.vel)>0)?parseFloat(ex.vel):curVel;
           cumDEx+=dEx; tEx+=dEx/vEx*3600000;
           var fusoExDelta=(w.fuso-startFuso)*3600000;
           var dispEx=tEx+fusoExDelta;
@@ -4541,8 +4542,14 @@ function rioBuildETA(){
       + '<td style="text-align:right;">'+etaCell+'</td>'
       + '<td class="mono" style="text-align:center;color:var(--muted);font-size:10px;">UTC'+w.fuso+'</td>'
       + '<td></td></tr>';
-    // Injetar extras APÓS o row de BN
-    if(!w.alt && w.key==='bn' && typeof rowsExtrasBN!=='undefined') rows+=rowsExtrasBN;
+    // Injetar extras APÓS o row de BN e atualizar t e cumD
+    if(!w.alt && w.key==='bn' && typeof rowsExtrasBN!=='undefined'){
+      rows+=rowsExtrasBN;
+      // Propagar tempo e distância dos extras para os próximos pontos
+      if(typeof tEx!=='undefined' && typeof cumDEx!=='undefined'){
+        t=tEx; branchT=tEx; cumD=cumDEx;
+      }
+    }
   }
 
   var totalH = (t - t0)/3600000;
@@ -5435,9 +5442,12 @@ function rioPortosRender(){
     var saidaMs = l.saida ? new Date(l.saida).getTime() : (prevEta!=null ? prevEta : null);
     var usouEncadeado = !l.saida && prevEta!=null;
     var dist = (l.dist===''||l.dist==null)?null:parseFloat(l.dist);
-    if(dist) cumNmPorto+=dist;
+    if(dist!=null) cumNmPorto+=dist;
     var isChegada=!!(l._chegada);
-    var rowBg=isChegada?'background:linear-gradient(90deg,#fef3c7,#fefce8);border-left:3px solid #f59e0b;':'';  
+    var rowBg=isChegada?'background:linear-gradient(90deg,#fef3c7,#fefce8);border-left:3px solid #f59e0b;border-top:2px solid #f59e0b;':'';
+    // Velocidade padrão se não configurada na perna
+    var velPadrao=parseFloat((document.getElementById('rio-vel')||{}).value)||15;
+    if(!parseFloat(l.vel)){ l.vel=velPadrao; }
     var vel  = parseFloat(l.vel)||0;
     var etaMs = (saidaMs!=null && dist!=null && vel>0) ? saidaMs + (dist/vel)*3600000 : null;
     var etaTxt = etaMs!=null
@@ -5951,7 +5961,7 @@ function rtzRender(){
     var laH=w.lat>=0?'N':'S', loH=w.lon>=0?'E':'W';
 
     // Velocidade: do WP ou global
-    var wVel = parseFloat(w.vel)||velGlobal;
+    var wVel = (w.vel!==''&&parseFloat(w.vel)>0) ? parseFloat(w.vel) : velGlobal;
     // ETA cumulativo
     if(i>0) cumEta += dist/wVel*3600000;
     var etaDate = new Date(cumEta);
@@ -10966,7 +10976,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.7.2';
+const APP_VERSION = '2.7.3';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
