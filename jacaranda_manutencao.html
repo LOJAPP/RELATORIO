@@ -1546,17 +1546,21 @@
       </div>
 
       <!-- ETA + Rotas ECDIS — painel unificado -->
-      <div class="panel">
-        <div class="panel-header">🧮 ETA por Trecho & Rotas ECDIS — Rota Completa · Waypoints · Distâncias</div>
-        <div style="display:flex;gap:0;border-bottom:2px solid var(--border);background:#f8fafc;">
-          <button id="tab-eta-btn" onclick="rioTabSwitch('eta')" style="flex:1;padding:9px 6px;font-size:12px;font-weight:800;border:none;background:var(--login-blue);color:#fff;cursor:pointer;border-radius:0;">🧮 ETA por Trecho</button>
-          <button id="tab-ecdis-btn" onclick="rioTabSwitch('ecdis')" style="flex:1;padding:9px 6px;font-size:12px;font-weight:700;border:none;background:#f8fafc;color:var(--text-dim);cursor:pointer;border-radius:0;">🗺️ Rota ECDIS / Waypoints</button>
+      <div class="panel" id="painel-rota-eta">
+        <div class="panel-header" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span>🧭 Planejador de Rota & ETA</span>
+          <div style="display:flex;gap:0;margin-left:auto;background:#f1f5f9;border-radius:8px;overflow:hidden;border:1px solid var(--border);">
+            <button id="rtab-eta"   onclick="rTabSwitch('eta')"   style="padding:6px 14px;font-size:11px;font-weight:800;border:none;background:var(--login-blue);color:#fff;cursor:pointer;">🧮 ETA por Trecho</button>
+            <button id="rtab-porto" onclick="rTabSwitch('porto')" style="padding:6px 14px;font-size:11px;font-weight:700;border:none;background:transparent;color:var(--text-dim);cursor:pointer;">⚓ ETA entre Portos</button>
+            <button id="rtab-wpts"  onclick="rTabSwitch('wpts')"  style="padding:6px 14px;font-size:11px;font-weight:700;border:none;background:transparent;color:var(--text-dim);cursor:pointer;">🗺️ Waypoints / ECDIS</button>
+          </div>
         </div>
-        <div id="tab-eta-body">
-        <div style="padding:14px;">
-          <div class="form-row">
+
+        <!-- Controles comuns: sentido, partida, data, velocidade -->
+        <div style="padding:12px 14px 0;background:#f8fafc;border-bottom:1px solid var(--border);">
+          <div class="form-row" style="margin-bottom:8px;">
             <div class="form-group"><label>Sentido</label>
-              <select class="form-control" id="rio-dir" onchange="rioFillStarts();rioBuildETA();">
+              <select class="form-control" id="rio-dir" onchange="rioFillStarts();rioBuildETA();rTabRefresh();">
                 <option value="subida">⬆ SUBIDA (Barra Norte → Manaus)</option>
                 <option value="descida">⬇ DESCIDA (Manaus → Barra Norte)</option>
               </select>
@@ -1565,92 +1569,93 @@
               <select class="form-control" id="rio-start" onchange="rioBuildETA()"></select>
             </div>
             <div class="form-group"><label>🕐 Data/Hora saída</label>
-              <input type="datetime-local" class="form-control" id="rio-dt" onchange="rioBuildETA()">
+              <input type="datetime-local" class="form-control" id="rio-dt" onchange="rioBuildETA();rTabRefresh();">
             </div>
-            <div class="form-group"><label>🚢 Veloc. média inicial (nós)</label>
-              <input type="number" step="0.1" class="form-control" id="rio-vel" value="15" oninput="rioSaveCfg();rioBuildETA();">
+            <div class="form-group"><label>⚙️ Vel. padrão (nós)</label>
+              <input type="number" class="form-control" id="rio-vel" value="15" step="0.5" min="1" onchange="rioBuildETA();rTabRefresh();">
             </div>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="rioBuildETA()" style="flex:2;">🧮 Calcular ETA por Trecho</button>
-            <label class="btn btn-ghost btn-sm" style="cursor:pointer;flex:1;justify-content:center;display:flex;align-items:center;gap:4px;" title="Importar rota RTZ do ECDIS e calcular ETA automaticamente">
-              📂 Importar rota ECDIS
+          <div style="display:flex;gap:8px;flex-wrap:wrap;padding-bottom:10px;">
+            <button class="btn btn-primary btn-sm" onclick="rioBuildETA()">🧮 Calcular ETA por Trecho</button>
+            <label class="btn btn-ghost btn-sm" style="cursor:pointer;display:flex;align-items:center;gap:4px;">
+              📂 Importar rota ECDIS (RTZ/GPX/KML/CSV)
               <input type="file" accept=".rtz,.xml,.gpx,.kml,.csv" style="display:none;" onchange="rioImportECDIS(this)">
             </label>
+            <button class="btn btn-ghost btn-sm" onclick="rTabSwitch('wpts');setTimeout(function(){rtzNew();},200);">🆕 Nova rota manual</button>
+            <span id="rio-eta-notas" style="font-size:10.5px;color:var(--text-dim);align-self:center;flex:1;min-width:200px;"></span>
           </div>
-          <div style="font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.5;">
-            ✏️ <strong>Todos os waypoints são editáveis</strong>: em qualquer linha ajuste a <strong>distância</strong>, a <strong>velocidade</strong>, o <strong>tempo</strong> ou o <strong>ETA</strong> — ao editar qualquer campo, os trechos seguintes recalculam automaticamente em cascata. A velocidade editada passa a valer daquele trecho em diante; ETA/tempo fixam a chegada real no ponto. Os pontos-chave da linha (⭐ Pecém, Barra Norte, Macapá, Itacoatiara, Manaus) aparecem destacados.
+        </div>
+
+        <!-- ABA: ETA por Trecho -->
+        <div id="rtab-eta-body" style="padding:14px;">
+          <div id="rio-eta-result" style="min-height:60px;"></div>
+          <div id="rio-ecdis-eta-extra"></div>
+        </div>
+
+        <!-- ABA: ETA entre Portos -->
+        <div id="rtab-porto-body" style="display:none;padding:14px;">
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">
+            Planejador de pernas entre portos — adicione trechos (De → Para), distância e velocidade. Portos disponíveis: PEC · BN · MCP · ITA · MAO · VIX · SSZ · SUA · SSA · NVT — e qualquer porto personalizado ou waypoint ECDIS importado.
           </div>
-          <div id="rio-eta-result" style="margin-top:12px;"></div>
-          <div id="rio-eta-notas" style="margin-top:8px;font-size:11px;color:var(--text-dim);"></div>
-          <div style="margin-top:8px;">
-            <button class="btn btn-ghost btn-sm" onclick="rioTrechoReset()">↺ Limpar ajustes manuais deste sentido</button>
-</div><!-- fim tab-eta-body -->
-        <div id="tab-ecdis-body" style="display:none;">
-<div style="padding:0;">
-        <div style="font-weight:800;font-size:13px;color:var(--login-blue);padding:10px 14px 4px;border-bottom:1px solid var(--border);">🗺️ Rotas ECDIS — Importar · Editar · Converter (RTZ / GPX / KML / CSV)</div>
-        <div style="padding:14px;">
-          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
-            Carregue a rota exportada do ECDIS em <strong>RTZ</strong> (padrão IEC 61174, ex.: Chartpilot/Navi-Planner) — ou GPX/KML/CSV — para ver e <strong>editar os waypoints</strong> (nome, latitude, longitude, velocidade). As distâncias entre waypoints são calculadas automaticamente. Depois exporte no formato desejado para levar de volta ao ECDIS ou usar em outros sistemas.
+          <!-- Adicionar porto personalizado -->
+          <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px;margin-bottom:10px;">
+            <div style="font-size:11px;font-weight:800;color:#166534;margin-bottom:6px;">➕ Adicionar porto ou waypoint</div>
+            <div class="form-row" style="margin-bottom:6px;">
+              <div class="form-group"><label style="font-size:10px;">Código</label><input type="text" class="form-control" id="rio-porto-novo-id" placeholder="ex: PON" style="font-size:11px;text-transform:uppercase;"></div>
+              <div class="form-group" style="flex:2;"><label style="font-size:10px;">Nome</label><input type="text" class="form-control" id="rio-porto-novo-nm" placeholder="Nome do porto ou waypoint"></div>
+              <div class="form-group"><label style="font-size:10px;">Tipo</label>
+                <select class="form-control" id="rio-porto-novo" style="font-size:11px;">
+                  <option value="porto">⚓ Porto</option>
+                  <option value="wp">📍 Waypoint</option>
+                </select>
+              </div>
+              <div class="form-group" style="align-self:flex-end;"><button class="btn btn-green btn-sm" onclick="rioPortoAdd()" style="width:100%;">💾 Salvar</button></div>
+            </div>
+            <div id="rio-portos-custom-list" style="font-size:10px;color:var(--text-dim);"></div>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
-            <label class="btn btn-primary btn-sm" style="cursor:pointer;">📂 Importar rota
+          <!-- Trechos da rota -->
+          <div id="rio-portos-body"></div>
+          <!-- Botão adicionar trecho -->
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="rioPortoAddLeg()">➕ Adicionar trecho</button>
+            <button class="btn btn-ghost btn-sm" onclick="rioPortosFromECDIS()">🗺️ Popular da rota ECDIS</button>
+            <button class="btn btn-ghost btn-sm" onclick="rioPortosClear()">🗑️ Limpar trechos</button>
+          </div>
+        </div>
+
+        <!-- ABA: Waypoints / ECDIS -->
+        <div id="rtab-wpts-body" style="display:none;padding:0 0 14px;">
+          <!-- Barra de ações ECDIS -->
+          <div style="padding:10px 14px;background:#f8fafc;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <label class="btn btn-primary btn-sm" style="cursor:pointer;">📂 Importar RTZ/GPX/KML/CSV
               <input type="file" id="rtz-file" accept=".rtz,.xml,.gpx,.kml,.csv" style="display:none;" onchange="rtzImport(this)">
             </label>
             <button class="btn btn-ghost btn-sm" onclick="rtzNew()">🆕 Nova rota</button>
             <button class="btn btn-ghost btn-sm" onclick="rtzAddWp()">➕ Waypoint</button>
             <span id="rtz-route-name" style="font-weight:800;font-size:12px;color:var(--login-blue);"></span>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:8px 10px;">
-            <span style="font-size:11px;font-weight:800;color:var(--text-dim);">📚 Biblioteca de rotas:</span>
+          <!-- Biblioteca de rotas -->
+          <div style="padding:8px 14px;background:#eff6ff;border-bottom:1px solid #bfdbfe;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span style="font-size:11px;font-weight:800;color:var(--login-blue);">📚 Biblioteca:</span>
             <button class="btn btn-green btn-sm" onclick="rtzLibSave()">💾 Salvar rota atual</button>
-            <select class="form-control" id="rtz-lib-sel" style="width:auto;min-width:150px;font-size:11px;padding:5px 8px;"></select>
-            <button class="btn btn-ghost btn-sm" onclick="rtzLibLoad()">📂 Carregar</button>
+            <select class="form-control" id="rtz-lib-sel" style="width:auto;min-width:140px;font-size:11px;padding:5px 8px;" onchange="rtzLibLoad()"></select>
             <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="rtzLibDel()">🗑️</button>
-            <span style="font-size:9.5px;color:var(--muted);">rotas salvas entram nos backups de viagem e no Drive</span>
+            <button class="btn btn-primary btn-sm" onclick="rTabSwitch('porto');rioPortosFromECDIS();">⚓ Usar no planejador de portos</button>
           </div>
-          <div id="rtz-body"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;">
-            <span style="font-size:11px;font-weight:700;color:var(--text-dim);">Exportar:</span>
-            <button class="btn btn-green btn-sm" onclick="rtzExport('rtz')">💾 RTZ (ECDIS)</button>
-            <button class="btn btn-ghost btn-sm" onclick="rtzExport('gpx')">📍 GPX</button>
-            <button class="btn btn-ghost btn-sm" onclick="rtzExport('kml')">🌍 KML</button>
-            <button class="btn btn-ghost btn-sm" onclick="rtzExport('csv')">📋 CSV</button>
+          <!-- Exportar -->
+          <div style="padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
+            <span style="font-size:11px;font-weight:700;color:var(--text-dim);align-self:center;">Exportar:</span>
+            <button class="btn btn-ghost btn-sm" onclick="rtzExport('rtz')">RTZ</button>
+            <button class="btn btn-ghost btn-sm" onclick="rtzExport('gpx')">GPX</button>
+            <button class="btn btn-ghost btn-sm" onclick="rtzExport('kml')">KML</button>
+            <button class="btn btn-ghost btn-sm" onclick="rtzExport('csv')">CSV</button>
           </div>
-          <div style="margin-top:10px;padding:8px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:10.5px;color:var(--text-dim);line-height:1.5;">
-            💻 Para conversões avançadas entre formatos proprietários (JRC RTM/RTN, Transas RT3, Furuno, Sperry etc.) no computador do passadiço (Windows), use o <strong>ECDIS Route Manager</strong>. <a href="ECDIS_Route_Manager.exe" download style="font-weight:700;">Baixar ECDIS_Route_Manager.exe</a> <span style="color:var(--muted);">(disponível se o arquivo estiver no repositório do app)</span>.
-          </div>
-        </div>
-      </div>
-        </div><!-- fim tab-ecdis-body painel -->
-      </div>
-
-      <!-- ETA entre Portos -->
-      <div class="panel">
-        <div class="panel-header">⚓ ETA entre Portos — Planejador de Pernas (PEC · BN · MCP · ITA · MAO · VIX · SSZ · SUA · SSA · NVT)</div>
-        <div style="padding:14px;">
-          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
-            Monte a viagem porto a porto: escolha <strong>De → Para</strong>, informe a <strong>data/hora de saída</strong>, a <strong>distância</strong> e a <strong>velocidade</strong> — o <strong>ETA</strong> é calculado na hora. Distâncias conhecidas da Linha Amazonas são sugeridas automaticamente (pode sobrescrever). Se a saída de um trecho ficar vazia, ela é <strong>encadeada</strong> automaticamente ao ETA do trecho anterior. Tudo fica salvo no aparelho.
-          </div>
-          <div id="rio-portos-body"></div>
-          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="rioPortoAdd()">➕ Adicionar trecho</button>
-            <button class="btn btn-green btn-sm" onclick="rioPortoNovoToggle()">🆕 Agregar porto à lista</button>
-            <button class="btn btn-ghost btn-sm" onclick="rioPortosReset()">↺ Limpar planejador</button>
-          </div>
-          <div id="rio-porto-novo" style="display:none;margin-top:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;">
-            <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">🆕 Novo porto para a lista De/Para</div>
-            <div class="form-row" style="margin-bottom:8px;">
-              <div class="form-group"><label style="font-size:10px;">Código (2–5 letras)</label><input type="text" class="form-control" id="rio-porto-novo-id" maxlength="5" placeholder="Ex: BEL" style="text-transform:uppercase;"></div>
-              <div class="form-group" style="flex:2;"><label style="font-size:10px;">Nome do porto</label><input type="text" class="form-control" id="rio-porto-novo-nm" placeholder="Ex: Belém - PA"></div>
-            </div>
-            <button class="btn btn-primary btn-sm" onclick="rioPortoCustomAdd()">✔ Salvar porto</button>
-            <div id="rio-portos-custom-list" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;"></div>
-          </div>
+          <!-- Tabela de waypoints editável -->
+          <div id="rtz-body" style="padding:0 14px;"></div>
         </div>
       </div>
 
-
+      <!-- ETA entre Portos (removido — integrado acima) -->
 
       <!-- Painel Visual de Maré — Barra Norte -->
       <div class="panel" style="overflow:hidden;">
@@ -3997,6 +4002,7 @@ function initRio(){
   rtzLibRender();
   rioViagemInit();
   rioPathsRender();
+  rTabSwitch('eta');
 }
 
 function rioFillStarts(){
@@ -4083,28 +4089,74 @@ function rioTideAt(t, t1, h1, t2, h2){
   return h1 + (h2-h1) * (1 - Math.cos(Math.PI*x)) / 2;
 }
 
-function rioTabSwitch(tab){
-  var eta   = document.getElementById('tab-eta-body');
-  var ecdis = document.getElementById('tab-ecdis-body');
-  var bEta  = document.getElementById('tab-eta-btn');
-  var bEcdis= document.getElementById('tab-ecdis-btn');
-  if(!eta||!ecdis) return;
-  var isEta = (tab==='eta');
-  eta.style.display   = isEta ? '' : 'none';
-  ecdis.style.display = isEta ? 'none' : '';
-  if(bEta)  { bEta.style.background=isEta?'var(--login-blue)':'#f8fafc'; bEta.style.color=isEta?'#fff':'var(--text-dim)'; bEta.style.fontWeight=isEta?'800':'700'; }
-  if(bEcdis){ bEcdis.style.background=isEta?'#f8fafc':'var(--login-blue)'; bEcdis.style.color=isEta?'var(--text-dim)':'#fff'; bEcdis.style.fontWeight=isEta?'700':'800'; }
-  if(!isEta && typeof rtzRender==='function') rtzRender();
-  if(!isEta && typeof rtzLibRender==='function') rtzLibRender();
+// ── ABAS DO PLANEJADOR UNIFICADO ──
+function rTabSwitch(tab){
+  ['eta','porto','wpts'].forEach(function(t){
+    var body=document.getElementById('rtab-'+t+'-body');
+    var btn =document.getElementById('rtab-'+t);
+    if(body) body.style.display = (t===tab)?'':'none';
+    if(btn){
+      btn.style.background = (t===tab)?'var(--login-blue)':'transparent';
+      btn.style.color      = (t===tab)?'#fff':'var(--text-dim)';
+      btn.style.fontWeight = (t===tab)?'800':'700';
+    }
+  });
+  if(tab==='wpts'){ if(typeof rtzRender==='function') rtzRender(); if(typeof rtzLibRender==='function') rtzLibRender(); }
+  if(tab==='porto'){ rioPortosRender(); }
+  if(tab==='eta'){ rioBuildETA(); }
 }
-function rioKeyIdOf(w){
-  if(w.key==='bn') return 'bn';
-  if(w.key==='mcp') return 'mcp';
-  if(w.key==='ita') return 'ita';
-  if(w.key==='mao') return 'mao';
-  if(w.nm.indexOf('Pecém')>=0) return 'pecem';
-  return null;
+function rTabRefresh(){
+  var active=['eta','porto','wpts'].find(function(t){ var b=document.getElementById('rtab-'+t+'-body'); return b&&b.style.display!=='none'; })||'eta';
+  rTabSwitch(active);
 }
+
+// Popular planejador de portos com waypoints da rota ECDIS carregada
+function rioPortosFromECDIS(){
+  try{
+    var rtz=JSON.parse(localStorage.getItem('jac_rtz_route')||'null');
+    if(!rtz||!rtz.wps||rtz.wps.length<2){ toast('⚠️ Nenhuma rota ECDIS carregada — importe um arquivo primeiro','warn'); return; }
+    var velEl=document.getElementById('rio-vel');
+    var vel=parseFloat(velEl&&velEl.value)||15;
+    var dtEl=document.getElementById('rio-dt');
+    var dtv=dtEl&&dtEl.value;
+    var existing=rioPortosLoad();
+    var nomes={}; existing.forEach(function(l){ nomes[l.de]=true; nomes[l.para]=true; });
+    var prevEta=dtv||'', added=0;
+    for(var i=1;i<rtz.wps.length;i++){
+      var de=rtz.wps[i-1].name, para=rtz.wps[i].name;
+      if(nomes[de]&&nomes[para]) continue; // já existe
+      var d=rioHaversineNm(rtz.wps[i-1].lat,rtz.wps[i-1].lon,rtz.wps[i].lat,rtz.wps[i].lon);
+      var etaMs=prevEta?new Date(prevEta).getTime()+d/vel*3600000:0;
+      prevEta=etaMs?rioMsToLocalISO(etaMs):'';
+      // Memorizar distância
+      var dc=rioDistCustomLoad();
+      dc[de+'>'+para]=parseFloat(d.toFixed(2));
+      rioDistCustomSave(dc);
+      existing.push({de:de,para:para,saida:prevEta||'',dist:parseFloat(d.toFixed(2)),vel:vel,_sug:false});
+      nomes[de]=true; nomes[para]=true; added++;
+    }
+    try{ localStorage.setItem('jac_rio_portos',JSON.stringify(existing)); }catch(e){}
+    rioPortosRender();
+    toast('✅ '+added+' trecho(s) da rota ECDIS adicionados ao planejador','ok');
+  }catch(e){ toast('❌ Erro: '+e.message,'err'); }
+}
+
+function rioPortoAddLeg(){
+  var legs=rioPortosLoad();
+  var porto=rioPortosAll(); var first=porto[0]&&porto[0].id||'';
+  legs.push({de:first, para:'', saida:'', dist:0, vel:15, _sug:false});
+  try{ localStorage.setItem('jac_rio_portos',JSON.stringify(legs)); }catch(e){}
+  rioPortosRender();
+}
+function rioPortosClear(){
+  if(!confirm('Limpar todos os trechos?')) return;
+  try{ localStorage.removeItem('jac_rio_portos'); }catch(e){}
+  rioPortosRender();
+}
+
+function rioTabSwitch(tab){ rTabSwitch(tab==='eta'?'eta':tab==='ecdis'?'wpts':'porto'); }
+
+function rioKeyIdOf(w){ return w.key||null; }
 function rioTrechoLoad(){
   try{ return JSON.parse(localStorage.getItem('jac_rio_trechos2')||'{}'); }catch(e){ return {}; }
 }
@@ -4280,7 +4332,9 @@ function rioECDISInjectETA(container, vel, dtv){
       +'<th style="padding:4px 8px;">#</th><th>Waypoint</th><th>Lat</th><th>Lon</th>'
       +'<th style="text-align:right;">NM</th><th style="text-align:right;">Acum.</th><th style="text-align:right;">ETA</th>'
       +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
-    if(container) container.parentNode.insertBefore(div, container.nextSibling);
+    var target=document.getElementById('rio-ecdis-eta-extra');
+    if(target){ target.innerHTML=''; target.appendChild(div); }
+    else if(container) container.parentNode.insertBefore(div, container.nextSibling);
   }catch(e){}
 }
 
@@ -4759,7 +4813,7 @@ function rioAplicarRotaECDISConfirmar(data, merge){
   if(typeof rtzLibRender==='function') rtzLibRender();
 
   // Voltar para aba ETA e rolar para planejador
-  if(typeof rioTabSwitch==='function') rioTabSwitch('eta');
+  rTabSwitch('porto'); setTimeout(function(){ var el=document.getElementById('rio-portos-body'); if(el)el.scrollIntoView({behavior:'smooth',block:'start'}); },300);
   setTimeout(function(){
     var el=document.getElementById('rio-portos-body');
     if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
@@ -10559,7 +10613,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.5.3';
+const APP_VERSION = '2.6.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
