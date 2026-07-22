@@ -1508,7 +1508,7 @@
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-primary btn-sm" onclick="rioViagemSalvar()">💾 Salvar backup da viagem</button>
-            <button class="btn btn-green btn-sm" onclick="rioViagemPDF()">📄 Relatório PDF da Viagem</button>
+            <button class="btn btn-green btn-sm" onclick="rioViagemPDFModal()">📄 Relatório PDF da Viagem</button>
             <button class="btn btn-ghost btn-sm" onclick="rioViagemRestaurar()">♻️ Restaurar selecionada</button>
             <button class="btn btn-ghost btn-sm" onclick="rioViagemExportar()">📤 Exportar arquivo (.json)</button>
             <button class="btn btn-ghost btn-sm" onclick="rioViagemSalvarNaPasta()">📁 Salvar backup na pasta</button>
@@ -5662,6 +5662,78 @@ function rioViagemImportar(inp){
   };
   reader.readAsText(f);
 }
+function rioViagemPDFModal(){
+  var ov=document.getElementById('modal-pdf-viagem'); if(ov) ov.remove();
+  // Ver o estado atual dos painéis para pré-marcar os checkboxes
+  var ecdisVis=document.getElementById('rio-ecdis-eta-extra')&&document.getElementById('rio-ecdis-eta-extra').style.display!=='none';
+  var temPortos=(rioPortosLoad()||[]).length>0;
+  var temWpts=(rtzLoad()||{wps:[]}).wps.length>0;
+  var temMare=!!((document.getElementById('rio-chm-h1')||{}).value);
+  var itens=[
+    {k:'eta',     lbl:'🧮 ETA por Trecho — Rota Completa', def:true},
+    {k:'ecdisEta',lbl:'🗺️ Waypoints ECDIS no ETA (só se visíveis)', def:ecdisVis},
+    {k:'extras',  lbl:'📍 Waypoints extras (após BN)', def:true},
+    {k:'portos',  lbl:'⚓ ETA entre Portos — Planejador de Pernas', def:temPortos},
+    {k:'mare',    lbl:'🌊 Maré CHM — Resumo + Curva', def:temMare},
+    {k:'ukc',     lbl:'⚓ UKC / Profundidade (FAQ)', def:false},
+    {k:'ecdis',   lbl:'🗺️ Rota ECDIS — Tabela de Waypoints', def:temWpts},
+  ];
+  var checks=itens.map(function(it,i){
+    return '<label style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid #f1f5f9;cursor:pointer;">'
+      +'<input type="checkbox" id="pdfchk-'+it.k+'" class="pdf-chk" style="width:16px;height:16px;cursor:pointer;"'+(it.def?' checked':'')+'>'
+      +'<span style="font-size:12px;">'+it.lbl+'</span></label>';
+  }).join('');
+  var inner=document.createElement('div');
+  inner.style.cssText='background:#fff;border-radius:14px;max-width:460px;width:95%;box-shadow:0 24px 80px rgba(0,0,0,.4);overflow:hidden;';
+  inner.innerHTML=
+    '<div style="background:linear-gradient(135deg,#0d2a52,#1A5FA8);color:#fff;padding:14px 18px;font-weight:800;font-size:15px;">📄 Gerar Relatório PDF da Viagem</div>'
+    +'<div style="padding:14px 18px;">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+    +'<span style="font-size:11px;color:var(--text-dim);">Selecione as seções:</span>'
+    +'<div style="display:flex;gap:6px;">'
+    +'<button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll(\'.pdf-chk\').forEach(function(c){c.checked=true;})" style="font-size:10px;padding:3px 8px;">✅ Todos</button>'
+    +'<button class="btn btn-ghost btn-sm" onclick="document.querySelectorAll(\'.pdf-chk\').forEach(function(c){c.checked=false;})" style="font-size:10px;padding:3px 8px;">☐ Nenhum</button>'
+    +'</div></div>'
+    +checks
+    +'<div style="display:flex;gap:8px;margin-top:14px;">'
+    +'<button class="btn btn-primary" style="flex:1;" id="btn-pdf-gerar">📄 Gerar PDF</button>'
+    +'<button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById(\'modal-pdf-viagem\').remove()">Cancelar</button>'
+    +'</div></div>';
+  var ov2=document.createElement('div');
+  ov2.id='modal-pdf-viagem';
+  ov2.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9990;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov2.onclick=function(e){ if(e.target===ov2) ov2.remove(); };
+  ov2.appendChild(inner);
+  document.body.appendChild(ov2);
+  // Botão gerar
+  document.getElementById('btn-pdf-gerar').onclick=function(){
+    var inc={};
+    itens.forEach(function(it){ inc[it.k]=!!(document.getElementById('pdfchk-'+it.k)||{}).checked; });
+    window._pdfIncluir=inc;
+    ov2.remove();
+    rioViagemPDF();
+  };
+}
+
+// Editor inline de pernas (ETA entre Portos)
+function rioPortoEditLeg(i, field, val){
+  var legs=rioPortosLoad();
+  if(!legs[i]) return;
+  if(field==='dist'||field==='vel'){
+    legs[i][field]=parseFloat(val)||0;
+    // Memorizar distância
+    if(field==='dist'&&legs[i].de&&legs[i].para){
+      var dc=rioDistCustomLoad();
+      dc[legs[i].de+'>'+legs[i].para]=legs[i][field];
+      rioDistCustomSave(dc);
+    }
+  } else {
+    legs[i][field]=val;
+  }
+  try{ localStorage.setItem('jac_rio_portos',JSON.stringify(legs)); }catch(e){}
+  rioPortosRender();
+}
+
 function rioViagemPDF(){
   var nro = ((document.getElementById('rio-viagem-nro')||{}).value||'').trim() || '—';
   var dir = (document.getElementById('rio-dir')||{}).value==='descida' ? '⬇ DESCIDA (Manaus → Barra Norte)' : '⬆ SUBIDA (Barra Norte → Manaus)';
@@ -5689,12 +5761,12 @@ function rioViagemPDF(){
     + '<div class="noprint" style="text-align:right;margin-bottom:8px;"><button onclick="window.print()" style="display:inline-block!important;font-size:13px;background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">🖨 Imprimir</button> <button onclick="this.nextElementSibling.hidden=false;window.print()" style="display:inline-block!important;font-size:13px;background:#1A5FA8;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">📄 Salvar PDF</button><span class="jac-pdf-hint" hidden style="background:#fbbf24;color:#7c2d12;font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:14px;vertical-align:middle;">No diálogo, escolha “Salvar como PDF” como destino</span><style>@media print{.no-print,.noprint,.jac-pdf-hint{display:none!important}}</style></div>'
     + '<div class="head"><div style="display:flex;gap:14px;align-items:center;">'+rptBrandHtml('dark')+'<div><h1>⚓ RELATÓRIO DE VIAGEM</h1><div class="meta"><strong>'+escHtml((getCfg().vessel&&getCfg().vessel.vessel)||'M/V LOG-IN JACARANDÁ')+'</strong> · IMO 9471886 · '+escHtml((getCfg().vessel&&getCfg().vessel.route)||'Linha Amazonas')+'</div></div></div>'
     + '<div class="meta" style="text-align:right;"><strong>Nº Viagem: '+escHtml(nro)+'</strong><br>Sentido: '+dir+'<br>Saída: '+(saida?new Date(saida).toLocaleString('pt-BR'):'—')+' · Veloc. inicial: '+escHtml(vel)+' nós<br>Emitido: '+new Date().toLocaleString('pt-BR')+'</div></div>'
-    + sec('🧮 ETA por Trecho — Rota Completa', grab('rio-eta-result'))
-    + sec('⚓ ETA entre Portos — Planejador de Pernas', grab('rio-portos-body'))
-    + sec('🌊 Maré — Resumo (BM / PM / Maré na passagem)', grab('rio-mare-summary'))
-    + sec('📈 Curva de Maré', grab('rio-mare-chart'))
-    + sec('⚓ UKC / Profundidade (FAQ)', grab('rio-ukc-result'))
-    + sec('🗺️ Rota ECDIS — Waypoints', grab('rtz-body'))
+    + (window._pdfIncluir&&window._pdfIncluir.eta?sec('🧮 ETA por Trecho — Rota Completa', grab('rio-eta-result'))+(window._pdfIncluir.ecdisEta&&document.getElementById('rio-ecdis-eta-extra')&&document.getElementById('rio-ecdis-eta-extra').style.display!=='none'?sec('🗺️ Waypoints ECDIS (ETA)',grab('rio-ecdis-eta-extra')):''):'')  
+    + (window._pdfIncluir&&window._pdfIncluir.portos?sec('⚓ ETA entre Portos — Planejador de Pernas', grab('rio-portos-body')):'')  
+    + (window._pdfIncluir&&window._pdfIncluir.mare?sec('🌊 Maré — Resumo (BM / PM / Maré na passagem)', grab('rio-mare-summary')):'')  
+    + (window._pdfIncluir&&window._pdfIncluir.mare?sec('📈 Curva de Maré', grab('rio-mare-chart')):'')  
+    + (window._pdfIncluir&&window._pdfIncluir.ukc?sec('⚓ UKC / Profundidade (FAQ)', grab('rio-ukc-result')):'')  
+    + (window._pdfIncluir&&window._pdfIncluir.ecdis?sec('🗺️ Rota ECDIS — Waypoints', grab('rtz-body')):'')  
     + (function(){ var p=rioPathsGet(); var l=[]; if(p.rede)l.push('📁 Pasta de rede: '+escHtml(p.rede)); if(p.drive)l.push('☁️ Drive: '+escHtml(p.drive)); return l.length?'<div style="margin-top:10px;font-size:9.5px;color:#555;border-top:1px dashed #cbd5e1;padding-top:6px;">Arquivos desta viagem: '+l.join(' &nbsp;·&nbsp; ')+'</div>':''; })()
     + '<div class="sign"><div>Comandante</div><div>Imediato / OOW</div></div>'
     + '</body></html>');
@@ -6014,7 +6086,8 @@ function rtzRender(){
   el.innerHTML = '<div style="padding:8px 12px;background:#f8fafc;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
     + '<span style="font-size:11px;font-weight:800;">Velocidade global:</span>'
     + '<input type="number" step="0.5" min="1" max="30" class="form-control" style="width:75px;font-size:12px;padding:5px;" value="'+velGlobal.toFixed(1)+'" onchange="rtzSetVelGlobal(this.value)" title="Aplicar esta velocidade a todos os WPs sem vel. individual">'
-    + '<span style="font-size:10.5px;color:var(--text-dim);">nós (aplica a todos os WPs sem velocidade individual)</span>'
+    + '<span style="font-size:10.5px;color:var(--text-dim);">nós</span>'
+    + '<button class="btn btn-ghost btn-sm" onclick="rtzVelTodos((document.getElementById(&apos;rio-vel&apos;)||{}).value)" title="Aplicar esta velocidade a TODOS os waypoints, incluindo os que têm vel individual">Aplicar a todos</button>'
     + '<button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="rtzAddWp()">➕ Waypoint</button>'
     + '</div>'
     + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:700px;">'
@@ -6037,10 +6110,31 @@ function rtzRender(){
 
 function rtzSetVelGlobal(val){
   var v=parseFloat(val); if(!(v>0)) return;
-  // Atualizar campo rio-vel (velocidade global do planejador)
+  // 1) Atualizar campo rio-vel (velocidade global do planejador)
   var velEl=document.getElementById('rio-vel'); if(velEl){ velEl.value=v.toFixed(1); }
+  // 2) Aplicar a TODOS os WPs da rota ECDIS (substitui individualmente)
+  var r=rtzLoad();
+  r.wps.forEach(function(w){ w.vel=v; });
+  rtzSave(r);
+  // 3) Atualizar também os extras da aba ETA por Trecho
+  var dir=(document.getElementById('rio-dir')||{value:'subida'}).value;
+  var all=rioExtrasLoad();
+  if(all[dir]) all[dir].forEach(function(ex){ ex.vel=v; });
+  rioExtrasSave(all);
+  // 4) Atualizar também os legs de ETA entre Portos
+  var legs=rioPortosLoad();
+  legs.forEach(function(l){ l.vel=v; });
+  try{ localStorage.setItem('jac_rio_portos',JSON.stringify(legs)); }catch(e){}
+  rtzRender(); rioBuildETA(); rioPortosRender();
+  toast('⚙️ Velocidade global '+v+' nós aplicada a TODOS os waypoints e pernas','ok');
+}
+function rtzVelTodos(val){
+  // Aplicar a TODOS os WPs (inclusive os que já têm vel individual)
+  var v=parseFloat(val); if(!(v>0)) return;
+  var velEl=document.getElementById('rio-vel'); if(velEl){ velEl.value=v.toFixed(1); }
+  var r=rtzLoad(); r.wps.forEach(function(w){ w.vel=v; }); rtzSave(r);
   rtzRender(); rioBuildETA();
-  toast('⚙️ Velocidade global: '+v+' nós aplicada','ok');
+  toast('⚙️ Velocidade '+v+' nós aplicada a TODOS os waypoints','ok');
 }
 
 
@@ -10976,7 +11070,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.7.3';
+const APP_VERSION = '2.8.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
