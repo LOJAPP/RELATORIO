@@ -1594,8 +1594,13 @@
 
         <!-- ABA: ETA entre Portos -->
         <div id="rtab-porto-body" style="display:none;padding:14px;">
-          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">
-            Planejador de pernas entre portos — adicione trechos (De → Para), distância e velocidade. Portos disponíveis: PEC · BN · MCP · ITA · MAO · VIX · SSZ · SUA · SSA · NVT — e qualquer porto personalizado ou waypoint ECDIS importado.
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">
+            Planejador de pernas — adicione trechos (De → Para) com distância e velocidade. Inclui portos padrão (PEC · BN · MCP · ITA · MAO · VIX · SSZ · SUA · SSA · NVT) e waypoints ECDIS importados.
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+            <button class="btn btn-ghost btn-sm" onclick="rioPortoFiltro('todos')" id="pfil-todos" style="background:var(--login-blue);color:#fff;">Todos</button>
+            <button class="btn btn-ghost btn-sm" onclick="rioPortoFiltro('ecdis')" id="pfil-ecdis">Só WPs ECDIS</button>
+            <button class="btn btn-ghost btn-sm" onclick="rioPortoAddFromECDIS()">🗺️ Adicionar WPs ECDIS como pernas</button>
           </div>
           <!-- Adicionar porto personalizado -->
           <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px;margin-bottom:10px;">
@@ -4110,6 +4115,37 @@ function rTabRefresh(){
   rTabSwitch(active);
 }
 
+// ── Filtro da aba porto ──
+var _rioPortoFiltro = 'todos';
+function rioPortoFiltro(f){
+  _rioPortoFiltro=f;
+  ['todos','ecdis'].forEach(function(t){
+    var b=document.getElementById('pfil-'+t);
+    if(b){ b.style.background=t===f?'var(--login-blue)':''; b.style.color=t===f?'#fff':''; }
+  });
+  rioPortosRender();
+}
+function rioPortoAddFromECDIS(){
+  try{
+    var rtz=JSON.parse(localStorage.getItem('jac_rtz_route')||'null');
+    if(!rtz||!rtz.wps||rtz.wps.length<2){ toast('⚠️ Importe uma rota ECDIS primeiro (aba 🗺️ Waypoints)','warn'); return; }
+    // Registrar WPs como portos personalizados
+    var custom=rioPortosCustomLoad();
+    var added=0;
+    rtz.wps.forEach(function(w){
+      var id='WP_'+w.name.replace(/[^\w]+/g,'_').toUpperCase().slice(0,8);
+      if(!custom.find(function(c){return c.id===id;})){
+        custom.push({id:id, nm:w.name, tipo:'wp', lat:w.lat, lon:w.lon});
+        added++;
+      }
+    });
+    rioPortosCustomSave(custom);
+    // Criar legs
+    rioPortosFromECDIS();
+    toast('✅ '+added+' waypoints ECDIS registrados como portos · pernas adicionadas','ok');
+  }catch(e){ toast('❌ '+e.message,'err'); }
+}
+
 // Popular planejador de portos com waypoints da rota ECDIS carregada
 function rioPortosFromECDIS(){
   try{
@@ -4239,7 +4275,25 @@ function rioBuildETA(){
     var fusoTag = (!w.alt && w.fuso!==prevFuso) ? ' <span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">FUSO '+(w.fuso>0?'+':'')+w.fuso+'</span>' : '';
     if(!w.alt) prevFuso = w.fuso;
 
-    if(!w.alt && w.key==='bn'){ window._rioBnEta[dir] = displayMs; }
+    if(!w.alt && w.key==='bn'){
+      window._rioBnEta[dir] = displayMs;
+      // Injetar waypoints ECDIS como linhas extras após BN
+      try{
+        var rtzE=JSON.parse(localStorage.getItem('jac_rtz_route')||'null');
+        if(rtzE&&rtzE.wps&&rtzE.wps.length>1){
+          var velE=curVel; var tE=internalMs; var cumDE=0;
+          rtzE.wps.forEach(function(wp,wi){
+            if(wi===0)return;
+            var dE=rioHaversineNm(rtzE.wps[wi-1].lat,rtzE.wps[wi-1].lon,wp.lat,wp.lon);
+            cumDE+=dE; tE+=dE/velE*3600000;
+            var fusoDeltaE=-3*3600000;
+            var dispE=tE+fusoDeltaE;
+            var velWp=parseFloat(wp.vel)||velE;
+            rows+='<tr style="background:#eff6ff;border-left:3px solid #3b82f6;">'              +'<td style="font-size:10.5px;color:#1e40af;padding:2px 6px;">📍 '+escHtml(wp.name)+'</td>'              +'<td style="text-align:right;font-size:10.5px;" class="mono">'+dE.toFixed(1)+'</td>'              +'<td style="text-align:right;font-size:10.5px;" class="mono">'+cumDE.toFixed(1)+'</td>'              +'<td style="text-align:right;"><input type="number" step="0.1" min="1" class="form-control" style="width:70px;font-size:11px;padding:4px;" value="'+velWp.toFixed(1)+'" onchange="rtzUpdWpVel('+wi+',this.value)"></td>'              +'<td class="mono" style="text-align:right;font-size:10.5px;">'+(dE/velWp).toFixed(2)+'</td>'              +'<td class="mono" style="text-align:right;font-size:11px;color:var(--login-blue);">'+rioMsToLocalISO(dispE)+'</td>'              +'<td class="mono" style="text-align:center;font-size:10px;color:var(--muted);">UTC-3</td>'              +'</tr>';
+          });
+        }
+      }catch(ex){}
+    }
 
     var isKey = !!keyId;
     var rowStyle = isKey
@@ -5141,6 +5195,13 @@ function rioPortosRender(){
   var el = document.getElementById('rio-portos-body');
   if(!el) return;
   var legs = rioPortosLoad();
+  // Filtro: se 'ecdis', mostrar só pernas cujos pontos vêm da rota ECDIS
+  if(window._rioPortoFiltro==='ecdis'){
+    try{
+      var rtz=JSON.parse(localStorage.getItem('jac_rtz_route')||'null');
+      if(rtz&&rtz.wps){ var nomes={}; rtz.wps.forEach(function(w){nomes[w.name]=true;}); legs=legs.filter(function(l){ return nomes[l.de]||nomes[l.para]; }); }
+    }catch(e){}
+  }
   var prevEta = null;
   var totalNm = 0, totalH = 0;
   var opts = function(sel){
@@ -5173,6 +5234,20 @@ function rioPortosRender(){
       + '<td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="padding:3px 8px;color:var(--danger);" onclick="rioPortoDel('+i+')" title="Remover trecho">✕</button></td>'
       + '</tr>';
   }).join('');
+  var chegadaRow='';
+  if(legs.length>0){
+    var last3=legs[legs.length-1];
+    var chegMs3=0;
+    if(last3.saida&&last3.dist>0&&last3.vel>0){
+      chegMs3=new Date(last3.saida).getTime()+last3.dist/last3.vel*3600000;
+    }
+    chegadaRow='<tr style="background:linear-gradient(90deg,#fef3c7,#fefce8);border-left:3px solid #f59e0b;border-top:2px solid #f59e0b;">'
+      +'<td colspan="2" style="font-weight:800;font-size:12px;color:#92400e;padding:6px 8px;">🏁 '+escHtml(last3.para||'—')+' (chegada)</td>'
+      +'<td class="mono" style="text-align:right;font-weight:800;">'+totalNm.toFixed(1)+'</td>'
+      +'<td colspan="2"></td>'
+      +'<td class="mono" style="text-align:right;font-weight:800;color:var(--login-blue);">'+(chegMs3?rioMsToLocalISO(chegMs3):'—')+'</td>'
+      +'<td></td></tr>';
+  }
   el.innerHTML = '<div style="overflow-x:auto;"><table class="tbl" style="width:100%;font-size:12px;min-width:820px;">'
     + '<thead><tr><th>#</th><th>De (porto)</th><th>Para (porto)</th><th>🕐 Saída</th><th style="text-align:right;">Dist (nm)</th><th style="text-align:right;">Vel (nós)</th><th style="text-align:right;">📅 ETA</th><th></th></tr></thead>'
     + '<tbody>'+rows+'</tbody></table></div>'
@@ -5666,6 +5741,11 @@ function rtzRender(){
     + '<thead><tr><th>#</th><th>Waypoint</th><th>Latitude (° ′ N/S)</th><th>Longitude (° ′ E/W)</th><th style="text-align:right;">Vel (nós)</th><th style="text-align:right;">Trecho (nm)</th><th style="text-align:right;">Acum. (nm)</th><th></th></tr></thead>'
     + '<tbody>'+rows+'</tbody></table></div>'
     + '<div style="margin-top:8px;padding:8px 12px;background:var(--login-blue-xlt);border-radius:6px;font-size:12px;">📏 <strong>'+r.wps.length+' waypoints</strong> · distância total '+total.toFixed(1)+' NM (loxodromia/haversine)</div>';
+}
+function rtzUpdWpVel(wi, val){
+  var r=rtzLoad(); if(!r.wps[wi]) return;
+  r.wps[wi].vel=parseFloat(val)||'';
+  rtzSave(r); rioBuildETA();
 }
 function rtzUpdGm(i, axis){
   var d = parseFloat((document.getElementById('rtz-'+axis+'-d-'+i)||{}).value)||0;
@@ -10613,7 +10693,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.6.0';
+const APP_VERSION = '2.6.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
