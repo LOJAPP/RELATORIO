@@ -1589,7 +1589,13 @@
         <!-- ABA: ETA por Trecho -->
         <div id="rtab-eta-body" style="padding:14px;">
           <div id="rio-eta-result" style="min-height:60px;"></div>
-          <div id="rio-ecdis-eta-extra"></div>
+          <div style="display:flex;gap:6px;align-items:center;margin-top:8px;">
+            <span style="font-size:11px;font-weight:800;color:var(--text-dim);">Waypoints ECDIS:</span>
+            <button class="btn btn-ghost btn-sm" id="btn-ecdis-show" onclick="rioECDISToggle(true)">👁️ Mostrar</button>
+            <button class="btn btn-ghost btn-sm" id="btn-ecdis-hide" onclick="rioECDISToggle(false)" style="display:none;">🙈 Ocultar</button>
+            <button class="btn btn-ghost btn-sm" onclick="rioECDISSalvar()">💾 Salvar no Drive/Pasta</button>
+          </div>
+          <div id="rio-ecdis-eta-extra" style="display:none;"></div>
         </div>
 
           <!-- Barra de ações: adicionar ponto, gerenciar extras -->
@@ -1633,6 +1639,7 @@
           <!-- Botão adicionar trecho -->
           <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
             <button class="btn btn-primary btn-sm" onclick="rioPortoAddLeg()">➕ Adicionar trecho</button>
+            <button class="btn btn-green btn-sm" onclick="rioPortoAddChegada()">🏁 Adicionar porto de chegada</button>
             <button class="btn btn-ghost btn-sm" onclick="rioPortosFromECDIS()">🗺️ Popular da rota ECDIS</button>
             <button class="btn btn-ghost btn-sm" onclick="rioPortosClear()">🗑️ Limpar trechos</button>
           </div>
@@ -3968,9 +3975,6 @@ var RIO_DESCIDA = [
   {nm:'MACAPÁ (Fazendinha)',   d:104.2, fuso:-3, key:'mcp'},
   {nm:'⭐ PONTA DO CÉU / Canal do Curuá', d:76.5, fuso:-3, key:'curua'},
   {nm:'⭐ BARRA NORTE',        d:83.2,  fuso:-3, key:'bn'},
-  {nm:'→ Vitória (VIX) [alt.]',d:1923.6,fuso:-3, alt:true},
-  {nm:'→ Santos (SSZ) [alt.]', d:2372.3,fuso:-3, alt:true},
-  {nm:'→ Pecém (PEC) [alt.]',  d:684.1, fuso:-3, alt:true}
 ];
 // NR de carta e coordenadas para busca de maré online
 var RIO_LOCS = {
@@ -4239,6 +4243,63 @@ function rioAltPortos(){
   var wpts=dir==='subida'?RIO_SUBIDA:RIO_DESCIDA;
   return wpts.filter(function(w){return w.alt;});
 }
+
+function rioECDISToggle(show){
+  var el=document.getElementById('rio-ecdis-eta-extra');
+  var btnS=document.getElementById('btn-ecdis-show');
+  var btnH=document.getElementById('btn-ecdis-hide');
+  if(!el) return;
+  if(show){
+    el.style.display='';
+    if(btnS) btnS.style.display='none';
+    if(btnH) btnH.style.display='';
+    if(!el.innerHTML.trim()) rioECDISInjectETA(null, parseFloat((document.getElementById('rio-vel')||{}).value)||15, (document.getElementById('rio-dt')||{}).value);
+  } else {
+    el.style.display='none';
+    if(btnS) btnS.style.display='';
+    if(btnH) btnH.style.display='none';
+  }
+}
+function rioECDISSalvar(){
+  try{
+    var rtz=JSON.parse(localStorage.getItem('jac_rtz_route')||'null');
+    if(!rtz||!rtz.wps){ toast('Nenhuma rota ECDIS carregada','warn'); return; }
+    var vel=parseFloat((document.getElementById('rio-vel')||{}).value)||15;
+    var dtv=(document.getElementById('rio-dt')||{}).value;
+    var t0=dtv?new Date(dtv).getTime():Date.now();
+    var cumD=0, cumEta=t0;
+    var lines=['#,Waypoint,Lat,Lon,NM,Acum.,ETA'];
+    rtz.wps.forEach(function(w,i){
+      var d=i===0?0:rioHaversineNm(rtz.wps[i-1].lat,rtz.wps[i-1].lon,w.lat,w.lon);
+      var v=parseFloat(w.vel)||vel; cumD+=d; if(i>0) cumEta+=d/v*3600000;
+      var z=function(n){return ('0'+n).slice(-2);}; var et=new Date(cumEta);
+      lines.push((i+1)+','+w.name+','+w.lat.toFixed(6)+','+w.lon.toFixed(6)+','+d.toFixed(2)+','+cumD.toFixed(2)+','+z(et.getDate())+'/'+z(et.getMonth()+1)+' '+z(et.getHours())+':'+z(et.getMinutes()));
+    });
+    rioSaveFile('waypoints_ecdis_'+rtz.name.replace(/[^\w]+/g,'_')+'.csv','text/csv',lines.join('\n'));
+  }catch(e){ toast('Erro: '+e.message,'err'); }
+}
+function rioPortoAddChegada(){
+  var legs=rioPortosLoad();
+  var last=legs.length?legs[legs.length-1]:null;
+  modalAdminOpen('🏁 Porto de chegada','Adicione o destino final da viagem:',
+    [{id:'cheg-de',label:'De (último porto)',ph:last?last.para:'MAO'},
+     {id:'cheg-para',label:'Porto de chegada',ph:'ex: MAO'},
+     {id:'cheg-dist',label:'Distância (NM)',ph:'0'},
+     {id:'cheg-vel',label:'Velocidade (nós)',ph:'15'}],
+    function(v){
+      var para=v['cheg-para'].trim().toUpperCase();
+      if(!para){ modalAdminErr('Informe o porto de chegada'); return; }
+      var de=v['cheg-de'].trim().toUpperCase()||'';
+      var dist=parseFloat(v['cheg-dist'])||0;
+      var vel=parseFloat(v['cheg-vel'])||15;
+      if(!dist){ var dc=rioDistCustomLoad(); dist=dc[de+'>'+para]||dc[para+'>'+de]||0; }
+      legs.push({de:de,para:para,saida:'',dist:dist,vel:vel,_sug:false,_chegada:true});
+      try{ localStorage.setItem('jac_rio_portos',JSON.stringify(legs)); }catch(e){}
+      modalAdminClose(); rioPortosRender();
+      toast('🏁 "'+para+'" adicionado como chegada','ok');
+    });
+}
+
 
 function rTabSwitch(tab){
   ['eta','porto','wpts'].forEach(function(t){
@@ -5369,10 +5430,14 @@ function rioPortosRender(){
       return '<option value="'+p.id+'"'+(p.id===sel?' selected':'')+'>'+p.id+' · '+escHtml(p.nm)+(p.custom?' 🆕':'')+'</option>';
     }).join('');
   };
+  var cumNmPorto=0;
   var rows = legs.map(function(l, i){
     var saidaMs = l.saida ? new Date(l.saida).getTime() : (prevEta!=null ? prevEta : null);
     var usouEncadeado = !l.saida && prevEta!=null;
     var dist = (l.dist===''||l.dist==null)?null:parseFloat(l.dist);
+    if(dist) cumNmPorto+=dist;
+    var isChegada=!!(l._chegada);
+    var rowBg=isChegada?'background:linear-gradient(90deg,#fef3c7,#fefce8);border-left:3px solid #f59e0b;':'';  
     var vel  = parseFloat(l.vel)||0;
     var etaMs = (saidaMs!=null && dist!=null && vel>0) ? saidaMs + (dist/vel)*3600000 : null;
     var etaTxt = etaMs!=null
@@ -5383,13 +5448,14 @@ function rioPortosRender(){
     if(etaMs!=null && saidaMs!=null) totalH += (etaMs-saidaMs)/3600000;
     var distKnown = rioPortDist(l.de, l.para);
     return '<tr>'
-      + '<td class="mono" style="color:var(--muted);">'+(i+1)+'</td>'
+      + '<td class="mono" style="color:var(--muted);">'+(isChegada?'🏁':(i+1))+'</td>'
       + '<td><select class="form-control" style="font-size:11px;padding:5px 4px;min-width:120px;" onchange="rioPortoUpd('+i+',\'de\',this.value)">'+opts(l.de)+'</select></td>'
       + '<td><select class="form-control" style="font-size:11px;padding:5px 4px;min-width:120px;" onchange="rioPortoUpd('+i+',\'para\',this.value)">'+opts(l.para)+'</select></td>'
       + '<td><input type="datetime-local" class="form-control" style="font-size:11px;padding:5px 4px;min-width:160px;" value="'+(l.saida||'')+'" onchange="rioPortoUpd('+i+',\'saida\',this.value)">'
       + (usouEncadeado?'<div style="font-size:9px;color:#0e7490;font-weight:700;margin-top:2px;">↪ encadeado do ETA anterior</div>':'')+'</td>'
       + '<td><input type="number" step="0.1" min="0" class="form-control" style="width:88px;font-size:11px;padding:5px 4px;text-align:right;" value="'+(l.dist===''||l.dist==null?'':l.dist)+'" placeholder="'+(distKnown!=null?distKnown:'manual')+'" onchange="rioPortoUpd('+i+',\'dist\',this.value)"></td>'
       + '<td><input type="number" step="0.1" min="1" class="form-control" style="width:70px;font-size:11px;padding:5px 4px;text-align:right;" value="'+(l.vel||'')+'" onchange="rioPortoUpd('+i+',\'vel\',this.value)"></td>'
+      + '<td class="mono" style="text-align:right;color:var(--text-dim);font-size:11px;">'+cumNmPorto.toFixed(1)+'</td>'
       + '<td style="text-align:right;">'+etaTxt+'</td>'
       + '<td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="padding:3px 8px;color:var(--danger);" onclick="rioPortoDel('+i+')" title="Remover trecho">✕</button></td>'
       + '</tr>';
@@ -5409,7 +5475,7 @@ function rioPortosRender(){
       +'<td></td></tr>';
   }
   el.innerHTML = '<div style="overflow-x:auto;"><table class="tbl" style="width:100%;font-size:12px;min-width:820px;">'
-    + '<thead><tr><th>#</th><th>De (porto)</th><th>Para (porto)</th><th>🕐 Saída</th><th style="text-align:right;">Dist (nm)</th><th style="text-align:right;">Vel (nós)</th><th style="text-align:right;">📅 ETA</th><th></th></tr></thead>'
+    + '<thead><tr><th>#</th><th>De (porto)</th><th>Para (porto)</th><th>🕐 Saída</th><th style="text-align:right;">Dist (nm)</th><th style="text-align:right;">Acum. (nm)</th><th style="text-align:right;">Vel (nós)</th><th style="text-align:right;">📅 ETA</th><th></th></tr></thead>'
     + '<tbody>'+rows+'</tbody></table></div>'
     + (legs.length?('<div style="margin-top:8px;padding:8px 12px;background:var(--login-blue-xlt);border-radius:6px;font-size:12px;">📊 <strong>Total planejado:</strong> '+totalNm.toFixed(1)+' NM · '+totalH.toFixed(1)+' h de navegação'+(totalH>0?' ('+Math.floor(totalH/24)+'d '+Math.round(totalH%24)+'h)':'')+'</div>'):'');
 }
@@ -10900,7 +10966,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.7.1';
+const APP_VERSION = '2.7.2';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
