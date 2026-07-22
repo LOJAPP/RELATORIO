@@ -4277,22 +4277,7 @@ function rioBuildETA(){
 
     if(!w.alt && w.key==='bn'){
       window._rioBnEta[dir] = displayMs;
-      // Injetar waypoints ECDIS como linhas extras após BN
-      try{
-        var rtzE=JSON.parse(localStorage.getItem('jac_rtz_route')||'null');
-        if(rtzE&&rtzE.wps&&rtzE.wps.length>1){
-          var velE=curVel; var tE=internalMs; var cumDE=0;
-          rtzE.wps.forEach(function(wp,wi){
-            if(wi===0)return;
-            var dE=rioHaversineNm(rtzE.wps[wi-1].lat,rtzE.wps[wi-1].lon,wp.lat,wp.lon);
-            cumDE+=dE; tE+=dE/velE*3600000;
-            var fusoDeltaE=-3*3600000;
-            var dispE=tE+fusoDeltaE;
-            var velWp=parseFloat(wp.vel)||velE;
-            rows+='<tr style="background:#eff6ff;border-left:3px solid #3b82f6;">'              +'<td style="font-size:10.5px;color:#1e40af;padding:2px 6px;">📍 '+escHtml(wp.name)+'</td>'              +'<td style="text-align:right;font-size:10.5px;" class="mono">'+dE.toFixed(1)+'</td>'              +'<td style="text-align:right;font-size:10.5px;" class="mono">'+cumDE.toFixed(1)+'</td>'              +'<td style="text-align:right;"><input type="number" step="0.1" min="1" class="form-control" style="width:70px;font-size:11px;padding:4px;" value="'+velWp.toFixed(1)+'" onchange="rtzUpdWpVel('+wi+',this.value)"></td>'              +'<td class="mono" style="text-align:right;font-size:10.5px;">'+(dE/velWp).toFixed(2)+'</td>'              +'<td class="mono" style="text-align:right;font-size:11px;color:var(--login-blue);">'+rioMsToLocalISO(dispE)+'</td>'              +'<td class="mono" style="text-align:center;font-size:10px;color:var(--muted);">UTC-3</td>'              +'</tr>';
-          });
-        }
-      }catch(ex){}
+      // WPs ECDIS injetados abaixo da tabela via rioECDISInjectETA()
     }
 
     var isKey = !!keyId;
@@ -4352,7 +4337,12 @@ function rioBuildETA(){
 
 function rioECDISInjectETA(container, vel, dtv){
   var el = document.getElementById('rio-ecdis-eta-extra');
-  if(el) el.remove();
+  if(el) el.innerHTML='';
+  else {
+    el=document.createElement('div');
+    el.id='rio-ecdis-eta-extra';
+    if(container) container.parentNode.insertBefore(el, container.nextSibling);
+  }
   try{
     var rtz = JSON.parse(localStorage.getItem('jac_rtz_route')||'null');
     if(!rtz||!rtz.wps||rtz.wps.length<2) return;
@@ -4367,30 +4357,29 @@ function rioECDISInjectETA(container, vel, dtv){
       var v=parseFloat(w.vel)||vel;
       var etaMs=t0+cumD/v*3600000;
       var et=new Date(etaMs);
-      var lat=rtzFmtCoordLocal(w.lat,'lat'), lon=rtzFmtCoordLocal(w.lon,'lon');
-      rows+='<tr style="font-size:11px;background:'+(i%2===0?'#f8fafc':'#fff')+'">'
-        +'<td style="padding:3px 8px;">'+(i+1)+'</td>'
-        +'<td style="padding:3px 8px;font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(w.name)+'</td>'
-        +'<td class="mono" style="padding:3px 8px;font-size:10px;">'+lat+'</td>'
-        +'<td class="mono" style="padding:3px 8px;font-size:10px;">'+lon+'</td>'
+      rows+='<tr style="font-size:11px;background:'+(i%2===0?'#eff6ff':'#dbeafe')+'">'
+        +'<td style="padding:3px 8px;color:#1e40af;">'+(i+1)+'</td>'
+        +'<td style="padding:3px 8px;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(w.name)+'</td>'
         +'<td class="mono" style="padding:3px 8px;text-align:right;">'+(i===0?'—':d.toFixed(1))+'</td>'
         +'<td class="mono" style="padding:3px 8px;text-align:right;">'+cumD.toFixed(1)+'</td>'
+        +'<td style="padding:3px 8px;text-align:right;"><input type="number" step="0.5" min="1" max="30" class="form-control" style="width:65px;font-size:11px;padding:3px;" value="'+v.toFixed(1)+'" onchange="rtzUpdWpVel('+i+',this.value)" title="Velocidade neste trecho"></td>'
         +'<td class="mono" style="padding:3px 8px;text-align:right;color:var(--login-blue);">'+z(et.getDate())+'/'+z(et.getMonth()+1)+' '+z(et.getHours())+':'+z(et.getMinutes())+'</td>'
         +'</tr>';
     }
-    var div=document.createElement('div');
-    div.id='rio-ecdis-eta-extra';
-    div.style.cssText='margin-top:12px;background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;overflow:hidden;';
-    div.innerHTML='<div style="padding:8px 12px;font-weight:800;font-size:12px;color:#1e40af;border-bottom:1px solid #bfdbfe;">🗺️ Waypoints ECDIS: '+escHtml(rtz.name)+' ('+rtz.wps.length+' pontos · '+cumD.toFixed(1)+' NM) — ETA com '+vel.toFixed(1)+' nós</div>'
+    el.style.cssText='margin-top:12px;background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;overflow:hidden;';
+    el.innerHTML='<div style="padding:8px 12px;font-weight:800;font-size:12px;color:#1e40af;border-bottom:1px solid #bfdbfe;display:flex;align-items:center;gap:8px;">'
+      +'🗺️ Waypoints ECDIS: '+escHtml(rtz.name)+' ('+rtz.wps.length+' pts · '+cumD.toFixed(1)+' NM)'
+      +'<button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px;" onclick="rTabSwitch(&apos;wpts&apos;)">✏️ Editar</button>'
+      +'<button class="btn btn-green btn-sm" style="font-size:10px;" onclick="rioPortosFromECDIS()">⚓ Usar no planejador</button>'
+      +'</div>'
       +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#dbeafe;font-size:11px;">'
-      +'<th style="padding:4px 8px;">#</th><th>Waypoint</th><th>Lat</th><th>Lon</th>'
-      +'<th style="text-align:right;">NM</th><th style="text-align:right;">Acum.</th><th style="text-align:right;">ETA</th>'
+      +'<th style="padding:4px 8px;">#</th><th>Waypoint</th>'
+      +'<th style="text-align:right;">NM</th><th style="text-align:right;">Acum.</th>'
+      +'<th style="text-align:right;">Vel (nós)</th><th style="text-align:right;">ETA</th>'
       +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
-    var target=document.getElementById('rio-ecdis-eta-extra');
-    if(target){ target.innerHTML=''; target.appendChild(div); }
-    else if(container) container.parentNode.insertBefore(div, container.nextSibling);
-  }catch(e){}
+  }catch(ex){}
 }
+
 
 function rtzFmtCoordLocal(v,axis){
   var abs=Math.abs(v); var d=Math.floor(abs); var m=(abs-d)*60;
@@ -5718,14 +5707,14 @@ function rtzRender(){
       + '<input type="number" min="0" max="59.999" step="0.001" class="form-control" style="width:72px;font-size:11px;padding:4px 4px;text-align:right;" value="'+la.m.toFixed(3)+'" id="rtz-lat-m-'+i+'" onchange="rtzUpdGm('+i+',\'lat\')" title="Minutos decimais">'
       + '<span style="font-size:10px;color:var(--muted);">\u2032</span>'
       + '<select class="form-control" style="width:48px;font-size:11px;padding:4px 2px;" id="rtz-lat-h-'+i+'" onchange="rtzUpdGm('+i+',\'lat\')" title="Hemisfério"><option'+(laH==='N'?' selected':'')+'>N</option><option'+(laH==='S'?' selected':'')+'>S</option></select>'
-      + '</div><div class="mono" style="font-size:9px;color:var(--muted);text-align:right;">'+w.lat.toFixed(6)+'°</div>';
+      + '</div>';
     var lonCell = '<div style="display:flex;gap:3px;align-items:center;">'
       + '<input type="number" min="0" max="180" step="1" class="form-control" style="width:56px;font-size:11px;padding:4px 4px;text-align:right;" value="'+lo.d+'" id="rtz-lon-d-'+i+'" onchange="rtzUpdGm('+i+',\'lon\')" title="Graus">'
       + '<span style="font-size:10px;color:var(--muted);">°</span>'
       + '<input type="number" min="0" max="59.999" step="0.001" class="form-control" style="width:72px;font-size:11px;padding:4px 4px;text-align:right;" value="'+lo.m.toFixed(3)+'" id="rtz-lon-m-'+i+'" onchange="rtzUpdGm('+i+',\'lon\')" title="Minutos decimais">'
       + '<span style="font-size:10px;color:var(--muted);">\u2032</span>'
       + '<select class="form-control" style="width:48px;font-size:11px;padding:4px 2px;" id="rtz-lon-h-'+i+'" onchange="rtzUpdGm('+i+',\'lon\')" title="Hemisfério"><option'+(loH==='E'?' selected':'')+'>E</option><option'+(loH==='W'?' selected':'')+'>W</option></select>'
-      + '</div><div class="mono" style="font-size:9px;color:var(--muted);text-align:right;">'+w.lon.toFixed(6)+'°</div>';
+      + '</div>';
     return '<tr>'
       + '<td class="mono" style="color:var(--muted);">'+(i+1)+'</td>'
       + '<td><input type="text" class="form-control" style="min-width:110px;font-size:11px;padding:4px 6px;" value="'+escHtml(w.name)+'" onchange="rtzUpd('+i+',\'name\',this.value)"></td>'
@@ -10693,7 +10682,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.6.1';
+const APP_VERSION = '2.6.2';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
