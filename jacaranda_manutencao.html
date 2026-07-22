@@ -1444,17 +1444,53 @@
             <div class="form-group"><label>URL do Web App (Google Apps Script)</label><input type="text" class="form-control" id="cfg-webapp-url" placeholder="https://script.google.com/macros/s/..."></div>
             <div class="form-group"><label>URL da Pasta no Drive</label><input type="text" class="form-control" id="cfg-drive-folder-url" placeholder="https://drive.google.com/drive/folders/..."></div>
             <!-- Opções para backups grandes (>50MB) -->
-            <div style="margin-top:10px;padding:12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;">
-              <div style="font-weight:800;font-size:12px;color:#92400e;margin-bottom:8px;">📦 Backup de arquivos grandes (&gt;45 MB)</div>
-              <div style="font-size:11px;color:#78350f;margin-bottom:10px;">Escolha uma das 3 estratégias para salvar backups com muitas fotos:</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn btn-primary btn-sm" onclick="cloudSplitFotos()" title="Salva o backup em 2 arquivos: dados sem fotos + fotos separadas">📋 Separar fotos do backup</button>
-                <button class="btn btn-ghost btn-sm" onclick="cloudS3Config()" title="Salvar diretamente num bucket S3/R2 via CORS">☁️ Config S3 / Cloudflare R2</button>
-                <button class="btn btn-ghost btn-sm" onclick="cloudGitHubConfig()" title="Salvar backup num repositório GitHub privado via API">🐙 Config GitHub (privado)</button>
-                <button class="btn btn-ghost btn-sm" onclick="cloudDownloadSplit()" title="Baixar o backup dividido em partes menores">⬇️ Baixar em partes</button>
-                <button class="btn btn-ghost btn-sm" onclick="cloudGitHubLoad()" style="border-color:#22c55e;color:#15803d;" title="Ver e carregar backups salvos no GitHub">📥 Ver/Carregar backup do GitHub</button>
+            <div style="margin-top:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;overflow:hidden;">
+              <div style="padding:10px 14px;background:#fef3c7;border-bottom:1px solid #fcd34d;font-weight:800;font-size:12px;color:#92400e;">📦 Backup na nuvem — arquivos grandes (&gt;45 MB)</div>
+              <!-- GitHub -->
+              <div style="padding:12px 14px;border-bottom:1px solid #fde68a;">
+                <div style="font-weight:800;font-size:11px;color:#1a3a1a;margin-bottom:6px;">🐙 GitHub (repositório privado — grátis, máx 100 MB/arquivo)</div>
+                <div class="form-row" style="gap:8px;margin-bottom:6px;">
+                  <div class="form-group" style="flex:2;">
+                    <label style="font-size:10px;">Personal Access Token (ghp_...)</label>
+                    <input type="password" class="form-control" id="cfg-gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="new-password">
+                  </div>
+                  <div class="form-group" style="flex:2;">
+                    <label style="font-size:10px;">Repositório (usuario/nome)</label>
+                    <input type="text" class="form-control" id="cfg-gh-repo" placeholder="jose/jac-backups">
+                  </div>
+                  <div class="form-group" style="flex:1;">
+                    <label style="font-size:10px;">Branch</label>
+                    <input type="text" class="form-control" id="cfg-gh-branch" placeholder="main" value="main">
+                  </div>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <button class="btn btn-primary btn-sm" onclick="cloudGitHubSalvarConfig()">💾 Salvar config GitHub</button>
+                  <button class="btn btn-green btn-sm" onclick="cloudGitHubSave()">📤 Enviar backup agora</button>
+                  <button class="btn btn-ghost btn-sm" onclick="cloudGitHubLoad()">📥 Ver/Carregar backup</button>
+                  <span id="cloud-gh-cfg-status" style="font-size:10px;align-self:center;color:var(--text-dim);"></span>
+                </div>
               </div>
-              <div id="cloud-alt-status" style="font-size:11px;margin-top:8px;color:var(--text-dim);"></div>
+              <!-- S3/R2 -->
+              <div style="padding:12px 14px;border-bottom:1px solid #fde68a;">
+                <div style="font-weight:800;font-size:11px;color:#1a3a1a;margin-bottom:6px;">☁️ S3 / Cloudflare R2 (10 GB grátis, sem limite de egress)</div>
+                <div class="form-row" style="gap:8px;margin-bottom:6px;">
+                  <div class="form-group" style="flex:1;">
+                    <label style="font-size:10px;">URL base do bucket (com / no fim)</label>
+                    <input type="text" class="form-control" id="cfg-s3-url" placeholder="https://pub-xxx.r2.dev/jac-backups/">
+                  </div>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <button class="btn btn-primary btn-sm" onclick="cloudS3SalvarConfig()">💾 Salvar config S3/R2</button>
+                  <button class="btn btn-green btn-sm" onclick="cloudS3Save()">📤 Enviar backup agora</button>
+                  <span id="cloud-s3-cfg-status" style="font-size:10px;align-self:center;color:var(--text-dim);"></span>
+                </div>
+              </div>
+              <!-- Ações locais -->
+              <div style="padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-ghost btn-sm" onclick="cloudSplitFotos()">📋 Separar fotos (2 arquivos)</button>
+                <button class="btn btn-ghost btn-sm" onclick="cloudDownloadSplit()">⬇️ Baixar em partes</button>
+              </div>
+              <div id="cloud-alt-status" style="font-size:11px;padding:6px 14px 10px;color:var(--text-dim);min-height:20px;"></div>
             </div>
             <div class="form-group"><label>Auto-sync (minutos, 0 = desativado)</label><input type="number" class="form-control" id="cfg-auto-interval" placeholder="0" min="0" max="60"></div>
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;margin-bottom:10px;cursor:pointer;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:9px 12px;">
@@ -2825,7 +2861,7 @@ function _goPage(id){
   if(id==='semanal'){renderSemTabs();}
   if(id==='fotos'){renderGallery();fillFotoAssoc();}
   if(id==='novo'){fillWeekSel();buildCrewCheckList('novo');fillDeptSelect('r-dept');initNovoBlocoSelects();switchNovoTab('atividade');}
-  if(id==='storage'){storStatus();renderDriveLinks();renderModulosStatus();renderNetConfigFields();updateDriveConnStatus();updateStorageKpis();renderImportPage();}
+  if(id==='storage'){storStatus();renderDriveLinks();renderModulosStatus();renderNetConfigFields();updateDriveConnStatus();updateStorageKpis();renderImportPage();setTimeout(function(){if(typeof cloudRenderSavedConfig==='function')cloudRenderSavedConfig();},200);}
   if(id==='config'){renderConfigPage();}
   if(id==='oficina'){renderOficina();}
   if(id==='desvios'){renderDesvios();}
@@ -4934,7 +4970,7 @@ async function cloudGitHubSave(){
   cloudSt('Enviando para GitHub...','info');
   try{
     var content=buildBackupData();
-    var b64=btoa(unescape(encodeURIComponent(content)));
+    var b64=cloudSafeBtoa(unescape(encodeURIComponent(content)));
     var path='backups/'+buildFileName();
     var branch=cfg.githubBranch||'main';
     var sha=null;
@@ -4948,13 +4984,88 @@ async function cloudGitHubSave(){
     var r=await fetch('https://api.github.com/repos/'+cfg.githubRepo+'/contents/'+path,
       {method:'PUT',headers:{'Authorization':'token '+cfg.githubToken,'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(r.ok){
-      cloudSt('Salvo no GitHub: '+path,'ok');
+      cloudSt('✅ Salvo no GitHub: '+path,'ok');
+      var st3=document.getElementById('cloud-gh-cfg-status');
+      if(st3){st3.textContent='✅ Último backup: '+path;st3.style.color='var(--login-green)';}
       if(typeof recordBackupHistory==='function') recordBackupHistory(path,'GitHub','GitHub');
     } else {
-      var ej=await r.json(); cloudSt('GitHub erro: '+(ej.message||r.status),'err');
+      var ej={}; try{ej=await r.json();}catch(ex){}
+      var errMsg='GitHub erro '+r.status+': '+(ej.message||'verifique o token e o repositório');
+      cloudSt(errMsg,'err');
+      var st2=document.getElementById('cloud-gh-cfg-status');
+      if(st2){st2.textContent='❌ '+errMsg;st2.style.color='var(--danger)';}
     }
   }catch(e){ cloudSt('Erro: '+e.message,'err'); }
 }
+// ── Salvar/carregar configurações nos campos visíveis ──
+function cloudGitHubSalvarConfig(){
+  var tk=(document.getElementById('cfg-gh-token')||{}).value||'';
+  var rp=(document.getElementById('cfg-gh-repo')||{}).value||'';
+  var br=(document.getElementById('cfg-gh-branch')||{}).value||'main';
+  var st=document.getElementById('cloud-gh-cfg-status');
+  if(!tk||!rp){
+    if(st){ st.textContent='⚠️ Preencha o token e o repositório'; st.style.color='var(--danger)'; }
+    return;
+  }
+  var cfg=getCfg();
+  cfg.githubToken=tk.trim();
+  cfg.githubRepo=rp.trim();
+  cfg.githubBranch=br.trim()||'main';
+  saveCfg(cfg);
+  if(st){ st.textContent='✅ Config GitHub salva!'; st.style.color='var(--login-green)'; }
+  toast('✅ Config GitHub salva — pronto para enviar backup','ok');
+}
+function cloudS3SalvarConfig(){
+  var url=(document.getElementById('cfg-s3-url')||{}).value||'';
+  var st=document.getElementById('cloud-s3-cfg-status');
+  if(!url){
+    if(st){ st.textContent='⚠️ Informe a URL do bucket'; st.style.color='var(--danger)'; }
+    return;
+  }
+  var cfg=getCfg();
+  cfg.s3Url=url.trim();
+  saveCfg(cfg);
+  if(st){ st.textContent='✅ Config S3/R2 salva!'; st.style.color='var(--login-green)'; }
+  toast('✅ Config S3/R2 salva','ok');
+}
+
+// ── Preencher os campos com o que já está salvo ──
+function cloudRenderSavedConfig(){
+  var cfg=getCfg();
+  var ghTok=document.getElementById('cfg-gh-token');
+  var ghRep=document.getElementById('cfg-gh-repo');
+  var ghBrn=document.getElementById('cfg-gh-branch');
+  var s3Url=document.getElementById('cfg-s3-url');
+  var stGh=document.getElementById('cloud-gh-cfg-status');
+  var stS3=document.getElementById('cloud-s3-cfg-status');
+  if(ghTok && cfg.githubToken) ghTok.value=cfg.githubToken;
+  if(ghRep && cfg.githubRepo)  ghRep.value=cfg.githubRepo;
+  if(ghBrn) ghBrn.value=cfg.githubBranch||'main';
+  if(s3Url && cfg.s3Url) s3Url.value=cfg.s3Url;
+  if(stGh) stGh.textContent=cfg.githubToken&&cfg.githubRepo ? '✅ Configurado: '+cfg.githubRepo : '— não configurado';
+  if(stS3) stS3.textContent=cfg.s3Url ? '✅ Configurado: '+cfg.s3Url.slice(0,40)+'...' : '— não configurado';
+}
+
+// ── Corrigir btoa para UTF-8 com arquivos grandes ──
+function cloudSafeBtoa(str){
+  // Para strings grandes com caracteres UTF-8, usa TextEncoder + base64 por chunks
+  try{
+    // Método padrão (funciona para ASCII puro)
+    return btoa(str);
+  }catch(e){
+    // Fallback UTF-8 safe
+    var encoder=new TextEncoder();
+    var bytes=encoder.encode(str);
+    var binary='';
+    var chunkSize=8192;
+    for(var i=0;i<bytes.length;i+=chunkSize){
+      var chunk=bytes.subarray(i,Math.min(i+chunkSize,bytes.length));
+      binary+=String.fromCharCode.apply(null, chunk);
+    }
+    return btoa(binary);
+  }
+}
+
 async function cloudGitHubLoad(){
   var cfg=getCfg();
   if(!cfg.githubToken||!cfg.githubRepo){ cloudSt('Configure GitHub primeiro (botão 🐙)','err'); return; }
@@ -9529,6 +9640,7 @@ function fillRoleSelect(elId){
 
 // ── CONFIG PAGE RENDER ──
 function renderConfigPage(){
+  setTimeout(function(){ if(typeof cloudRenderSavedConfig==='function') cloudRenderSavedConfig(); }, 100);
   const cfg=getCfg();
   // Web App URL fields (new approach)
   const wu=document.getElementById('cfg-webapp-url');if(wu)wu.value=cfg.webAppUrl||'';
