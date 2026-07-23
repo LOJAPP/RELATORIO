@@ -5066,6 +5066,29 @@ async function cloudGitHubVerificar(){
     cloudSt('✅ @'+login+' · '+names.length+' repositório(s)','ok');
   }catch(e){ cloudSt('❌ Erro: '+e.message,'err'); }
 }
+function cloudGhSelectRepo(fullName){
+  // 1) Preencher o campo visível
+  var repEl = document.getElementById('cfg-gh-repo');
+  if(repEl) repEl.value = fullName;
+
+  // 2) Salvar imediatamente no localStorage
+  var cfg = getCfg();
+  cfg.githubRepo = fullName;
+  if(!cfg.githubBranch) cfg.githubBranch = 'main';
+  saveCfg(cfg);
+
+  // 3) Fechar o modal
+  var ov = document.getElementById('modalGhVerif');
+  if(ov) ov.remove();
+
+  // 4) Atualizar status
+  var st = document.getElementById('cloud-gh-cfg-status');
+  if(st){ st.textContent = '✅ Repositório salvo: '+fullName+' — clique em 📤 Enviar backup'; st.style.color='var(--login-green)'; }
+  cloudSt('✅ Repositório "'+fullName+'" selecionado e salvo — clique em 📤 Enviar backup agora','ok');
+  toast('✅ Repositório: '+fullName,'ok');
+}
+
+
 async function cloudGitHubCriarRepo(login, token, headers){
   // Criar repositório jac-backups se não existir
   var r=await fetch('https://api.github.com/user/repos',{
@@ -11630,7 +11653,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.8.2';
+const APP_VERSION = '2.8.3';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
