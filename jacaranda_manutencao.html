@@ -5302,150 +5302,236 @@ function cloudSafeAtob(b64){
 
 
 async function cloudGitHubLoad(){
-  var cfg=getCfg();
-  // Mostrar modal com duas opções: histórico local + GitHub
-  var old2=document.getElementById('modalGhLoad'); if(old2) old2.remove();
-  var ov=document.createElement('div');
-  ov.id='modalGhLoad';
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9996;display:flex;align-items:center;justify-content:center;padding:16px;';
-  ov.onclick=function(e){if(e.target===ov)ov.remove();};
-  var inner=document.createElement('div');
-  inner.style.cssText='background:#fff;border-radius:14px;max-width:540px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.4);';
+  var cfg = getCfg();
 
-  // Histórico de backups locais
-  // Ler histórico do mesmo lugar onde recordBackupHistory salva
-  var hist=(getCfg().backupHistory)||[];
-  var histRows=hist.length
-    ? hist.slice(0,10).map(function(h,i){
-        return '<tr style="border-bottom:1px solid #e2e8f0;">'
-          +'<td style="padding:8px 10px;font-size:11px;font-weight:600;">'+escHtml(h.fileName||h.file||h.name||'backup')+'</td>'
-          +'<td style="padding:8px 6px;font-size:10px;color:var(--text-dim);">'+escHtml(h.folder||h.dest||h.tipo||'local')+'</td>'
-          +'<td style="padding:8px 6px;font-size:10px;color:var(--text-dim);">'+escHtml((h.date||h.ts||'').slice(0,16).replace('T',' '))+'</td>'
-          +'</tr>';
-      }).join('')
-    : '<tr><td colspan="3" style="padding:12px;text-align:center;color:var(--text-dim);font-size:11px;">Nenhum backup registrado ainda</td></tr>';
+  // Remover modal anterior
+  var oldOv = document.getElementById('modalGhLoad'); if(oldOv) oldOv.remove();
 
-  inner.innerHTML=
-    '<div style="background:linear-gradient(135deg,#24292f,#57606a);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:8px;">'
+  // Criar overlay
+  var ov = document.createElement('div');
+  ov.id = 'modalGhLoad';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9996;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+
+  var panel = document.createElement('div');
+  panel.style.cssText = 'background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.4);';
+
+  // Header
+  panel.innerHTML = '<div style="background:linear-gradient(135deg,#24292f,#57606a);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:8px;">'
     +'<span style="flex:1;font-weight:800;font-size:14px;">📥 Carregar Backup</span>'
-    +'<button onclick="document.getElementById(&apos;modalGhLoad&apos;).remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:16px;">✕</button></div>'
-    // Opção 1: Arquivo local
-    +'<div style="padding:14px;border-bottom:1px solid var(--border);">'
-    +'<div style="font-weight:800;font-size:12px;margin-bottom:8px;">📂 Carregar arquivo do dispositivo</div>'
-    +'<label class="btn btn-primary" style="cursor:pointer;width:100%;justify-content:center;">'
-    +'📂 Selecionar arquivo de backup (.json)'
-    +'<input type="file" accept=".json" style="display:none;" onchange="cloudCarregarArquivoLocal(this)">'
-    +'</label></div>'
-    // Opção 2: GitHub
-    +'<div style="padding:14px;border-bottom:1px solid var(--border);">'
-    +'<div style="font-weight:800;font-size:12px;margin-bottom:8px;">🐙 Buscar no GitHub'
-    +(cfg.githubRepo?' ('+escHtml(cfg.githubRepo)+')':'— configure o token primeiro')+'</div>'
-    +(cfg.githubToken
-      ? '<button class="btn btn-green" style="width:100%;" onclick="cloudGitHubLoadFromServer()">🐙 Ver backups no GitHub e carregar</button>'
-      : '<div style="font-size:11px;color:var(--text-dim);padding:8px;background:#f8fafc;border-radius:6px;">Configure o token em ⚙️ Configurações → GitHub para usar esta opção.</div>'
-    )+'</div>'
-    // Histórico
-    +'<div style="padding:14px;">'
-    +'<div style="font-weight:800;font-size:12px;margin-bottom:8px;">📋 Histórico de backups enviados</div>'
-    +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">'
-    +'<thead><tr style="background:#f6f8fa;"><th style="padding:6px 10px;text-align:left;">Arquivo</th><th>Destino</th><th>Data</th></tr></thead>'
-    +'<tbody>'+histRows+'</tbody></table></div></div>'
-    +'<div style="padding:10px 14px;border-top:1px solid var(--border);">'
-    +'<button class="btn btn-ghost" style="width:100%;" onclick="document.getElementById(&apos;modalGhLoad&apos;).remove()">Fechar</button>'
     +'</div>';
 
-  ov.appendChild(inner);
+  // Botão fechar no header
+  var btnX = document.createElement('button');
+  btnX.textContent = '✕';
+  btnX.style.cssText = 'background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:16px;';
+  btnX.onclick = function(){ ov.remove(); };
+  panel.querySelector('div').appendChild(btnX);
+
+  // Corpo do modal
+  var body = document.createElement('div');
+  body.id = 'ghLoadBody';
+
+  // Seção 1: arquivo local
+  var sec1 = document.createElement('div');
+  sec1.style.cssText = 'padding:14px;border-bottom:1px solid var(--border);';
+  sec1.innerHTML = '<div style="font-weight:800;font-size:12px;margin-bottom:8px;">📂 Carregar arquivo do dispositivo (.json)</div>';
+  var lbl = document.createElement('label');
+  lbl.className = 'btn btn-primary';
+  lbl.style.cssText = 'cursor:pointer;width:100%;justify-content:center;';
+  lbl.textContent = '📂 Selecionar arquivo de backup';
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json'; inp.style.display = 'none';
+  inp.onchange = function(){ cloudCarregarArquivoLocal(this); };
+  lbl.appendChild(inp);
+  sec1.appendChild(lbl);
+  body.appendChild(sec1);
+
+  // Seção 2: GitHub
+  var sec2 = document.createElement('div');
+  sec2.style.cssText = 'padding:14px;border-bottom:1px solid var(--border);';
+  var ghTitle = document.createElement('div');
+  ghTitle.style.cssText = 'font-weight:800;font-size:12px;margin-bottom:8px;';
+  ghTitle.textContent = '🐙 Buscar no GitHub' + (cfg.githubRepo ? ' ('+cfg.githubRepo+')' : '');
+  sec2.appendChild(ghTitle);
+
+  var ghStatus = document.createElement('div');
+  ghStatus.id = 'ghLoadStatus';
+  ghStatus.style.cssText = 'font-size:11px;color:var(--text-dim);margin-bottom:8px;min-height:16px;';
+  sec2.appendChild(ghStatus);
+
+  var ghList = document.createElement('div');
+  ghList.id = 'ghFileList';
+  sec2.appendChild(ghList);
+
+  if(cfg.githubToken){
+    var btnGh = document.createElement('button');
+    btnGh.className = 'btn btn-green';
+    btnGh.style.width = '100%';
+    btnGh.textContent = '🐙 Ver backups no GitHub';
+    btnGh.onclick = function(){ cloudGitHubLoadFromServer(ghStatus, ghList); };
+    sec2.appendChild(btnGh);
+  } else {
+    ghList.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:8px;background:#f8fafc;border-radius:6px;">Configure o token em ⚙️ Configurações → GitHub.</div>';
+  }
+  body.appendChild(sec2);
+
+  // Seção 3: Histórico
+  var sec3 = document.createElement('div');
+  sec3.style.cssText = 'padding:14px;';
+  var hist = (getCfg().backupHistory)||[];
+  var histHtml = '<div style="font-weight:800;font-size:12px;margin-bottom:8px;">📋 Histórico de backups enviados</div>';
+  if(hist.length){
+    histHtml += '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+      +'<thead><tr style="background:#f6f8fa;"><th style="padding:5px 8px;text-align:left;">Arquivo</th><th>Destino</th><th>Data</th></tr></thead><tbody>'
+      + hist.slice(0,10).map(function(h){
+          return '<tr style="border-bottom:1px solid #e2e8f0;">'
+            +'<td style="padding:6px 8px;font-weight:600;font-size:11px;">'+escHtml(h.fileName||h.file||'—')+'</td>'
+            +'<td style="padding:6px 4px;font-size:10px;color:var(--text-dim);">'+escHtml(h.folder||h.type||'—')+'</td>'
+            +'<td style="padding:6px 4px;font-size:10px;color:var(--text-dim);">'+escHtml((h.date||'').slice(0,16))+'</td>'
+            +'</tr>';
+        }).join('')
+      + '</tbody></table>';
+  } else {
+    histHtml += '<div style="font-size:11px;color:var(--text-dim);padding:8px;text-align:center;">Nenhum backup registrado ainda — envie um backup primeiro.</div>';
+  }
+  sec3.innerHTML = histHtml;
+  body.appendChild(sec3);
+
+  // Rodapé
+  var foot = document.createElement('div');
+  foot.style.cssText = 'padding:10px 14px;border-top:1px solid var(--border);';
+  var btnClose = document.createElement('button');
+  btnClose.className = 'btn btn-ghost';
+  btnClose.style.width = '100%';
+  btnClose.textContent = 'Fechar';
+  btnClose.onclick = function(){ ov.remove(); };
+  foot.appendChild(btnClose);
+  body.appendChild(foot);
+
+  panel.appendChild(body);
+  ov.appendChild(panel);
   document.body.appendChild(ov);
 }
 
-function cloudCarregarArquivoLocal(inp){
-  var f=inp.files&&inp.files[0]; if(!f) return;
-  var reader=new FileReader();
-  reader.onload=function(ev){
-    try{
-      var data=JSON.parse(ev.target.result);
-      if(!data||!data.v){ cloudSt('Arquivo inválido','err'); return; }
-      if(!confirm('Carregar "'+f.name+'"?\nSubstitui TODOS os dados locais.\nContinuar?')) return;
-      if(typeof applyImport==='function') applyImport(data);
-      else{
-        Object.assign(S,{regs:data.regs||[],crew:data.crew||[],fotos:data.fotos||[],
-          empresas:data.empresas||[],oficina:data.oficina||[],desvios:data.desvios||[],inspecoes:data.inspecoes||[]});
-        if(typeof saveData==='function') saveData(true);
-        if(typeof renderDash==='function') renderDash();
-      }
-      var ov=document.getElementById('modalGhLoad'); if(ov) ov.remove();
-      toast('✅ Backup "'+f.name+'" carregado!','ok');
-    }catch(e){ cloudSt('Erro ao ler arquivo: '+e.message,'err'); }
-  };
-  reader.readAsText(f);
-}
-
-async function cloudGitHubLoadFromServer(){
-  var cfg=getCfg();
-  if(!cfg.githubToken){ cloudSt('Configure o token primeiro','err'); return; }
-  var token=cfg.githubToken.trim();
-  var authHeader=token.startsWith('github_pat_')?'Bearer '+token:'token '+token;
-  var headers={'Authorization':authHeader,'Accept':'application/vnd.github.v3+json'};
-  // Obter login real
-  var ur=await fetch('https://api.github.com/user',{headers:headers});
-  if(!ur.ok){ cloudSt('Token inválido','err'); return; }
-  var uInfo=await ur.json();
-  var repo=uInfo.login+'/'+(cfg.githubRepo||'jac-backups').split('/').pop();
-  var branch=(cfg.githubBranch||'main');
-  var listR=await fetch('https://api.github.com/repos/'+repo+'/contents/backups?ref='+branch,{headers:headers});
-  if(!listR.ok){
-    if(listR.status===404) cloudSt('Pasta backups/ não encontrada — envie um backup primeiro','info');
-    else cloudSt('Erro '+listR.status+' ao listar backups','err');
+async function cloudGitHubLoadFromServer(statusEl, listEl){
+  var cfg = getCfg();
+  if(!cfg.githubToken){
+    if(statusEl) statusEl.textContent = 'Configure o token primeiro';
     return;
   }
-  var files=await listR.json();
-  if(!Array.isArray(files)||!files.length){ cloudSt('Nenhum backup encontrado','info'); return; }
-  files.sort(function(a,b){return b.name.localeCompare(a.name);});
-  // Mostrar numa lista dentro do modal existente
-  var inner=document.querySelector('#modalGhLoad > div');
-  if(!inner) return;
-  var listDiv=document.createElement('div');
-  listDiv.style.cssText='padding:14px;border-top:2px solid #24292f;';
-  var rows=files.slice(0,20).map(function(f){
-    var kb=Math.round(f.size/1024);
-    return '<tr style="border-bottom:1px solid #e2e8f0;">'
-      +'<td style="padding:7px 10px;font-size:12px;font-weight:600;">'+f.name+'</td>'
-      +'<td style="padding:7px 6px;font-size:11px;color:var(--text-dim);">'+kb+' KB</td>'
-      +'<td style="padding:7px 6px;"><button class="btn btn-primary btn-sm" data-url="'+f.download_url+'" data-name="'+f.name+'">📥</button></td>'
-      +'</tr>';
-  }).join('');
-  listDiv.innerHTML='<div style="font-weight:800;font-size:12px;margin-bottom:8px;">🐙 '+files.length+' backup(s) em @'+uInfo.login+' — mais recente primeiro</div>'
-    +'<table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f6f8fa;font-size:11px;"><th style="padding:5px 10px;text-align:left;">Arquivo</th><th>Tamanho</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
-  listDiv.addEventListener('click',function(e){
-    var btn=e.target.closest('button[data-url]');
-    if(btn) cloudGitHubLoadFile(btn.getAttribute('data-url'),btn.getAttribute('data-name'));
-  });
-  inner.appendChild(listDiv);
+  if(statusEl) statusEl.textContent = '⏳ Conectando ao GitHub...';
+  if(listEl)   listEl.innerHTML = '';
+
+  var token      = cfg.githubToken.trim();
+  var authHeader = token.startsWith('github_pat_') ? 'Bearer '+token : 'token '+token;
+  var hd = {'Authorization':authHeader,'Accept':'application/vnd.github.v3+json'};
+
+  try{
+    // 1) Obter login real
+    var ur = await fetch('https://api.github.com/user', {headers:hd});
+    if(!ur.ok){
+      if(statusEl) statusEl.textContent = '❌ Token inválido ('+ur.status+')';
+      return;
+    }
+    var uInfo  = await ur.json();
+    var login  = uInfo.login;
+    var repo   = login+'/'+(cfg.githubRepo||'jac-backups').split('/').pop();
+    var branch = cfg.githubBranch||'main';
+
+    if(statusEl) statusEl.textContent = '⏳ Buscando backups em '+repo+'...';
+
+    // 2) Listar pasta backups/
+    var lr = await fetch('https://api.github.com/repos/'+repo+'/contents/backups?ref='+branch, {headers:hd});
+    if(!lr.ok){
+      var msg = lr.status===404
+        ? '⚠️ Pasta "backups/" não encontrada em '+repo+' — envie um backup primeiro'
+        : '❌ Erro '+lr.status+' ao acessar '+repo;
+      if(statusEl) statusEl.textContent = msg;
+      return;
+    }
+
+    var files = await lr.json();
+    if(!Array.isArray(files)||!files.length){
+      if(statusEl) statusEl.textContent = '⚠️ Nenhum backup encontrado em '+repo+'/backups/';
+      return;
+    }
+
+    files.sort(function(a,b){ return b.name.localeCompare(a.name); });
+    if(statusEl) statusEl.textContent = '✅ '+files.length+' backup(s) encontrado(s) em @'+login;
+
+    // 3) Renderizar lista
+    if(listEl){
+      var tbl = document.createElement('table');
+      tbl.style.cssText = 'width:100%;border-collapse:collapse;margin-top:8px;';
+      tbl.innerHTML = '<thead><tr style="background:#f6f8fa;font-size:11px;">'
+        +'<th style="padding:5px 8px;text-align:left;">Arquivo</th>'
+        +'<th style="text-align:right;">Tamanho</th><th></th></tr></thead>';
+      var tbody = document.createElement('tbody');
+      files.slice(0,25).forEach(function(f){
+        var tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #e2e8f0';
+        var kb = Math.round(f.size/1024);
+        tr.innerHTML = '<td style="padding:7px 8px;font-size:12px;font-weight:600;">'+escHtml(f.name)+'</td>'
+          +'<td style="padding:7px 4px;font-size:11px;color:var(--text-dim);text-align:right;">'+kb+' KB</td>';
+        var tdBtn = document.createElement('td');
+        tdBtn.style.padding = '4px';
+        var btn = document.createElement('button');
+        btn.className = 'btn btn-primary btn-sm';
+        btn.textContent = '📥 Carregar';
+        // Usar path da API (não download_url que expira para repos privados)
+        btn.onclick = (function(path, name, hdCopy, repoCopy, branchCopy){
+          return function(){
+            cloudGitHubLoadFile('https://api.github.com/repos/'+repoCopy+'/contents/'+path+'?ref='+branchCopy, name, hdCopy);
+          };
+        })(f.path, f.name, hd, repo, branch);
+        tdBtn.appendChild(btn);
+        tr.appendChild(tdBtn);
+        tbody.appendChild(tr);
+      });
+      tbl.appendChild(tbody);
+      listEl.appendChild(tbl);
+    }
+  }catch(ex){
+    if(statusEl) statusEl.textContent = '❌ Erro de rede: '+ex.message;
+  }
 }
 
+async function cloudGitHubLoadFile(apiUrl, fileName, hdParam){
+  var cfg = getCfg();
+  var token = cfg.githubToken ? cfg.githubToken.trim() : '';
+  var authHeader = token.startsWith('github_pat_') ? 'Bearer '+token : 'token '+token;
+  var hd = hdParam || {'Authorization':authHeader,'Accept':'application/vnd.github.v3+json'};
 
-async function cloudGitHubLoadFile(downloadUrl, fileName){
-  var ov=document.getElementById('modalGhLoad'); if(ov) ov.remove();
-  cloudSt('Baixando '+fileName+'...','info');
+  var ov = document.getElementById('modalGhLoad'); if(ov) ov.remove();
+  toast('⏳ Baixando '+fileName+'...','info');
+
   try{
-    var cfg=getCfg();
-    var r=await fetch(downloadUrl,{headers:{'Authorization':'token '+cfg.githubToken}});
-    if(!r.ok){ cloudSt('Erro ao baixar: '+r.status,'err'); return; }
-    var text=await r.text();
-    var data=JSON.parse(text);
-    if(!data||!data.v){ cloudSt('Arquivo inválido','err'); return; }
-    if(!confirm('Carregar '+fileName+'?\n\nSubstitui TODOS os dados locais atuais.\nContinuar?')) return;
+    // Buscar via API (retorna JSON com campo "content" em base64)
+    var r = await fetch(apiUrl, {headers:hd});
+    if(!r.ok){ toast('❌ Erro '+r.status+' ao baixar '+fileName,'err'); return; }
+    var meta = await r.json();
+    if(!meta.content){ toast('❌ Arquivo vazio ou inválido','err'); return; }
+
+    // Decodificar base64 → UTF-8
+    var b64 = meta.content.replace(/\n/g,'');
+    var text = cloudSafeAtob(b64);
+    var data = JSON.parse(text);
+    if(!data||!data.v){ toast('❌ Arquivo não é um backup válido do app','err'); return; }
+
+    var total = (data.regs||[]).length + (data.crew||[]).length;
+    if(!confirm('Carregar "'+fileName+'"?\n'+total+' registros/tripulantes\nSubstitui TODOS os dados locais.\nContinuar?')) return;
+
     if(typeof applyImport==='function'){
       applyImport(data);
     } else {
-      Object.assign(S, {regs:data.regs||[],crew:data.crew||[],fotos:data.fotos||[],
+      Object.assign(S,{regs:data.regs||[],crew:data.crew||[],fotos:data.fotos||[],
         empresas:data.empresas||[],oficina:data.oficina||[],desvios:data.desvios||[],inspecoes:data.inspecoes||[]});
       if(typeof saveData==='function') saveData(true);
       if(typeof renderDash==='function') renderDash();
     }
-    cloudSt('✅ "'+fileName+'" carregado! Dados atualizados.','ok');
-    toast('✅ Backup do GitHub aplicado — '+fileName,'ok');
-  }catch(e){ cloudSt('Erro: '+e.message,'err'); }
+    toast('✅ Backup "'+fileName+'" carregado! ('+total+' itens)','ok');
+  }catch(ex){ toast('❌ Erro: '+ex.message,'err'); }
 }
 
 
@@ -11696,7 +11782,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.8.6';
+const APP_VERSION = '2.8.7';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
