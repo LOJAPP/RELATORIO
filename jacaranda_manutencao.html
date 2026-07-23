@@ -1225,6 +1225,7 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
           <input type="text" class="form-control" id="crew-q" placeholder="🔍 Buscar por nome, função ou matrícula..." oninput="renderCrew()" style="flex:1;min-width:200px;">
           <button class="btn btn-ghost btn-sm" onclick="selectAllCrew()">☑ Todos</button>
+          <button class="btn btn-ghost btn-sm" onclick="jacLimparCrewDuplicado()" title="Remove tripulantes com nome repetido" style="font-size:11px;">🧹 Duplicados</button>
           <button class="btn btn-ghost btn-sm" onclick="deselectAllCrew()">☐ Nenhum</button>
         </div>
         <div id="crew-list"></div>
@@ -1305,6 +1306,18 @@
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
               <button class="btn btn-ghost btn-sm" onclick="showPage('config')" style="flex:1;font-size:11px;">⚙️ Configurar token</button>
               <button class="btn btn-ghost btn-sm" onclick="cloudGitHubVerificar()" style="flex:1;font-size:11px;">🔍 Verificar conta</button>
+            </div>
+            <!-- Otimização de tamanho -->
+            <div style="margin-top:10px;padding:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;">
+              <div style="font-weight:800;font-size:11px;color:#92400e;margin-bottom:6px;">📦 Tamanho do backup</div>
+              <div id="jac-tamanho-info" style="font-size:11px;color:#78350f;margin-bottom:8px;">Calculando...</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="btn btn-primary btn-sm" onclick="jacRecomprimirTudo()" style="font-size:10px;">🗜️ Recomprimir todas as fotos</button>
+                <button class="btn btn-ghost btn-sm" onclick="jacAtualizarTamanho()" style="font-size:10px;">🔄 Recalcular</button>
+              </div>
+              <div style="font-size:10px;color:#78350f;margin-top:6px;line-height:1.4;">
+                O GitHub aceita no máximo <strong>100 MB por arquivo</strong>. Acima de 45 MB o app divide o backup em partes automaticamente.
+              </div>
             </div>
             <div id="drive-status" style="font-size:11px;padding:6px 8px;border-radius:5px;margin-top:8px;display:none;"></div>
             <div id="cloud-alt-status-st" class="cloud-status" style="font-size:11px;margin-top:6px;color:var(--text-dim);min-height:14px;"></div>
@@ -1482,7 +1495,7 @@
               <button class="btn btn-ghost btn-sm" onclick="cloudGhLimparToken()" style="color:var(--danger);" title="Apagar o token salvo">🗑️ Limpar token</button>
             </div>
             <div id="cloud-gh-cfg-status" class="gh-status" style="font-size:11px;margin-bottom:8px;color:var(--text-dim);min-height:16px;background:#f8fafc;padding:6px 10px;border-radius:6px;"></div>
-            <div style="font-size:10px;color:var(--muted);text-align:right;margin-bottom:6px;">Módulo GitHub <span id="gh-module-ver" style="font-weight:700;">v2.9.2</span> — confira se bate com a versão publicada</div>
+            <div style="font-size:10px;color:var(--muted);text-align:right;margin-bottom:6px;">Módulo GitHub <span id="gh-module-ver" style="font-weight:700;">v3.0.0</span> — confira se bate com a versão publicada</div>
             <div id="cloud-alt-status" class="cloud-status" style="font-size:11px;color:var(--text-dim);min-height:16px;"></div>
             <!-- Opções para arquivos > 100 MB -->
             <details style="margin-top:8px;">
@@ -2862,7 +2875,7 @@ function _goPage(id){
   if(id==='semanal'){renderSemTabs();}
   if(id==='fotos'){renderGallery();fillFotoAssoc();}
   if(id==='novo'){fillWeekSel();buildCrewCheckList('novo');fillDeptSelect('r-dept');initNovoBlocoSelects();switchNovoTab('atividade');}
-  if(id==='storage'){storStatus();renderDriveLinks();renderModulosStatus();renderNetConfigFields();updateDriveConnStatus();updateStorageKpis();renderImportPage();setTimeout(function(){if(typeof cloudRenderSavedConfig==='function')cloudRenderSavedConfig();},200);}
+  if(id==='storage'){storStatus();renderDriveLinks();renderModulosStatus();renderNetConfigFields();updateDriveConnStatus();updateStorageKpis();renderImportPage();setTimeout(function(){if(typeof jacAtualizarTamanho==='function')jacAtualizarTamanho();},150);setTimeout(function(){if(typeof cloudRenderSavedConfig==='function')cloudRenderSavedConfig();},200);}
   if(id==='config'){renderConfigPage();}
   if(id==='oficina'){renderOficina();}
   if(id==='desvios'){renderDesvios();}
@@ -3397,26 +3410,133 @@ function addPhotos(files,ctx){
   });
 }
 // Compress from dataURL (already read) — no double FileReader
-function compressDataURL(dataURL,cb){
-  var img=new Image();
-  img.onload=function(){
-    var MAX=1100,w=img.width,h=img.height;
-    if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
-    var c=document.createElement("canvas");c.width=w;c.height=h;
-    c.getContext("2d").drawImage(img,0,0,w,h);
-    cb(c.toDataURL("image/jpeg",.72));
+// ═══════════════════════════════════════════════════════════
+// COMPRESSÃO DE FOTOS — agressiva, para caber no GitHub (<100MB)
+// Alvo: ~60-100 KB por foto (antes: 250-400 KB)
+// ═══════════════════════════════════════════════════════════
+var JAC_FOTO_MAX = 800;    // lado maior em pixels
+var JAC_FOTO_Q   = 0.55;   // qualidade JPEG
+
+function compressDataURL(dataURL, cb, maxPx, qual){
+  var MAX = maxPx || JAC_FOTO_MAX;
+  var Q   = qual  || JAC_FOTO_Q;
+  var img = new Image();
+  img.onload = function(){
+    var w = img.width, h = img.height;
+    if(w > MAX || h > MAX){
+      if(w > h){ h = Math.round(h*MAX/w); w = MAX; }
+      else     { w = Math.round(w*MAX/h); h = MAX; }
+    }
+    var c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    var ctx = c.getContext("2d");
+    // Fundo branco (JPEG não tem transparência)
+    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h);
+    ctx.drawImage(img, 0, 0, w, h);
+    var out = c.toDataURL("image/jpeg", Q);
+    // Se ainda ficou grande (>150KB), comprimir mais
+    if(out.length > 150000){
+      var c2 = document.createElement("canvas");
+      var w2 = Math.round(w*0.75), h2 = Math.round(h*0.75);
+      c2.width = w2; c2.height = h2;
+      var ctx2 = c2.getContext("2d");
+      ctx2.fillStyle='#fff'; ctx2.fillRect(0,0,w2,h2);
+      ctx2.drawImage(img, 0, 0, w2, h2);
+      out = c2.toDataURL("image/jpeg", 0.45);
+    }
+    cb(out);
   };
-  img.src=dataURL;
+  img.onerror = function(){ cb(dataURL); };
+  img.src = dataURL;
 }
+
+// Aliases — todas as funções antigas usam a mesma compressão agressiva
+function compressImage(dataURL, callback){ compressDataURL(dataURL, callback); }
+function jacCompressFoto(dataURL, cb){ compressDataURL(dataURL, cb); }
+
+// ── Recomprimir TODAS as fotos já salvas (para reduzir backup existente) ──
+async function jacRecomprimirTudo(){
+  var fotos = S.fotos||[];
+  var regs  = S.regs||[];
+  var insp  = S.inspecoes||[];
+  var total = 0, feitas = 0;
+
+  // Contar quantas fotos existem no total
+  fotos.forEach(function(f){ if(f && f.url) total++; });
+  regs.forEach(function(r){ if(r.fotos) total += r.fotos.length; });
+  insp.forEach(function(i){ if(i.fotos) total += i.fotos.length; });
+
+  if(!total){ toast('Nenhuma foto para comprimir','warn'); return; }
+  if(!confirm('Recomprimir '+total+' fotos?\n\nIsso reduz o tamanho do backup drasticamente.\nA qualidade das fotos será menor mas ainda legível.\n\nContinuar?')) return;
+
+  var antes = JSON.stringify(S).length;
+  toast('⏳ Comprimindo '+total+' fotos... aguarde','info');
+
+  var comprimir = function(url){
+    return new Promise(function(res){
+      if(!url || url.indexOf('data:image')!==0){ res(url); return; }
+      compressDataURL(url, function(out){ feitas++; res(out); });
+    });
+  };
+
+  // Fotos da galeria
+  for(var i=0;i<fotos.length;i++){
+    if(fotos[i] && fotos[i].url) fotos[i].url = await comprimir(fotos[i].url);
+  }
+  // Fotos dos registros
+  for(var i=0;i<regs.length;i++){
+    if(regs[i].fotos) for(var j=0;j<regs[i].fotos.length;j++)
+      regs[i].fotos[j] = await comprimir(regs[i].fotos[j]);
+  }
+  // Fotos das inspeções
+  for(var i=0;i<insp.length;i++){
+    if(insp[i].fotos) for(var j=0;j<insp[i].fotos.length;j++)
+      insp[i].fotos[j] = await comprimir(insp[i].fotos[j]);
+  }
+
+  saveData(true);
+  var depois = JSON.stringify(S).length;
+  var reducao = Math.round((1 - depois/antes)*100);
+  var mbAntes = (antes/1048576).toFixed(1), mbDepois = (depois/1048576).toFixed(1);
+  toast('✅ '+feitas+' fotos comprimidas: '+mbAntes+' MB → '+mbDepois+' MB (-'+reducao+'%)','ok');
+  cloudSt('✅ Recompressão: '+mbAntes+' MB → '+mbDepois+' MB (-'+reducao+'%)','ok');
+}
+
+// ── Calcular tamanho atual dos dados ──
+function jacTamanhoDados(){
+  try{
+    var json = JSON.stringify({regs:S.regs,crew:S.crew,fotos:S.fotos,
+      empresas:S.empresas,oficina:S.oficina,desvios:S.desvios,inspecoes:S.inspecoes});
+    return {
+      bytes: json.length,
+      mb: (json.length/1048576).toFixed(1),
+      // base64 no GitHub adiciona ~33%
+      mbGitHub: (json.length*1.34/1048576).toFixed(1)
+    };
+  }catch(e){ return {bytes:0, mb:'0', mbGitHub:'0'}; }
+}
+function jacAtualizarTamanho(){
+  var el = document.getElementById('jac-tamanho-info');
+  if(!el) return;
+  var t = jacTamanhoDados();
+  var nFotos = (S.fotos||[]).length;
+  var nFotosRegs = (S.regs||[]).reduce(function(a,r){ return a + ((r.fotos||[]).length); },0);
+  var nFotosInsp = (S.inspecoes||[]).reduce(function(a,i){ return a + ((i.fotos||[]).length); },0);
+  var totalFotos = nFotos + nFotosRegs + nFotosInsp;
+  var cor = parseFloat(t.mbGitHub) > 45 ? 'var(--danger)' : (parseFloat(t.mbGitHub) > 25 ? 'var(--warn)' : 'var(--login-green)');
+  var aviso = parseFloat(t.mbGitHub) > 45
+    ? ' ⚠️ Acima do limite — será enviado em partes. Recomprima as fotos para reduzir.'
+    : (parseFloat(t.mbGitHub) > 25 ? ' ⚠️ Grande — considere recomprimir.' : ' ✅ Tamanho OK');
+  el.innerHTML = '<strong style="color:'+cor+';">'+t.mb+' MB</strong> local · <strong>'+t.mbGitHub+' MB</strong> no GitHub (base64)'
+    + '<br>'+totalFotos+' foto(s) · '+(S.regs||[]).length+' registro(s) · '+(S.crew||[]).length+' tripulante(s)'
+    + '<br><span style="color:'+cor+';">'+aviso+'</span>';
+}
+
 
 function compress(f,cb){
   const r=new FileReader();
-  r.onload=e=>{const img=new Image();img.onload=()=>{
-    const MAX=1024;let w=img.width,h=img.height;
-    if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
-    const c=document.createElement('canvas');c.width=w;c.height=h;
-    c.getContext('2d').drawImage(img,0,0,w,h);cb(c.toDataURL('image/jpeg',.70));
-  };img.src=e.target.result;};r.readAsDataURL(f);
+  r.onload=e=>{ compressDataURL(e.target.result, cb); };
+  r.readAsDataURL(f);
 }
 function renderTP(ctx){
   const g=ctx==='reg'?document.getElementById('pg-reg'):document.getElementById('pg-av');if(!g)return;
@@ -5250,9 +5370,19 @@ async function cloudGitHubSave(){
       await new Promise(function(res){setTimeout(res,2500);});
     }
 
-    // 5) Gerar conteúdo e verificar SHA
+    // 5) Gerar conteúdo — verificar limite do GitHub (100 MB por arquivo)
     var content  = buildBackupData();
     var sizeKB   = Math.round(content.length/1024);
+    var sizeMB   = content.length/1048576;
+    var sizeMBb64= sizeMB*1.34; // base64 adiciona ~34%
+
+    if(sizeMBb64 > 45){
+      // Acima de 45 MB: enviar em partes separadas (dados + fotos)
+      cloudSt('⚠️ Backup tem '+sizeMBb64.toFixed(1)+' MB — acima do limite seguro do GitHub. '
+        +'Enviando em partes separadas...','info');
+      var ok = await cloudGitHubSaveEmPartes(repo, branch, hd, totalItens);
+      return;
+    }
     cloudSt('⏳ Codificando '+sizeKB+' KB ('+totalItens+' itens)...','info');
     // Verificar conteúdo antes de enviar
     try{ var testParse=JSON.parse(content); }catch(pe){ cloudSt('❌ Erro ao serializar backup: '+pe.message,'err'); return; }
@@ -5517,6 +5647,58 @@ function cloudSafeAtob(b64){
     }
     return decodeURIComponent(escape(atob(b64)));
   }catch(e){ return atob(b64); }
+}
+
+
+// ── Enviar backup em partes quando ultrapassa o limite do GitHub ──────
+async function cloudGitHubSaveEmPartes(repo, branch, hd, totalItens){
+  var dados = JSON.parse(buildBackupData());
+  var fotos = dados.fotos || [];
+  var stamp = new Date().toISOString().slice(0,10);
+  var enviados = 0, falhas = 0;
+
+  var enviarArquivo = async function(nome, obj){
+    var txt = JSON.stringify(obj);
+    var b64 = cloudSafeBtoa(txt);
+    var mb  = (txt.length*1.34/1048576).toFixed(1);
+    if(mb > 90){ cloudSt('❌ Parte "'+nome+'" tem '+mb+' MB — acima de 90 MB. Recomprima as fotos primeiro.','err'); return false; }
+    var path = 'backups/'+nome;
+    var sha  = null;
+    var chk  = await fetch('https://api.github.com/repos/'+repo+'/contents/'+path+'?ref='+branch,{headers:hd});
+    if(chk.ok){ var cj={}; try{cj=await chk.json();}catch(e){} sha=cj.sha||null; }
+    var body = {message:'Backup parte '+nome, content:b64, branch:branch};
+    if(sha) body.sha = sha;
+    var r = await fetch('https://api.github.com/repos/'+repo+'/contents/'+path,
+      {method:'PUT', headers:hd, body:JSON.stringify(body)});
+    if(r.ok){ enviados++; return true; }
+    var ej={}; try{ej=await r.json();}catch(e){}
+    cloudSt('❌ Falha na parte "'+nome+'": '+(ej.message||r.status),'err');
+    falhas++; return false;
+  };
+
+  // Parte 0: dados sem fotos
+  cloudSt('📤 Enviando parte 1 (dados sem fotos)...','info');
+  var semFotos = Object.assign({}, dados, {fotos:[], _partes:true, _fotosLen:fotos.length});
+  if(!await enviarArquivo('jac_'+stamp+'_p0_dados.json', semFotos)) return false;
+
+  // Partes de fotos: ~30 fotos por arquivo
+  var LOTE = 30;
+  var totalPartes = Math.ceil(fotos.length/LOTE);
+  for(var i=0; i<totalPartes; i++){
+    cloudSt('📤 Enviando parte '+(i+2)+' de '+(totalPartes+1)+' (fotos '+(i*LOTE+1)+'-'+Math.min((i+1)*LOTE,fotos.length)+')...','info');
+    var lote = fotos.slice(i*LOTE, (i+1)*LOTE);
+    await enviarArquivo('jac_'+stamp+'_p'+(i+1)+'_fotos.json',
+      {_fotoChunk:true, _parte:i+1, _de:totalPartes, exp:dados.exp, fotos:lote});
+  }
+
+  if(falhas===0){
+    cloudSt('✅ Backup enviado em '+enviados+' partes ('+totalItens+' itens) — repo '+repo,'ok');
+    recordBackupHistory('backups/jac_'+stamp+'_p*.json','GitHub: '+repo+' ('+enviados+' partes)','GitHub');
+    toast('✅ Backup enviado em '+enviados+' partes!','ok');
+    return true;
+  }
+  cloudSt('⚠️ '+enviados+' partes enviadas, '+falhas+' falharam','err');
+  return false;
 }
 
 
@@ -8298,15 +8480,78 @@ function closeBulkUpdate(){
 // Embarkation history log
 function logEmbarkHistory(crew, em, de, porto){
   if(!S.embHistory) S.embHistory = [];
-  // Only log if embarque changed
   if(!em && !de) return;
+  var emF = em||crew.em||'', deF = de||crew.de||'', ptF = porto||crew.porto||'';
+
+  // NÃO duplicar: se já existe registro igual do mesmo tripulante, atualizar em vez de criar
+  var existe = S.embHistory.find(function(h){
+    return h.crewId===crew.id && h.em===emF && (h.de===deF || (!h.de && !deF));
+  });
+  if(existe){
+    // Atualizar o registro existente (ex: adicionar data de desembarque)
+    existe.de = deF || existe.de;
+    existe.porto = ptF || existe.porto;
+    existe.ts = Date.now();
+    return;
+  }
+  // Se existe registro do mesmo tripulante com mesmo embarque mas sem desembarque, completar
+  var aberto = S.embHistory.find(function(h){
+    return h.crewId===crew.id && h.em===emF && !h.de;
+  });
+  if(aberto && deF){ aberto.de = deF; aberto.ts = Date.now(); return; }
+
   S.embHistory.push({
     crewId: crew.id, nm: crew.nm, fn: crew.fn,
     abbr: crew.abbr||(ROLE_ABBR[crew.fn]||crew.fn.slice(0,3).toUpperCase()),
-    em: em||crew.em||'', de: de||crew.de||'',
-    porto: porto||crew.porto||'', ts: Date.now(),
+    em: emF, de: deF, porto: ptF, ts: Date.now(),
     vessel: ((getCfg().vessel||{}).vessel)||'LOG-IN JACARANDÁ'
   });
+}
+
+// ── Limpar duplicados do histórico de embarque ──
+function jacLimparHistDuplicado(){
+  if(!S.embHistory || !S.embHistory.length){ toast('Histórico vazio','warn'); return; }
+  var antes = S.embHistory.length;
+  var vistos = {}, limpo = [];
+  S.embHistory.forEach(function(h){
+    var chave = (h.crewId||h.nm)+'|'+(h.em||'')+'|'+(h.de||'');
+    if(!vistos[chave]){ vistos[chave]=true; limpo.push(h); }
+  });
+  S.embHistory = limpo;
+  saveData(true);
+  renderEmbarqueHistory();
+  var removidos = antes - limpo.length;
+  toast(removidos ? '🧹 '+removidos+' registro(s) duplicado(s) removido(s)' : '✅ Nenhum duplicado encontrado','ok');
+}
+
+// ── Remover tripulantes duplicados (mesmo nome) ──
+function jacLimparCrewDuplicado(){
+  if(!S.crew || !S.crew.length){ toast('Nenhum tripulante','warn'); return; }
+  var antes = S.crew.length;
+  var vistos = {}, limpo = [];
+  S.crew.forEach(function(c){
+    var chave = (c.nm||'').trim().toLowerCase().replace(/\s+/g,' ');
+    if(!chave) return;
+    if(!vistos[chave]){
+      vistos[chave] = c;
+      limpo.push(c);
+    } else {
+      // Mesmo nome: manter o registro mais completo
+      var ant = vistos[chave];
+      if(!ant.em && c.em) ant.em = c.em;
+      if(!ant.de && c.de) ant.de = c.de;
+      if(!ant.mat && c.mat) ant.mat = c.mat;
+      if(!ant.tel && c.tel) ant.tel = c.tel;
+      if(!ant.email && c.email) ant.email = c.email;
+    }
+  });
+  var removidos = antes - limpo.length;
+  if(!removidos){ toast('✅ Nenhum tripulante duplicado','ok'); return; }
+  if(!confirm(removidos+' tripulante(s) com nome repetido.\nRemover as cópias (mantendo os dados mais completos)?')) return;
+  S.crew = limpo;
+  saveData(true);
+  renderCrew();
+  toast('🧹 '+removidos+' duplicado(s) removido(s)','ok');
 }
 
 function renderEmbarqueHistory(){
@@ -8317,6 +8562,48 @@ function renderEmbarqueHistory(){
     el.innerHTML='<div style="color:var(--muted);font-size:12px;font-style:italic;padding:10px 0;">Nenhum histórico ainda.</div>';
     return;
   }
+
+  // ── AGRUPAR por tripulante: um card por pessoa, com todos os embarques dentro ──
+  var porPessoa = {};
+  hist.forEach(function(h){
+    var k = h.crewId || h.nm;
+    if(!porPessoa[k]) porPessoa[k] = {nm:h.nm, fn:h.fn, abbr:h.abbr, embarques:[]};
+    // Evitar repetir o mesmo período
+    var jaTem = porPessoa[k].embarques.some(function(e){ return e.em===h.em && e.de===h.de; });
+    if(!jaTem) porPessoa[k].embarques.push(h);
+  });
+
+  var pessoas = Object.keys(porPessoa).map(function(k){ return porPessoa[k]; });
+
+  el.innerHTML = '<div style="display:flex;gap:6px;margin-bottom:10px;">'
+    +'<button class="btn btn-ghost btn-sm" onclick="jacLimparHistDuplicado()" style="font-size:10px;">🧹 Remover duplicados</button>'
+    +'<span style="font-size:10px;color:var(--text-dim);align-self:center;">'+pessoas.length+' tripulante(s) · '+hist.length+' registro(s)</span>'
+    +'</div>'
+    + pessoas.map(function(p){
+      var totalDias = 0;
+      var linhas = p.embarques.map(function(h){
+        var dias = (h.em&&h.de) ? Math.ceil((new Date(h.de+'T12:00')-new Date(h.em+'T12:00'))/864e5) : null;
+        if(dias) totalDias += dias;
+        return '<div style="display:flex;align-items:center;gap:6px;padding:4px 0 4px 8px;border-left:2px solid var(--border);font-size:11px;flex-wrap:wrap;">'
+          +'<span style="background:#eff6ff;color:var(--login-blue);padding:1px 7px;border-radius:5px;white-space:nowrap;">⬆ '+(h.em?fd(h.em):'—')+'</span>'
+          +'<span style="background:'+(h.de?'#f0fdf4':'#fef3c7')+';color:'+(h.de?'#16a34a':'#92400e')+';padding:1px 7px;border-radius:5px;white-space:nowrap;">'+(h.de?'⬇ '+fd(h.de):'🚢 A bordo')+'</span>'
+          +(h.porto?'<span style="color:var(--text-dim);font-size:10px;">📍 '+escHtml(h.porto)+'</span>':'')
+          +(dias?'<span style="font-family:monospace;font-weight:700;color:var(--login-green);margin-left:auto;">'+dias+'d</span>':'')
+          +'</div>';
+      }).join('');
+      return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:8px;">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
+        +'<span style="background:var(--login-blue-xlt);color:var(--login-blue);font-family:monospace;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;">'+escHtml(p.abbr||'')+'</span>'
+        +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-size:13px;font-weight:700;">'+escHtml(p.nm)+'</div>'
+        +'<div style="font-size:10px;color:var(--text-dim);">'+escHtml(p.fn||'')+'</div>'
+        +'</div>'
+        +'<span style="font-size:10px;color:var(--text-dim);white-space:nowrap;">'+p.embarques.length+' embarque(s)'+(totalDias?' · '+totalDias+'d':'')+'</span>'
+        +'</div>'+linhas+'</div>';
+    }).join('');
+  return;
+
+  // (código antigo mantido abaixo, não executado)
   el.innerHTML = hist.slice(0,50).map(h=>{
     const dias = (h.em&&h.de)?Math.ceil((new Date(h.de+'T12:00')-new Date(h.em+'T12:00'))/864e5):'—';
     return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">
@@ -12001,7 +12288,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.9.2';
+const APP_VERSION = '3.0.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
@@ -12399,18 +12686,7 @@ function addItemPhoto(input, itemId){
 }
 
 // Compress helper (uses canvas if available)
-function compressImage(dataURL, callback){
-  const img=new Image();
-  img.onload=()=>{
-    const MAX=1024;
-    let w=img.width,h=img.height;
-    if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
-    const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
-    canvas.getContext('2d').drawImage(img,0,0,w,h);
-    callback(canvas.toDataURL('image/jpeg',0.7));
-  };
-  img.src=dataURL;
-}
+// compressImage → alias definido junto de compressDataURL
 
 // ── SAVE INSPECTION ──
 function saveInspecao(){
