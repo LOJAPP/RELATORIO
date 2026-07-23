@@ -4982,17 +4982,19 @@ async function cloudGitHubVerificar(){
     // Listar repositórios
     var rr=await fetch('https://api.github.com/user/repos?per_page=100&sort=updated',{headers:hd});
     var repos=rr.ok?await rr.json():[];
-    // Filtrar: excluir o repositório do app e mostrar só repositórios de backup
-    var EXCLUIR = ['relatorio','RELATORIO','lojapp.github.io','.github'];
-    var names = repos
+    // Filtrar: excluir o repositório do app (RELATORIO) da lista de escolha
+    var EXCLUIR = ['relatorio','lojapp.github.io','.github'];
+    var existentes = repos
       .filter(function(r){
         var n = r.full_name.toLowerCase();
-        return !EXCLUIR.some(function(ex){ return n.indexOf(ex.toLowerCase())>=0; });
+        return !EXCLUIR.some(function(ex){ return n.indexOf(ex)>=0; });
       })
-      .map(function(r){ return r.full_name; });
+      .map(function(r){ return r.full_name.toLowerCase(); });
 
-    // Se não há nenhum repo de backup, sugerir lojapp/jac-backups
-    if(!names.length) names = [login+'/jac-backups'];
+    // NÃO injetar repo fantasma — marcar claramente o que existe e o que será criado
+    var names = existentes;
+    var repoSugerido = login+'/jac-backups';
+    var jaExiste = existentes.indexOf(repoSugerido) >= 0;
 
     // Montar modal com DOM puro (sem onclick inline com aspas simples)
     var old=document.getElementById('modalGhVerif'); if(old) old.remove();
@@ -5024,7 +5026,9 @@ async function cloudGitHubVerificar(){
     // Info
     var info=document.createElement('div');
     info.style.cssText='padding:10px 14px;font-size:11px;color:var(--text-dim);border-bottom:1px solid var(--border);';
-    info.innerHTML='Token válido ✅ · Selecione o repositório onde salvar os backups. Não encontra o certo? <a href="https://github.com/new" target="_blank">Criar novo</a>';
+    info.innerHTML = jaExiste
+      ? 'Token válido ✅ · Estes repositórios <strong>já existem</strong> na sua conta. Clique para usar.'
+      : 'Token válido ✅ · O repositório <strong>'+repoSugerido+' ainda NÃO existe</strong>. Use o botão verde abaixo para criá-lo automaticamente.';
     inner.appendChild(info);
 
     // Tabela de repositórios
@@ -5053,7 +5057,7 @@ async function cloudGitHubVerificar(){
       });
       tbl.appendChild(table);
     } else {
-      tbl.innerHTML='<div style="padding:16px;text-align:center;color:var(--text-dim);font-size:12px;">Nenhum repositório encontrado.<br>Crie um em <a href="https://github.com/new" target="_blank">github.com/new</a> (marcar Private)</div>';
+      tbl.innerHTML='<div style="padding:16px;text-align:center;color:var(--text-dim);font-size:12px;">Nenhum repositório de backup existe ainda.<br><strong>Use o botão verde abaixo</strong> para criar '+repoSugerido+' automaticamente.</div>';
     }
     inner.appendChild(tbl);
 
@@ -5062,9 +5066,26 @@ async function cloudGitHubVerificar(){
     foot.style.cssText='padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;';
     var btnCriar=document.createElement('button');
     btnCriar.className='btn btn-green btn-sm';
-    btnCriar.textContent='✚ Criar e usar '+login+'/jac-backups';
+    btnCriar.textContent = jaExiste ? '✔ Usar '+repoSugerido : '✚ CRIAR repositório '+repoSugerido;
     btnCriar.style.flex='1';
-    btnCriar.onclick=function(){ cloudGhSelectRepo(login+'/jac-backups'); };
+    btnCriar.onclick=function(){
+      if(jaExiste){ cloudGhSelectRepo(repoSugerido); return; }
+      // Criar de verdade no GitHub antes de selecionar
+      btnCriar.disabled=true; btnCriar.textContent='⏳ Criando...';
+      fetch('https://api.github.com/user/repos',{method:'POST',headers:hd,
+        body:JSON.stringify({name:'jac-backups',description:'Backups LOG-IN Jacarandá',private:true,auto_init:true})})
+      .then(function(cr){
+        if(cr.ok){ cloudGhSelectRepo(repoSugerido); toast('✅ Repositório '+repoSugerido+' criado!','ok'); }
+        else { return cr.json().then(function(cj){
+          btnCriar.disabled=false; btnCriar.textContent='✚ CRIAR repositório '+repoSugerido;
+          cloudSt('❌ Não foi possível criar: '+(cj.message||cr.status)+' — o token precisa do escopo "repo"','err');
+        });}
+      })
+      .catch(function(e){
+        btnCriar.disabled=false; btnCriar.textContent='✚ CRIAR repositório '+repoSugerido;
+        cloudSt('❌ Erro: '+e.message,'err');
+      });
+    };
     var btnFechar=document.createElement('button');
     btnFechar.className='btn btn-ghost btn-sm';
     btnFechar.textContent='Fechar';
@@ -11866,7 +11887,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.8.9';
+const APP_VERSION = '2.9.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
