@@ -786,7 +786,6 @@
   <div class="nav-section">
     <div class="nav-label">Tripulação</div>
     <div class="nav-item" onclick="showPage('tripulantes')"><span class="ico">👥</span> Tripulantes</div>
-    <div class="nav-item" onclick="showPage('embarque')"><span class="ico">🚢</span> Rel. de Embarque</div>
   </div>
   <div class="nav-section">
     <div class="nav-label">Navegação</div>
@@ -1355,6 +1354,33 @@
         
       </div>
       <input type="file" id="json-import" accept=".json" style="display:none" onchange="loadJSON(this)">
+
+      <!-- PAINEL BACKUP POR MÊS E VIAGEM — dentro de page-storage -->
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-top:14px;">
+        <div style="font-weight:800;font-size:13px;color:#1e40af;margin-bottom:10px;">📅 Backup por Mês ou Nº de Viagem</div>
+        <div style="font-size:11px;color:#3730a3;margin-bottom:10px;">Arquivos leves (sem fotos) · salva no GitHub ou baixa localmente · ao carregar, vai acumulando até completar o ano</div>
+        <div class="form-row" style="gap:10px;margin-bottom:10px;">
+          <div class="form-group" style="flex:1;">
+            <label style="font-size:11px;font-weight:700;">📆 Mês/Ano</label>
+            <input type="month" class="form-control" id="bkp-mes" style="font-size:12px;">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label style="font-size:11px;font-weight:700;">🚢 Nº de Viagem</label>
+            <input type="text" class="form-control" id="bkp-nviagem" placeholder="ex: V-2026-07" style="font-size:12px;" list="bkp-nv-list">
+            <datalist id="bkp-nv-list"></datalist>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+          <button class="btn btn-primary btn-sm" onclick="jacBackupMes(false)" style="font-size:11px;">💾 Baixar backup do mês</button>
+          <button class="btn btn-green btn-sm"   onclick="jacBackupMes(true)"  style="font-size:11px;">📤 Enviar mês → GitHub</button>
+          <button class="btn btn-ghost btn-sm"   onclick="jacBackupViagem(false)" style="font-size:11px;">💾 Baixar por viagem</button>
+          <button class="btn btn-green btn-sm"   onclick="jacBackupViagem(true)"  style="font-size:11px;">📤 Enviar viagem → GitHub</button>
+          <button class="btn btn-ghost btn-sm"   onclick="jacBackupMesPasta()" style="font-size:11px;">📁 Salvar mês → Pasta de rede</button>
+          <button class="btn btn-ghost btn-sm"   onclick="jacListarViagens()"  style="font-size:11px;">🔍 Ver viagens disponíveis</button>
+        </div>
+        <div id="bkp-mes-status" style="font-size:11px;color:var(--text-dim);min-height:16px;padding:4px 0;"></div>
+      </div>
+
     </div>
 
 
@@ -1459,35 +1485,6 @@
 
         <!-- GitHub Backup -->
         <div class="panel" style="margin-bottom:0;border-top:3px solid #24292f;">
-          <!-- Backup por Mês / Viagem -->
-          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;margin-bottom:14px;">
-            <div style="font-weight:800;font-size:12px;color:#1e40af;margin-bottom:8px;">📅 Backup por Mês ou Nº de Viagem</div>
-            <div class="form-row" style="gap:8px;margin-bottom:8px;">
-              <div class="form-group" style="flex:1;">
-                <label style="font-size:10px;font-weight:700;">Mês/Ano</label>
-                <input type="month" class="form-control" id="bkp-mes" style="font-size:11px;"
-                       value="2026-07">
-              </div>
-              <div class="form-group" style="flex:1;">
-                <label style="font-size:10px;font-weight:700;">Nº de Viagem</label>
-                <input type="text" class="form-control" id="bkp-nviagem" placeholder="ex: V-2026-07"
-                       style="font-size:11px;" list="bkp-nv-list">
-                <datalist id="bkp-nv-list"></datalist>
-              </div>
-            </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
-              <button class="btn btn-primary btn-sm" onclick="jacBackupMes(false)">💾 Baixar backup do mês</button>
-              <button class="btn btn-green btn-sm"   onclick="jacBackupMes(true)">📤 Salvar mês → GitHub</button>
-              <button class="btn btn-ghost btn-sm"   onclick="jacBackupViagem(false)">💾 Baixar por viagem</button>
-              <button class="btn btn-green btn-sm"   onclick="jacBackupViagem(true)">📤 Salvar viagem → GitHub</button>
-            </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button class="btn btn-ghost btn-sm" onclick="jacBackupMesPasta()" title="Salva na pasta de rede/Drive configurada">📁 Salvar mês → Pasta</button>
-              <button class="btn btn-ghost btn-sm" onclick="jacListarViagens()" style="font-size:11px;">🔍 Ver viagens disponíveis</button>
-            </div>
-            <div id="bkp-mes-status" style="font-size:11px;color:var(--text-dim);margin-top:6px;min-height:14px;"></div>
-          </div>
-
           <div class="panel-header" style="background:linear-gradient(135deg,#24292f,#57606a);color:#fff;">🐙 Backup no GitHub — automático, grátis, arquivos grandes</div>
           <div style="padding:14px;">
             <div id="drive-config-status" style="margin-bottom:8px;"></div>
@@ -1525,6 +1522,7 @@
               <button class="btn btn-ghost btn-sm" onclick="cloudGhLimparToken()" style="color:var(--danger);" title="Apagar o token salvo">🗑️ Limpar token</button>
             </div>
             <div id="cloud-gh-cfg-status" class="gh-status" style="font-size:11px;margin-bottom:8px;color:var(--text-dim);min-height:16px;background:#f8fafc;padding:6px 10px;border-radius:6px;"></div>
+
             <div style="font-size:10px;color:var(--muted);text-align:right;margin-bottom:6px;">Módulo GitHub <span id="gh-module-ver" style="font-weight:700;">v3.0.0</span> — confira se bate com a versão publicada</div>
             <div id="cloud-alt-status" class="cloud-status" style="font-size:11px;color:var(--text-dim);min-height:16px;"></div>
             <!-- Opções para arquivos > 100 MB -->
@@ -2905,7 +2903,14 @@ function _goPage(id){
   if(id==='semanal'){renderSemTabs();}
   if(id==='fotos'){renderGallery();fillFotoAssoc();}
   if(id==='novo'){fillWeekSel();buildCrewCheckList('novo');fillDeptSelect('r-dept');initNovoBlocoSelects();switchNovoTab('atividade');}
-  if(id==='storage'){storStatus();renderDriveLinks();renderModulosStatus();renderNetConfigFields();updateDriveConnStatus();updateStorageKpis();renderImportPage();setTimeout(function(){if(typeof jacAtualizarTamanho==='function')jacAtualizarTamanho();},150);setTimeout(function(){if(typeof cloudRenderSavedConfig==='function')cloudRenderSavedConfig();},200);}
+  if(id==='storage'){storStatus();renderDriveLinks();renderModulosStatus();renderNetConfigFields();updateDriveConnStatus();updateStorageKpis();renderImportPage();setTimeout(function(){
+      if(typeof jacAtualizarTamanho==='function')jacAtualizarTamanho();
+      // Preencher o mês atual automaticamente
+      var mesEl=document.getElementById('bkp-mes');
+      if(mesEl && !mesEl.value){ var n=new Date(); mesEl.value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0'); }
+      if(typeof jacListarViagens==='function') jacListarViagens();
+      if(typeof cloudRenderSavedConfig==='function') cloudRenderSavedConfig();
+    },200);setTimeout(function(){if(typeof cloudRenderSavedConfig==='function')cloudRenderSavedConfig();},200);}
   if(id==='config'){renderConfigPage();}
   if(id==='oficina'){renderOficina();}
   if(id==='desvios'){renderDesvios();}
@@ -5496,8 +5501,13 @@ function cloudCarregarArquivoLocal(inp){
       if(!data || !data.v){ toast('❌ Arquivo não é um backup válido do app','err'); return; }
       var total = (data.regs||[]).length + (data.crew||[]).length;
       if(!confirm('Carregar "'+f.name+'"?\n'+total+' registros/tripulantes\nSubstitui TODOS os dados locais.\nContinuar?')) return;
-      if(typeof applyImport==='function'){
+      var ov2=document.getElementById('modalGhLoad'); if(ov2) ov2.remove();
+      var ehParcial2 = data.scope && (data.scope.startsWith('MES_') || data.scope.startsWith('NV_'));
+      if(ehParcial2){
+        jacCarregarMesAcumulativo(data);
+      } else if(typeof applyImport==='function'){
         applyImport(data);
+        toast('✅ Backup "'+f.name+'" carregado!','ok');
       } else {
         S.regs=data.regs||[]; S.crew=data.crew||[]; S.fotos=data.fotos||[];
         S.empresas=data.empresas||[]; S.oficina=data.oficina||[];
@@ -5505,9 +5515,8 @@ function cloudCarregarArquivoLocal(inp){
         if(typeof saveData==='function') saveData(true);
         if(typeof kpis==='function') kpis();
         if(typeof renderDash==='function') renderDash();
+        toast('✅ Backup "'+f.name+'" carregado! ('+total+' itens)','ok');
       }
-      var ov=document.getElementById('modalGhLoad'); if(ov) ov.remove();
-      toast('✅ Backup "'+f.name+'" carregado! ('+total+' itens)','ok');
     }catch(e){ toast('❌ Erro ao ler arquivo: '+e.message,'err'); }
   };
   reader.readAsText(f);
@@ -5593,7 +5602,164 @@ async function cloudGitHubDiag(){
 
 
 // ═══════════════════════════════════════════════════════════
-// BACKUP POR MÊS E POR VIAGEM
+// HISTÓRICO E SUGESTÃO POR TRIPULANTE
+// ═══════════════════════════════════════════════════════════
+function crewHistorico(crewId){
+  var t = (S.crew||[]).find(function(c){ return c.id===crewId; });
+  if(!t){ toast('Tripulante não encontrado','err'); return; }
+  var hist = (S.embHistory||[])
+    .filter(function(h){ return h.crewId===crewId; })
+    .sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+
+  var totalDias = hist.reduce(function(acc,h){
+    if(h.em&&h.de) acc += Math.ceil((new Date(h.de+'T12:00')-new Date(h.em+'T12:00'))/864e5);
+    return acc;
+  },0);
+
+  var linhas = hist.length ? hist.map(function(h){
+    var dias = (h.em&&h.de)?Math.ceil((new Date(h.de+'T12:00')-new Date(h.em+'T12:00'))/864e5):null;
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      +'<td style="padding:6px 8px;font-size:11px;white-space:nowrap;">'+(h.em?fd(h.em):'—')+'</td>'
+      +'<td style="padding:6px 8px;font-size:11px;white-space:nowrap;">'+(h.de?fd(h.de):'<strong style="color:#16a34a;">A bordo</strong>')+'</td>'
+      +'<td style="padding:6px 8px;font-size:11px;font-family:monospace;">'+(dias?dias+'d':'—')+'</td>'
+      +'<td style="padding:6px 4px;font-size:10px;color:var(--text-dim);">'+(h.porto?escHtml(h.porto):'')+'</td>'
+      +'<td style="padding:6px 4px;font-size:10px;color:var(--text-dim);">'+(h.vessel?escHtml(h.vessel):'')+'</td>'
+      +'</tr>';
+  }).join('') : '<tr><td colspan="5" style="padding:12px;text-align:center;color:var(--text-dim);font-size:11px;">Nenhum embarque registrado ainda.</td></tr>';
+
+  var sugs = (t.sugestoes||[]);
+  var sugHtml = sugs.length ? '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">'
+    +'<div style="font-weight:700;font-size:12px;margin-bottom:8px;">💬 Recomendações / Sugestões</div>'
+    + sugs.map(function(s,i){
+      return '<div style="background:var(--surface2);border-radius:7px;padding:8px 10px;margin-bottom:6px;font-size:12px;">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+        +'<span style="font-weight:700;color:var(--login-blue);">'+(s.tipo||'Observação')+'</span>'
+        +'<span style="font-size:10px;color:var(--text-dim);">'+(s.data?fd(s.data):'')+'</span>'
+        +'</div>'
+        +'<div>'+escHtml(s.txt||'')+'</div>'
+        +(s.autor?'<div style="font-size:10px;color:var(--text-dim);margin-top:3px;">— '+escHtml(s.autor)+'</div>':'')
+        +'</div>';
+    }).join('') + '</div>' : '';
+
+  var ov = document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  var panel=document.createElement('div');
+  panel.style.cssText='background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;';
+  panel.innerHTML='<div style="background:linear-gradient(135deg,var(--login-blue),#1e40af);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:10px;">'
+    +'<div style="flex:1;">'
+    +'<div style="font-weight:800;font-size:15px;">📋 '+escHtml(t.nm)+'</div>'
+    +'<div style="font-size:11px;opacity:.85;">'+escHtml(t.fn||'')+(t.mat?' · #'+t.mat:'')+'</div>'
+    +'</div>'
+    +'<div style="text-align:right;font-size:11px;opacity:.85;">'+hist.length+' embarque(s)<br>'+totalDias+' dias a bordo</div>'
+    +'<button onclick="this.closest(\'div\').parentElement.parentElement.remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:16px;margin-left:8px;">✕</button>'
+    +'</div>'
+    +'<div style="padding:14px;">'
+    +'<div style="font-weight:700;font-size:12px;margin-bottom:8px;">🚢 Histórico de Embarques</div>'
+    +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">'
+    +'<thead><tr style="background:var(--surface2);font-size:11px;font-weight:700;">'
+    +'<th style="padding:5px 8px;text-align:left;">Embarque</th>'
+    +'<th style="padding:5px 8px;text-align:left;">Desembarque</th>'
+    +'<th style="padding:5px 8px;">Dias</th>'
+    +'<th style="padding:5px 8px;">Porto</th>'
+    +'<th style="padding:5px 8px;">Navio</th>'
+    +'</tr></thead><tbody>'+linhas+'</tbody></table></div>'
+    +sugHtml
+    +'<div style="margin-top:12px;display:flex;gap:8px;">'
+    +'<button class="btn btn-primary" onclick="crewSugestao(\''+crewId+'\',this.closest(\'div\').parentElement.parentElement)" style="flex:1;">💬 Adicionar sugestão</button>'
+    +'<button class="btn btn-ghost" onclick="this.closest(\'div\').parentElement.parentElement.remove()">Fechar</button>'
+    +'</div>'
+    +'</div>';
+  ov.appendChild(panel); document.body.appendChild(ov);
+}
+
+function crewSugestao(crewId, ovPai){
+  var t=(S.crew||[]).find(function(c){return c.id===crewId;});
+  if(!t){ toast('Tripulante não encontrado','err'); return; }
+  var cfg=getCfg(); var cmte=(cfg.vessel||{}).cmte||'Comandante';
+
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  var panel=document.createElement('div');
+  panel.style.cssText='background:#fff;border-radius:14px;max-width:480px;width:100%;';
+  panel.innerHTML='<div style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;">'
+    +'<div style="font-weight:800;">💬 Sugestão / Recomendação</div>'
+    +'<div style="font-size:11px;opacity:.85;">'+escHtml(t.nm)+'</div>'
+    +'</div>'
+    +'<div style="padding:16px;">'
+    +'<div class="form-group"><label style="font-size:11px;font-weight:700;">Tipo</label>'
+    +'<select class="form-control" id="sug-tipo" style="font-size:11px;">'
+    +'<option>Recomendação positiva</option><option>Área a melhorar</option>'
+    +'<option>Observação de conduta</option><option>Promoção sugerida</option>'
+    +'<option>Aviso formal</option><option>Elogio</option><option>Outro</option>'
+    +'</select></div>'
+    +'<div class="form-group"><label style="font-size:11px;font-weight:700;">Texto</label>'
+    +'<textarea class="form-control" id="sug-txt" rows="4" style="font-size:12px;" placeholder="Descreva a observação..."></textarea></div>'
+    +'<div class="form-group"><label style="font-size:11px;font-weight:700;">Data</label>'
+    +'<input type="date" class="form-control" id="sug-data" value="'+new Date().toISOString().slice(0,10)+'" style="font-size:11px;"></div>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button class="btn btn-green" style="flex:1;" onclick="crewSugestaoSalvar(\''+crewId+'\')">💾 Salvar</button>'
+    +'<button class="btn btn-ghost" onclick="this.closest(\'div\').parentElement.parentElement.remove()">Cancelar</button>'
+    +'</div></div>';
+  ov.appendChild(panel); document.body.appendChild(ov);
+}
+
+function crewSugestaoSalvar(crewId){
+  var t=(S.crew||[]).find(function(c){return c.id===crewId;});
+  if(!t) return;
+  var tipo=(document.getElementById('sug-tipo')||{}).value||'Observação';
+  var txt =(document.getElementById('sug-txt')||{}).value||'';
+  var data=(document.getElementById('sug-data')||{}).value||new Date().toISOString().slice(0,10);
+  var cfg=getCfg(); var cmte=(cfg.vessel||{}).cmte||'Comandante';
+  if(!txt.trim()){ toast('Escreva a sugestão antes de salvar','warn'); return; }
+  if(!t.sugestoes) t.sugestoes=[];
+  t.sugestoes.unshift({id:gid(),tipo:tipo,txt:txt.trim(),data:data,autor:cmte,ts:Date.now()});
+  saveData(true);
+  toast('✅ Sugestão salva para '+t.nm,'ok');
+  // Fechar modais abertos
+  document.querySelectorAll('div[style*="z-index:9999"],div[style*="z-index:9998"]')
+    .forEach(function(el){el.remove();});
+}
+
+// ── Carregamento acumulativo por mês (não substitui, acumula) ──────────
+function jacCarregarMesAcumulativo(dados){
+  if(!dados || !dados.v){ toast('Arquivo inválido','err'); return; }
+  var antes = {regs:(S.regs||[]).length, oficina:(S.oficina||[]).length,
+                desvios:(S.desvios||[]).length, inspecoes:(S.inspecoes||[]).length};
+  // Mesclar cada coleção sem duplicar por id
+  var mesclar = function(dest, origem){
+    if(!origem || !origem.length) return dest;
+    var ids = new Set(dest.map(function(x){return x.id;}));
+    var novos = origem.filter(function(x){return x.id && !ids.has(x.id);});
+    return dest.concat(novos);
+  };
+  S.regs      = mesclar(S.regs||[],      dados.regs||[]);
+  S.oficina   = mesclar(S.oficina||[],   dados.oficina||[]);
+  S.desvios   = mesclar(S.desvios||[],   dados.desvios||[]);
+  S.inspecoes = mesclar(S.inspecoes||[], dados.inspecoes||[]);
+  // Tripulantes: mesclar sem duplicar por nome
+  var crew = S.crew||[];
+  (dados.crew||[]).forEach(function(c){
+    var existe=crew.find(function(x){return (x.nm||'').toLowerCase()===(c.nm||'').toLowerCase();});
+    if(!existe) crew.push(c);
+  });
+  S.crew = crew;
+  saveData(true);
+  if(typeof kpis==='function') kpis();
+  if(typeof renderDash==='function') renderDash();
+  var adicionados = {
+    regs:      (S.regs||[]).length      - antes.regs,
+    oficina:   (S.oficina||[]).length   - antes.oficina,
+    desvios:   (S.desvios||[]).length   - antes.desvios,
+    inspecoes: (S.inspecoes||[]).length - antes.inspecoes
+  };
+  var total = adicionados.regs+adicionados.oficina+adicionados.desvios+adicionados.inspecoes;
+  toast('✅ Mês acumulado: +'+adicionados.regs+' relat. +'+adicionados.oficina+' oficina +'+adicionados.inspecoes+' insp. ('+total+' novos itens)','ok');
+  return total;
+}
+
+
 // ═══════════════════════════════════════════════════════════
 function bkpMesStatus(msg,tipo){
   var el=document.getElementById('bkp-mes-status');
@@ -6092,15 +6258,21 @@ async function cloudGitHubLoadFile(apiUrl, fileName, hdParam){
     var total = (data.regs||[]).length + (data.crew||[]).length;
     if(!confirm('Carregar "'+fileName+'"?\n'+total+' registros/tripulantes\nSubstitui TODOS os dados locais.\nContinuar?')) return;
 
-    if(typeof applyImport==='function'){
+    // Backup de mês ou viagem → acumular (não substituir)
+    var ehParcial = data.scope && (data.scope.startsWith('MES_') || data.scope.startsWith('NV_'));
+    if(ehParcial){
+      var novos = jacCarregarMesAcumulativo(data);
+      toast('✅ "'+fileName+'" acumulado: '+novos+' novo(s) item(s) adicionado(s)','ok');
+    } else if(typeof applyImport==='function'){
       applyImport(data);
+      toast('✅ Backup "'+fileName+'" carregado!','ok');
     } else {
       Object.assign(S,{regs:data.regs||[],crew:data.crew||[],fotos:data.fotos||[],
         empresas:data.empresas||[],oficina:data.oficina||[],desvios:data.desvios||[],inspecoes:data.inspecoes||[]});
       if(typeof saveData==='function') saveData(true);
       if(typeof renderDash==='function') renderDash();
+      toast('✅ Backup "'+fileName+'" carregado! ('+total+' itens)','ok');
     }
-    toast('✅ Backup "'+fileName+'" carregado! ('+total+' itens)','ok');
   }catch(ex){ toast('❌ Erro: '+ex.message,'err'); }
 }
 
@@ -8820,12 +8992,15 @@ function renderCrew(){
                 ${t.em?`<span class="emb-b">⬆ ${fd(t.em)}</span>`:''}
                 ${t.de?`<span class="des-b">⬇ ${fd(t.de)}</span>`:t.em?'<span style="font-size:10px;font-weight:700;color:#16a34a;">✅ A bordo</span>':''}
                 ${t.porto?`<span style="font-size:10px;color:var(--text-dim);">🚢 ${escHtml(t.porto)}</span>`:''}
+                ${(()=>{var h=(S.embHistory||[]).filter(x=>x.crewId===t.id);return h.length>1?`<span style="font-size:9px;color:var(--login-blue);background:var(--login-blue-xlt);padding:1px 5px;border-radius:4px;">${h.length} embarques</span>`:'';})()}
               </div>
             </div>
             <div style="text-align:right;font-size:11px;color:var(--text-dim);flex-shrink:0;">
               <div class="mono">#${t.mat||'—'}</div>
               <div>${t.tu}</div>
-              <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end;" onclick="event.stopPropagation()">
+              <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end;flex-wrap:wrap;" onclick="event.stopPropagation()">
+                <button class="btn btn-ghost btn-sm" style="font-size:11px;" onclick="crewHistorico('${t.id}')" title="Histórico de embarques">📋 Hist.</button>
+                <button class="btn btn-ghost btn-sm" style="font-size:11px;" onclick="crewSugestao('${t.id}')" title="Recomendação">💬 Sug.</button>
                 <button class="btn btn-primary btn-sm" onclick="openCrew('${t.id}')">✏️</button>
                 <button class="btn btn-danger btn-sm" onclick="delCrew('${t.id}')">🗑</button>
               </div>
@@ -12476,7 +12651,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.1.0';
+const APP_VERSION = '3.1.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
@@ -15772,7 +15947,6 @@ if(clnovo&&clnovo.parentNode)clnovo.parentNode.insertBefore(csnovo,clnovo);
     <div class="drawer-item" onclick="navTo('mensal')"><span class="di">📆</span>Mensal</div>
     <div class="drawer-item" onclick="navTo('historico')"><span class="di">🗂️</span>Histórico</div>
     <div class="drawer-item" onclick="navTo('tripulantes')"><span class="di">👥</span>Tripulantes</div>
-    <div class="drawer-item" onclick="navTo('embarque')"><span class="di">🚢</span>Embarque</div>
     <div class="drawer-item" onclick="navTo('fotos')"><span class="di">📷</span>Fotos</div>
     <div class="drawer-item" onclick="navTo('storage')"><span class="di">💾</span>Arquivos</div>
     <div class="drawer-item" onclick="navTo('mobile')"><span class="di">📱</span>Celular</div>
