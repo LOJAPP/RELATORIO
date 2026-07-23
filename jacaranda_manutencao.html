@@ -4966,37 +4966,113 @@ function cloudGitHubConfig(){
 }
 async function cloudGitHubSave(){
   var cfg=getCfg();
-  if(!cfg.githubToken||!cfg.githubRepo){ cloudSt('Configure GitHub primeiro','err'); return; }
-  cloudSt('Enviando para GitHub...','info');
+  if(!cfg.githubToken||!cfg.githubRepo){
+    cloudSt('⚠️ Configure o token e repositório antes de enviar','err'); return;
+  }
+  cloudSt('⏳ Conectando ao GitHub...','info');
+
+  var token  = cfg.githubToken.trim();
+  var repo   = cfg.githubRepo.trim().replace(/\s/g,''); // remover espaços
+  var branch = (cfg.githubBranch||'main').trim();
+
+  // Auto-detectar tipo de token: Classic (ghp_) usa "token", Fine-grained usa "Bearer"
+  var authHeader = token.startsWith('github_pat_') ? 'Bearer '+token : 'token '+token;
+  var headers = {
+    'Authorization': authHeader,
+    'Accept':        'application/vnd.github.v3+json',
+    'Content-Type':  'application/json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+
   try{
-    var content=buildBackupData();
-    var b64=cloudSafeBtoa(unescape(encodeURIComponent(content)));
-    var path='backups/'+buildFileName();
-    var branch=cfg.githubBranch||'main';
-    var sha=null;
-    try{
-      var chk=await fetch('https://api.github.com/repos/'+cfg.githubRepo+'/contents/'+path+'?ref='+branch,
-        {headers:{'Authorization':'token '+cfg.githubToken,'Accept':'application/vnd.github.v3+json'}});
-      if(chk.ok){ var cj=await chk.json(); sha=cj.sha; }
-    }catch(e){}
-    var body={message:'Backup '+new Date().toLocaleString('pt-BR'),content:b64,branch:branch};
-    if(sha) body.sha=sha;
-    var r=await fetch('https://api.github.com/repos/'+cfg.githubRepo+'/contents/'+path,
-      {method:'PUT',headers:{'Authorization':'token '+cfg.githubToken,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    // ── PASSO 1: Verificar se o repositório existe ──
+    cloudSt('⏳ Verificando repositório '+repo+'...','info');
+    var repoChk = await fetch('https://api.github.com/repos/'+repo, {headers:headers});
+    if(!repoChk.ok){
+      var rc = await repoChk.json().catch(function(){return {};});
+      if(repoChk.status===401){
+        cloudSt('❌ Token inválido ou expirado (401). Gere um novo token no GitHub: Settings → Developer Settings → Personal Access Tokens → Generate new token (escopo: repo)','err');
+      } else if(repoChk.status===404){
+        cloudSt('❌ Repositório "'+repo+'" não encontrado (404). Verifique: 1) O nome está exato (ex: josemoncada/jac-backups)  2) O repositório foi criado  3) O token tem acesso a repositórios privados (escopo repo)','err');
+      } else {
+        cloudSt('❌ Erro ao acessar repositório: '+repoChk.status+' '+(rc.message||''),'err');
+      }
+      return;
+    }
+    var repoInfo = await repoChk.json();
+    var defaultBranch = repoInfo.default_branch || 'main';
+    if(branch === 'main' && defaultBranch !== 'main') branch = defaultBranch;
+
+    // ── PASSO 2: Verificar se o branch existe ──
+    var branchChk = await fetch('https://api.github.com/repos/'+repo+'/branches/'+branch, {headers:headers});
+    if(!branchChk.ok && repoInfo.size === 0){
+      // Repositório vazio: criar README para inicializar o branch
+      cloudSt('⏳ Repositório vazio — inicializando...','info');
+      var initR = await fetch('https://api.github.com/repos/'+repo+'/contents/README.md',{
+        method:'PUT', headers:headers,
+        body:JSON.stringify({message:'Inicializar repositório de backup',
+          content:cloudSafeBtoa('# Backups LOG-IN Jacarandá\nBackups automáticos do app a bordo.\n'),
+          branch:branch})
+      });
+      if(!initR.ok){
+        cloudSt('❌ Não foi possível inicializar o repositório. Adicione um README.md manualmente no GitHub.','err'); return;
+      }
+      cloudSt('⏳ Repositório inicializado, enviando backup...','info');
+    }
+
+    // ── PASSO 3: Verificar se o arquivo já existe (para pegar o SHA) ──
+    var content  = buildBackupData();
+    var b64      = cloudSafeBtoa(unescape(encodeURIComponent(content)));
+    var path     = 'backups/'+buildFileName();
+    var sha      = null;
+
+    var fileChk = await fetch('https://api.github.com/repos/'+repo+'/contents/'+path+'?ref='+branch, {headers:headers});
+    if(fileChk.ok){
+      var fj = await fileChk.json().catch(function(){return {};});
+      sha = fj.sha || null;
+    }
+    // 404 aqui é normal (arquivo ainda não existe) — ignora
+
+    // ── PASSO 4: Criar/atualizar o arquivo ──
+    cloudSt('⏳ Enviando backup ('+Math.round(content.length/1024)+' KB)...','info');
+    var putBody = {
+      message: 'Backup '+new Date().toLocaleString('pt-BR'),
+      content: b64,
+      branch:  branch
+    };
+    if(sha) putBody.sha = sha;
+
+    var r = await fetch('https://api.github.com/repos/'+repo+'/contents/'+path, {
+      method:'PUT', headers:headers, body:JSON.stringify(putBody)
+    });
+
     if(r.ok){
-      cloudSt('✅ Salvo no GitHub: '+path,'ok');
+      var msg = '✅ Backup salvo: '+path+' ('+Math.round(content.length/1024)+' KB)';
+      cloudSt(msg,'ok');
       var st3=document.getElementById('cloud-gh-cfg-status');
-      if(st3){st3.textContent='✅ Último backup: '+path;st3.style.color='var(--login-green)';}
-      if(typeof recordBackupHistory==='function') recordBackupHistory(path,'GitHub','GitHub');
+      if(st3){st3.textContent=msg;st3.style.color='var(--login-green)';}
+      if(typeof recordBackupHistory==='function') recordBackupHistory(path,'GitHub: '+repo,'GitHub');
+      toast('✅ Backup enviado para GitHub!','ok');
     } else {
       var ej={}; try{ej=await r.json();}catch(ex){}
-      var errMsg='GitHub erro '+r.status+': '+(ej.message||'verifique o token e o repositório');
+      var errMsg = '';
+      if(r.status===422){
+        errMsg = '❌ Erro 422: branch "'+branch+'" pode não existir. Verifique o nome do branch no GitHub (geralmente é "main").';
+      } else if(r.status===409){
+        errMsg = '❌ Conflito (409): tente novamente.';
+      } else {
+        errMsg = '❌ Erro '+r.status+': '+(ej.message||'falha ao criar arquivo');
+      }
       cloudSt(errMsg,'err');
       var st2=document.getElementById('cloud-gh-cfg-status');
-      if(st2){st2.textContent='❌ '+errMsg;st2.style.color='var(--danger)';}
+      if(st2){st2.textContent=errMsg;st2.style.color='var(--danger)';}
     }
-  }catch(e){ cloudSt('Erro: '+e.message,'err'); }
+  }catch(e){
+    var msg2='❌ Erro de rede: '+e.message;
+    cloudSt(msg2,'err');
+  }
 }
+
 // ── Salvar/carregar configurações nos campos visíveis ──
 function cloudGitHubSalvarConfig(){
   var tk=(document.getElementById('cfg-gh-token')||{}).value||'';
