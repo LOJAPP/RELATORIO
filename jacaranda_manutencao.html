@@ -4981,7 +4981,17 @@ async function cloudGitHubVerificar(){
     // Listar repositórios
     var rr=await fetch('https://api.github.com/user/repos?per_page=100&sort=updated',{headers:hd});
     var repos=rr.ok?await rr.json():[];
-    var names=repos.map(function(r){return r.full_name;});
+    // Filtrar: excluir o repositório do app e mostrar só repositórios de backup
+    var EXCLUIR = ['relatorio','RELATORIO','lojapp.github.io','.github'];
+    var names = repos
+      .filter(function(r){
+        var n = r.full_name.toLowerCase();
+        return !EXCLUIR.some(function(ex){ return n.indexOf(ex.toLowerCase())>=0; });
+      })
+      .map(function(r){ return r.full_name; });
+
+    // Se não há nenhum repo de backup, sugerir lojapp/jac-backups
+    if(!names.length) names = [login+'/jac-backups'];
 
     // Montar modal com DOM puro (sem onclick inline com aspas simples)
     var old=document.getElementById('modalGhVerif'); if(old) old.remove();
@@ -11653,7 +11663,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.8.3';
+const APP_VERSION = '2.8.4';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
