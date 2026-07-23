@@ -1296,7 +1296,7 @@
           <div class="panel-header" style="background:linear-gradient(135deg,#24292f,#57606a);color:#fff;font-size:13px;">🐙 GitHub — Backups automáticos</div>
           <div style="padding:12px;">
             <div id="drive-conn-status" style="border-radius:8px;padding:8px 12px;margin-bottom:10px;border:1px solid var(--border2);background:var(--surface2);font-size:11px;">
-              <div id="cloud-gh-cfg-status" style="color:var(--text-dim);">— não configurado</div>
+              <div id="cloud-gh-cfg-status-st" class="gh-status" style="color:var(--text-dim);">— não configurado</div>
             </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
               <button class="btn btn-green btn-sm" onclick="cloudGitHubSave()" style="flex:1;">📤 Salvar backup</button>
@@ -1307,7 +1307,7 @@
               <button class="btn btn-ghost btn-sm" onclick="cloudGitHubVerificar()" style="flex:1;font-size:11px;">🔍 Verificar conta</button>
             </div>
             <div id="drive-status" style="font-size:11px;padding:6px 8px;border-radius:5px;margin-top:8px;display:none;"></div>
-            <div id="cloud-alt-status" style="font-size:11px;margin-top:6px;color:var(--text-dim);min-height:14px;"></div>
+            <div id="cloud-alt-status-st" class="cloud-status" style="font-size:11px;margin-top:6px;color:var(--text-dim);min-height:14px;"></div>
           </div>
         </div>
         <div class="panel" style="margin-bottom:0;border-top:3px solid var(--gold);">
@@ -1458,6 +1458,10 @@
                 <label style="font-size:10px;font-weight:700;">📁 Repositório</label>
                 <input type="text" class="form-control" id="cfg-gh-repo" placeholder="auto-detectado pelo token">
               </div>
+              <div class="form-group" style="flex:1;">
+                <label style="font-size:10px;font-weight:700;">🌿 Branch</label>
+                <input type="text" class="form-control" id="cfg-gh-branch" placeholder="main" value="main">
+              </div>
               <div class="form-group" style="align-self:flex-end;">
                 <button class="btn btn-primary btn-sm" onclick="cloudGitHubVerificar()" style="white-space:nowrap;">🔍 Verificar token</button>
               </div>
@@ -1468,8 +1472,9 @@
               <button class="btn btn-ghost btn-sm" onclick="cloudGitHubLoad()">📥 Ver/Carregar backups</button>
               <button class="btn btn-warn btn-sm" onclick="cloudGitHubDiag()" title="Testa cada etapa e mostra onde falha">🔬 Testar conexão</button>
             </div>
-            <div id="cloud-gh-cfg-status" style="font-size:11px;margin-bottom:8px;color:var(--text-dim);min-height:16px;background:#f8fafc;padding:6px 10px;border-radius:6px;"></div>
-            <div id="cloud-alt-status" style="font-size:11px;color:var(--text-dim);min-height:16px;"></div>
+            <div id="cloud-gh-cfg-status" class="gh-status" style="font-size:11px;margin-bottom:8px;color:var(--text-dim);min-height:16px;background:#f8fafc;padding:6px 10px;border-radius:6px;"></div>
+            <div style="font-size:10px;color:var(--muted);text-align:right;margin-bottom:6px;">Módulo GitHub <span id="gh-module-ver" style="font-weight:700;">v2.9.1</span> — confira se bate com a versão publicada</div>
+            <div id="cloud-alt-status" class="cloud-status" style="font-size:11px;color:var(--text-dim);min-height:16px;"></div>
             <!-- Opções para arquivos > 100 MB -->
             <details style="margin-top:8px;">
               <summary style="font-size:11px;font-weight:700;color:#57606a;cursor:pointer;padding:6px 0;">⬇️ Backup muito grande (>100 MB)? Clique para opções</summary>
@@ -4892,8 +4897,19 @@ function renderMareChart(containerId, t1, h1, t2, h2, tp, locNm){
 // Estratégias: separar fotos | S3/R2 | GitHub | partes
 // ═══════════════════════════════════════════════════════
 function cloudSt(msg, type){
-  var el=document.getElementById('cloud-alt-status');
-  if(el){ el.textContent=msg; el.style.color=type==='err'?'var(--danger)':type==='ok'?'var(--login-green)':'var(--text-dim)'; }
+  var cor = type==='err' ? 'var(--danger)' : (type==='ok' ? 'var(--login-green)' : 'var(--text-dim)');
+  // Escrever em TODOS os painéis de status (Storage + Configurações)
+  var els = document.querySelectorAll('.cloud-status, #cloud-alt-status, #cloud-alt-status-st');
+  for(var i=0;i<els.length;i++){ els[i].textContent = msg; els[i].style.color = cor; }
+  if(!els.length) console.log('[cloud]', msg);
+}
+// Escrever nos status do GitHub (ambos os painéis)
+function cloudGhSt(msg, cor){
+  var els = document.querySelectorAll('.gh-status, #cloud-gh-cfg-status, #cloud-gh-cfg-status-st');
+  for(var i=0;i<els.length;i++){
+    els[i].textContent = msg;
+    if(cor) els[i].style.color = cor;
+  }
 }
 function cloudSplitFotos(){
   try{
@@ -5114,8 +5130,7 @@ function cloudGhSelectRepo(fullName){
   if(ov) ov.remove();
 
   // 4) Atualizar status
-  var st = document.getElementById('cloud-gh-cfg-status');
-  if(st){ st.textContent = '✅ Repositório salvo: '+fullName+' — clique em 📤 Enviar backup'; st.style.color='var(--login-green)'; }
+  cloudGhSt('✅ Repositório salvo: '+fullName+' — clique em 📤 Enviar backup','var(--login-green)');
   cloudSt('✅ Repositório "'+fullName+'" selecionado e salvo — clique em 📤 Enviar backup agora','ok');
   toast('✅ Repositório: '+fullName,'ok');
 }
@@ -5186,10 +5201,18 @@ async function cloudGitHubSave(){
     if(!rcChk.ok){
       if(rcChk.status!==404){ cloudSt('❌ Erro '+rcChk.status+' ao acessar repositório','err'); return; }
       cloudSt('⏳ Criando repositório "'+repo+'"...','info');
-      var cr = await fetch('https://api.github.com/user/repos',{method:'POST',headers:hd,
-        body:JSON.stringify({name:repoNome,description:'Backups LOG-IN Jacarandá',private:true,auto_init:true})});
+      var owner = repo.split('/')[0];
+      var criarBody = JSON.stringify({name:repoNome,description:'Backups LOG-IN Jacarandá',private:true,auto_init:true});
+      // Tentar criar na conta pessoal
+      var cr = await fetch('https://api.github.com/user/repos',{method:'POST',headers:hd,body:criarBody});
+      // Se o owner for uma organização, criar na org
+      if(!cr.ok && owner !== loginReal){
+        cloudSt('⏳ Tentando criar na organização '+owner+'...','info');
+        cr = await fetch('https://api.github.com/orgs/'+owner+'/repos',{method:'POST',headers:hd,body:criarBody});
+      }
       if(!cr.ok){ var cj={}; try{cj=await cr.json();}catch(ex){}
-        cloudSt('❌ Não foi possível criar: '+(cj.message||cr.status),'err'); return; }
+        cloudSt('❌ Não foi possível criar "'+repo+'": '+(cj.message||cr.status)
+          +' — o token precisa do escopo "repo" completo','err'); return; }
       cloudSt('✅ Repositório criado!','ok');
       await new Promise(function(res){setTimeout(res,3000);});
     }
@@ -5227,8 +5250,7 @@ async function cloudGitHubSave(){
     if(r.ok){
       var msg = '✅ Backup salvo: '+path+' ('+sizeKB+' KB · '+totalItens+' itens)';
       cloudSt(msg,'ok');
-      var stEl=document.getElementById('cloud-gh-cfg-status');
-      if(stEl){stEl.textContent=msg;stEl.style.color='var(--login-green)';}
+      cloudGhSt(msg,'var(--login-green)');
       // Salvar no histórico (compatível com recordBackupHistory)
       recordBackupHistory(path,'GitHub: '+repo,'GitHub');
       toast('✅ Backup enviado para o GitHub! ('+sizeKB+' KB)','ok');
@@ -5239,14 +5261,43 @@ async function cloudGitHubSave(){
     }
   }catch(e){ cloudSt('❌ Erro de rede: '+e.message,'err'); }
 }
+function cloudCarregarArquivoLocal(inp){
+  var f = inp.files && inp.files[0];
+  if(!f) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      var data = JSON.parse(ev.target.result);
+      if(!data || !data.v){ toast('❌ Arquivo não é um backup válido do app','err'); return; }
+      var total = (data.regs||[]).length + (data.crew||[]).length;
+      if(!confirm('Carregar "'+f.name+'"?\n'+total+' registros/tripulantes\nSubstitui TODOS os dados locais.\nContinuar?')) return;
+      if(typeof applyImport==='function'){
+        applyImport(data);
+      } else {
+        S.regs=data.regs||[]; S.crew=data.crew||[]; S.fotos=data.fotos||[];
+        S.empresas=data.empresas||[]; S.oficina=data.oficina||[];
+        S.desvios=data.desvios||[]; S.inspecoes=data.inspecoes||[];
+        if(typeof saveData==='function') saveData(true);
+        if(typeof kpis==='function') kpis();
+        if(typeof renderDash==='function') renderDash();
+      }
+      var ov=document.getElementById('modalGhLoad'); if(ov) ov.remove();
+      toast('✅ Backup "'+f.name+'" carregado! ('+total+' itens)','ok');
+    }catch(e){ toast('❌ Erro ao ler arquivo: '+e.message,'err'); }
+  };
+  reader.readAsText(f);
+}
+
+
 async function cloudGitHubDiag(){
   var cfg=getCfg();
-  var st=document.getElementById('cloud-gh-cfg-status');
+  var sts=document.querySelectorAll('.gh-status, #cloud-gh-cfg-status, #cloud-gh-cfg-status-st');
   var log=function(msg,color){
-    if(st) st.innerHTML+='<div style="color:'+(color||'var(--text-dim)')+';font-size:11px;padding:1px 0;">'+msg+'</div>';
+    var h='<div style="color:'+(color||'var(--text-dim)')+';font-size:11px;padding:1px 0;">'+msg+'</div>';
+    for(var i=0;i<sts.length;i++) sts[i].innerHTML+=h;
     console.log('[GH]',msg);
   };
-  if(st) st.innerHTML='<strong style="font-size:11px;">🔬 Diagnóstico GitHub:</strong><br>';
+  for(var si=0;si<sts.length;si++) sts[si].innerHTML='<strong style="font-size:11px;">🔬 Diagnóstico GitHub:</strong><br>';
   if(!cfg.githubToken){ log('❌ Token não configurado','red'); return; }
   log('✅ Token: '+cfg.githubToken.slice(0,8)+'...','green');
   var token=cfg.githubToken.trim();
@@ -5320,11 +5371,7 @@ function cloudGitHubSalvarConfig(){
   var tk=(document.getElementById('cfg-gh-token')||{}).value||'';
   var rp=(document.getElementById('cfg-gh-repo')||{}).value||'';
   var br=(document.getElementById('cfg-gh-branch')||{}).value||'main';
-  var st=document.getElementById('cloud-gh-cfg-status');
-  if(!tk||!rp){
-    if(st){ st.textContent='⚠️ Preencha o token e o repositório'; st.style.color='var(--danger)'; }
-    return;
-  }
+  if(!tk||!rp){ cloudGhSt('⚠️ Preencha o token e o repositório','var(--danger)'); return; }
   var cfg=getCfg();
   cfg.githubToken=tk.trim();
   // Normalizar repo: lowercase e sem espaços
@@ -5355,7 +5402,7 @@ function cloudRenderSavedConfig(){
   var ghRep=document.getElementById('cfg-gh-repo');
   var ghBrn=document.getElementById('cfg-gh-branch');
   var s3Url=document.getElementById('cfg-s3-url');
-  var stGh=document.getElementById('cloud-gh-cfg-status');
+  var stGh=null; // usa cloudGhSt() para escrever em ambos os painéis
   var stS3=document.getElementById('cloud-s3-cfg-status');
   if(ghTok && cfg.githubToken) ghTok.value=cfg.githubToken;
   // Normalizar repo salvo (corrigir LOJAPP → lojapp)
@@ -5366,7 +5413,8 @@ function cloudRenderSavedConfig(){
   if(ghRep && cfg.githubRepo)  ghRep.value=cfg.githubRepo;
   if(ghBrn) ghBrn.value=cfg.githubBranch||'main';
   if(s3Url && cfg.s3Url) s3Url.value=cfg.s3Url;
-  if(stGh) stGh.textContent=cfg.githubToken&&cfg.githubRepo ? '✅ Configurado: '+cfg.githubRepo : '— não configurado';
+  cloudGhSt(cfg.githubToken&&cfg.githubRepo ? '✅ Configurado: '+cfg.githubRepo : '— não configurado',
+            cfg.githubToken&&cfg.githubRepo ? 'var(--login-green)' : 'var(--text-dim)');
   if(stS3) stS3.textContent=cfg.s3Url ? '✅ Configurado: '+cfg.s3Url.slice(0,40)+'...' : '— não configurado';
 }
 
@@ -11887,7 +11935,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.9.0';
+const APP_VERSION = '2.9.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
