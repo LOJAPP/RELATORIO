@@ -4951,71 +4951,120 @@ function cloudGitHubConfig(){
     });
 }
 async function cloudGitHubVerificar(){
-  // Descobre o usuário autenticado e lista os repositórios disponíveis
   var cfg=getCfg();
   var token=(document.getElementById('cfg-gh-token')||{}).value||cfg.githubToken||'';
-  if(!token){ cloudSt('⚠️ Cole o token primeiro antes de verificar','err'); return; }
+  if(!token){ cloudSt('⚠️ Cole o token no campo acima primeiro','err'); return; }
   token=token.trim();
   var authHeader=token.startsWith('github_pat_')?'Bearer '+token:'token '+token;
-  var headers={'Authorization':authHeader,'Accept':'application/vnd.github.v3+json','X-GitHub-Api-Version':'2022-11-28'};
-  cloudSt('⏳ Verificando token e buscando seus repositórios...','info');
+  var hd={'Authorization':authHeader,'Accept':'application/vnd.github.v3+json','X-GitHub-Api-Version':'2022-11-28'};
+  cloudSt('⏳ Verificando token...','info');
   try{
-    // 1) Obter usuário autenticado
-    var ur=await fetch('https://api.github.com/user',{headers:headers});
+    var ur=await fetch('https://api.github.com/user',{headers:hd});
     if(!ur.ok){
-      if(ur.status===401) cloudSt('❌ Token inválido ou sem permissão. Gere um novo em: github.com → Settings → Developer Settings → Personal access tokens → Generate new token (Classic) → marcar escopo "repo"','err');
-      else cloudSt('❌ Erro '+ur.status+' ao verificar o token','err');
+      cloudSt(ur.status===401
+        ?'❌ Token inválido. Gere um novo: github.com → Settings → Developer Settings → Tokens (classic) → New → escopo: repo'
+        :'❌ Erro '+ur.status+' ao verificar o token','err');
       return;
     }
     var user=await ur.json();
-    var login=user.login;
-    // Preencher automaticamente
+    var login=user.login||'';
+    var displayName=user.name||login; // fix: null quando usuário não tem nome
+
+    // Preencher campo repositório com login real
     var repEl=document.getElementById('cfg-gh-repo');
     var repoVal=repEl?repEl.value.trim():'';
-    // Se campo repo está vazio ou tem só 'jacaranda', substituir pelo login correto
-    if(!repoVal||repoVal==='jacaranda'||repoVal==='jac-backups'||repoVal.indexOf('/')<0){
-      if(repEl) repEl.value=login+'/jac-backups';
-    }
-    // 2) Listar repositórios do usuário
-    var rr=await fetch('https://api.github.com/user/repos?per_page=100&sort=updated',{headers:headers});
+    var repoNome='jac-backups';
+    if(repoVal.indexOf('/')>=0) repoNome=repoVal.split('/').pop();
+    var repoCorreto=login+'/'+repoNome;
+    if(repEl) repEl.value=repoCorreto;
+
+    // Listar repositórios
+    var rr=await fetch('https://api.github.com/user/repos?per_page=100&sort=updated',{headers:hd});
     var repos=rr.ok?await rr.json():[];
     var names=repos.map(function(r){return r.full_name;});
-    // Mostrar modal de seleção
+
+    // Montar modal com DOM puro (sem onclick inline com aspas simples)
     var old=document.getElementById('modalGhVerif'); if(old) old.remove();
     var ov=document.createElement('div');
     ov.id='modalGhVerif';
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9996;display:flex;align-items:center;justify-content:center;padding:16px;';
     ov.onclick=function(e){if(e.target===ov)ov.remove();};
-    var rows=names.length?names.map(function(n){
-      return '<tr style="border-bottom:1px solid #e2e8f0;cursor:pointer;" onclick="cloudGhSelectRepo(\''+n+'\')">'
-        +'<td style="padding:8px 12px;font-size:12px;font-weight:600;">'+n+'</td>'
-        +'<td style="padding:8px 8px;"><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();cloudGhSelectRepo(\''+n+'\')">✔ Usar este</button></td>'
-        +'</tr>';
-    }).join('')
-    :'<tr><td colspan="2" style="padding:12px;color:var(--text-dim);text-align:center;">Nenhum repositório encontrado. Crie um em github.com/new</td></tr>';
+
     var inner=document.createElement('div');
-    inner.style.cssText='background:#fff;border-radius:14px;max-width:480px;width:100%;max-height:75vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.4);';
-    inner.innerHTML='<div style="background:linear-gradient(135deg,#24292f,#57606a);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:8px;">'
-      +'<img src="'+user.avatar_url+'&s=40" style="width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.3);">'
-      +'<div><div style="font-weight:800;font-size:14px;">'+user.name||login+'</div><div style="font-size:11px;opacity:.8;">@'+login+'</div></div>'
-      +'<button onclick="document.getElementById(&apos;modalGhVerif&apos;).remove()" style="margin-left:auto;background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:16px;">✕</button></div>'
-      +'<div style="padding:10px 14px;font-size:11px;color:var(--text-dim);border-bottom:1px solid var(--border);">Token válido ✅ · Clique no repositório para usar. Não vê o certo? Crie um novo em <a href="https://github.com/new" target="_blank">github.com/new</a> (marcar Private)</div>'
-      +'<table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f6f8fa;font-size:11px;font-weight:700;"><th style="padding:6px 12px;text-align:left;">Repositório</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
-      +'<div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;">'
-      +'<button class="btn btn-primary btn-sm" onclick="cloudGhSelectRepo(\''+login+'/jac-backups\')">✚ Criar e usar '+login+'/jac-backups</button>'
-      +'<button class="btn btn-ghost btn-sm" style="flex:1;" onclick="document.getElementById(&apos;modalGhVerif&apos;).remove()">Fechar</button>'
-      +'</div>';
+    inner.style.cssText='background:#fff;border-radius:14px;max-width:500px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.4);';
+
+    // Header
+    var hdr=document.createElement('div');
+    hdr.style.cssText='background:linear-gradient(135deg,#24292f,#57606a);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:10px;';
+    var img=document.createElement('img');
+    img.src=(user.avatar_url||'')+'&s=40';
+    img.style.cssText='width:40px;height:40px;border-radius:50%;border:2px solid rgba(255,255,255,.3);';
+    img.onerror=function(){this.style.display='none';};
+    var nameDiv=document.createElement('div');
+    nameDiv.innerHTML='<div style="font-weight:800;font-size:15px;">'+escHtml(displayName)+'</div>'
+      +'<div style="font-size:11px;opacity:.8;">@'+escHtml(login)+'</div>';
+    var closeBtn=document.createElement('button');
+    closeBtn.textContent='✕';
+    closeBtn.style.cssText='margin-left:auto;background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:16px;';
+    closeBtn.onclick=function(){ov.remove();};
+    hdr.appendChild(img); hdr.appendChild(nameDiv); hdr.appendChild(closeBtn);
+    inner.appendChild(hdr);
+
+    // Info
+    var info=document.createElement('div');
+    info.style.cssText='padding:10px 14px;font-size:11px;color:var(--text-dim);border-bottom:1px solid var(--border);';
+    info.innerHTML='Token válido ✅ · Selecione o repositório onde salvar os backups. Não encontra o certo? <a href="https://github.com/new" target="_blank">Criar novo</a>';
+    inner.appendChild(info);
+
+    // Tabela de repositórios
+    var tbl=document.createElement('div');
+    tbl.style.cssText='overflow-y:auto;max-height:300px;';
+    if(names.length){
+      var table=document.createElement('table');
+      table.style.cssText='width:100%;border-collapse:collapse;';
+      names.forEach(function(n){
+        var tr=document.createElement('tr');
+        tr.style.cssText='border-bottom:1px solid #e2e8f0;cursor:pointer;';
+        tr.onmouseenter=function(){this.style.background='#f6f8fa';};
+        tr.onmouseleave=function(){this.style.background='';};
+        var td1=document.createElement('td');
+        td1.style.cssText='padding:9px 12px;font-size:12px;font-weight:600;';
+        td1.textContent=n;
+        var td2=document.createElement('td');
+        td2.style.cssText='padding:9px 8px;text-align:right;';
+        var btn=document.createElement('button');
+        btn.className='btn btn-primary btn-sm';
+        btn.textContent='✔ Usar este';
+        btn.onclick=(function(repo){return function(e){e.stopPropagation();cloudGhSelectRepo(repo);};})(n);
+        tr.onclick=(function(repo){return function(){cloudGhSelectRepo(repo);};})(n);
+        td2.appendChild(btn); tr.appendChild(td1); tr.appendChild(td2);
+        table.appendChild(tr);
+      });
+      tbl.appendChild(table);
+    } else {
+      tbl.innerHTML='<div style="padding:16px;text-align:center;color:var(--text-dim);font-size:12px;">Nenhum repositório encontrado.<br>Crie um em <a href="https://github.com/new" target="_blank">github.com/new</a> (marcar Private)</div>';
+    }
+    inner.appendChild(tbl);
+
+    // Footer
+    var foot=document.createElement('div');
+    foot.style.cssText='padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;';
+    var btnCriar=document.createElement('button');
+    btnCriar.className='btn btn-green btn-sm';
+    btnCriar.textContent='✚ Criar e usar '+login+'/jac-backups';
+    btnCriar.style.flex='1';
+    btnCriar.onclick=function(){ cloudGhSelectRepo(login+'/jac-backups'); };
+    var btnFechar=document.createElement('button');
+    btnFechar.className='btn btn-ghost btn-sm';
+    btnFechar.textContent='Fechar';
+    btnFechar.onclick=function(){ov.remove();};
+    foot.appendChild(btnCriar); foot.appendChild(btnFechar);
+    inner.appendChild(foot);
+
     ov.appendChild(inner);
     document.body.appendChild(ov);
-    cloudSt('✅ Token válido — usuário: @'+login+' · '+names.length+' repositório(s) encontrado(s)','ok');
-  }catch(e){ cloudSt('❌ Erro de rede: '+e.message,'err'); }
-}
-function cloudGhSelectRepo(fullName){
-  var repEl=document.getElementById('cfg-gh-repo');
-  if(repEl) repEl.value=fullName;
-  var ov=document.getElementById('modalGhVerif'); if(ov) ov.remove();
-  cloudSt('✅ Repositório selecionado: '+fullName+' — clique em 💾 Salvar config GitHub','ok');
-  toast('Repositório selecionado: '+fullName,'ok');
+    cloudSt('✅ @'+login+' · '+names.length+' repositório(s)','ok');
+  }catch(e){ cloudSt('❌ Erro: '+e.message,'err'); }
 }
 async function cloudGitHubCriarRepo(login, token, headers){
   // Criar repositório jac-backups se não existir
@@ -11581,7 +11630,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.8.0';
+const APP_VERSION = '2.8.2';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
