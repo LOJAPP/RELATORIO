@@ -5139,7 +5139,7 @@ async function cloudGitHubSave(){
 
   try{
     // 1) Obter login real pelo token
-    cloudSt('⏳ Autenticando...','info');
+    cloudSt('1/6 Autenticando no GitHub...','info');
     var ur = await fetch('https://api.github.com/user',{headers:hd});
     if(!ur.ok){
       cloudSt(ur.status===401
@@ -5159,7 +5159,7 @@ async function cloudGitHubSave(){
     }
 
     // 3) Verificar/criar repositório
-    cloudSt('⏳ Verificando repositório '+repo+'...','info');
+    cloudSt('3/6 Verificando repositório '+repo+'...','info');
     var rcChk = await fetch('https://api.github.com/repos/'+repo,{headers:hd});
     if(!rcChk.ok){
       if(rcChk.status!==404){ cloudSt('❌ Erro '+rcChk.status+' ao acessar repositório','err'); return; }
@@ -5185,15 +5185,18 @@ async function cloudGitHubSave(){
     // 5) Gerar conteúdo e verificar SHA
     var content  = buildBackupData();
     var sizeKB   = Math.round(content.length/1024);
-    cloudSt('⏳ Codificando '+sizeKB+' KB...','info');
-    var b64  = cloudSafeBtoa(unescape(encodeURIComponent(content)));
+    cloudSt('⏳ Codificando '+sizeKB+' KB ('+totalItens+' itens)...','info');
+    // Verificar conteúdo antes de enviar
+    try{ var testParse=JSON.parse(content); }catch(pe){ cloudSt('❌ Erro ao serializar backup: '+pe.message,'err'); return; }
+    // cloudSafeBtoa já trata UTF-8 internamente via TextEncoder
+    var b64  = cloudSafeBtoa(content);
     var path = 'backups/'+buildFileName();
     var sha  = null;
     var fChk = await fetch('https://api.github.com/repos/'+repo+'/contents/'+path+'?ref='+branch,{headers:hd});
     if(fChk.ok){ var fj={}; try{fj=await fChk.json();}catch(e){} sha=fj.sha||null; }
 
     // 6) Enviar
-    cloudSt('⏳ Enviando ('+sizeKB+' KB)...','info');
+    cloudSt('6/6 Enviando '+sizeKB+' KB para '+repo+'...','info');
     var pb = {message:'Backup '+new Date().toLocaleString('pt-BR')+' ('+totalItens+' itens)',content:b64,branch:branch};
     if(sha) pb.sha=sha;
     var r = await fetch('https://api.github.com/repos/'+repo+'/contents/'+path,
@@ -5262,25 +5265,41 @@ function cloudRenderSavedConfig(){
   if(stS3) stS3.textContent=cfg.s3Url ? '✅ Configurado: '+cfg.s3Url.slice(0,40)+'...' : '— não configurado';
 }
 
-// ── Corrigir btoa para UTF-8 com arquivos grandes ──
+// ── UTF-8 → Base64 seguro para qualquer caractere ────────────────────
 function cloudSafeBtoa(str){
-  // Para strings grandes com caracteres UTF-8, usa TextEncoder + base64 por chunks
   try{
-    // Método padrão (funciona para ASCII puro)
-    return btoa(str);
-  }catch(e){
-    // Fallback UTF-8 safe
-    var encoder=new TextEncoder();
-    var bytes=encoder.encode(str);
-    var binary='';
-    var chunkSize=8192;
-    for(var i=0;i<bytes.length;i+=chunkSize){
-      var chunk=bytes.subarray(i,Math.min(i+chunkSize,bytes.length));
-      binary+=String.fromCharCode.apply(null, chunk);
+    // Método correto: TextEncoder → Uint8Array → base64 em chunks
+    if(typeof TextEncoder !== 'undefined'){
+      var enc = new TextEncoder();
+      var bytes = enc.encode(str);
+      var binary = '';
+      var chunk = 8192;
+      for(var i=0;i<bytes.length;i+=chunk){
+        binary += String.fromCharCode.apply(null,
+          Array.prototype.slice.call(bytes.subarray(i, Math.min(i+chunk, bytes.length))));
+      }
+      return btoa(binary);
     }
-    return btoa(binary);
+    // Fallback para ambientes sem TextEncoder
+    return btoa(unescape(encodeURIComponent(str)));
+  }catch(e){
+    // Último recurso
+    try{ return btoa(unescape(encodeURIComponent(str))); }catch(e2){ return btoa(str); }
   }
 }
+// ── Base64 → string UTF-8 ─────────────────────────────────────────────
+function cloudSafeAtob(b64){
+  try{
+    if(typeof TextDecoder !== 'undefined'){
+      var binary = atob(b64);
+      var bytes = new Uint8Array(binary.length);
+      for(var i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+      return new TextDecoder('utf-8').decode(bytes);
+    }
+    return decodeURIComponent(escape(atob(b64)));
+  }catch(e){ return atob(b64); }
+}
+
 
 async function cloudGitHubLoad(){
   var cfg=getCfg();
@@ -11677,7 +11696,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.8.5';
+const APP_VERSION = '2.8.6';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
