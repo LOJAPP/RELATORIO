@@ -1452,7 +1452,15 @@
             <div class="form-row" style="gap:8px;margin-bottom:6px;">
               <div class="form-group" style="flex:3;">
                 <label style="font-size:10px;font-weight:700;">🔑 Personal Access Token (ghp_... ou github_pat_...)</label>
-                <input type="password" class="form-control" id="cfg-gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="new-password">
+                <div style="display:flex;gap:4px;align-items:center;">
+                  <input type="text" class="form-control" id="cfg-gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                         data-lpignore="true" data-form-type="other"
+                         style="font-family:monospace;font-size:11px;-webkit-text-security:disc;"
+                         oninput="cloudGhTokenCheck()">
+                  <button type="button" class="btn btn-ghost btn-sm" onclick="cloudGhToggleToken()" title="Mostrar/ocultar" style="padding:5px 8px;">👁️</button>
+                </div>
+                <div id="gh-token-check" style="font-size:10px;margin-top:3px;color:var(--text-dim);"></div>
               </div>
               <div class="form-group" style="flex:2;">
                 <label style="font-size:10px;font-weight:700;">📁 Repositório</label>
@@ -1471,9 +1479,10 @@
               <button class="btn btn-green btn-sm" onclick="cloudGitHubSave()">📤 Enviar backup agora</button>
               <button class="btn btn-ghost btn-sm" onclick="cloudGitHubLoad()">📥 Ver/Carregar backups</button>
               <button class="btn btn-warn btn-sm" onclick="cloudGitHubDiag()" title="Testa cada etapa e mostra onde falha">🔬 Testar conexão</button>
+              <button class="btn btn-ghost btn-sm" onclick="cloudGhLimparToken()" style="color:var(--danger);" title="Apagar o token salvo">🗑️ Limpar token</button>
             </div>
             <div id="cloud-gh-cfg-status" class="gh-status" style="font-size:11px;margin-bottom:8px;color:var(--text-dim);min-height:16px;background:#f8fafc;padding:6px 10px;border-radius:6px;"></div>
-            <div style="font-size:10px;color:var(--muted);text-align:right;margin-bottom:6px;">Módulo GitHub <span id="gh-module-ver" style="font-weight:700;">v2.9.1</span> — confira se bate com a versão publicada</div>
+            <div style="font-size:10px;color:var(--muted);text-align:right;margin-bottom:6px;">Módulo GitHub <span id="gh-module-ver" style="font-weight:700;">v2.9.2</span> — confira se bate com a versão publicada</div>
             <div id="cloud-alt-status" class="cloud-status" style="font-size:11px;color:var(--text-dim);min-height:16px;"></div>
             <!-- Opções para arquivos > 100 MB -->
             <details style="margin-top:8px;">
@@ -5165,6 +5174,13 @@ async function cloudGitHubSave(){
 
   cloudSt('⏳ Preparando backup... ('+totalItens+' itens)','info');
   var token  = cfg.githubToken.trim();
+  // Validar formato antes de gastar uma chamada à API
+  if(token.length < 30 || token.indexOf(' ')>=0){
+    cloudSt('❌ O token salvo parece inválido ('+token.length+' caracteres). '
+      +'Tokens do GitHub têm 40+ caracteres e começam com ghp_ ou github_pat_. '
+      +'Cole o token novamente e clique em 💾 Salvar config.','err');
+    return;
+  }
   var branch = (cfg.githubBranch||'main').trim();
   var authHeader = token.startsWith('github_pat_')?'Bearer '+token:'token '+token;
   var hd = {
@@ -5179,9 +5195,16 @@ async function cloudGitHubSave(){
     cloudSt('1/6 Autenticando no GitHub...','info');
     var ur = await fetch('https://api.github.com/user',{headers:hd});
     if(!ur.ok){
-      cloudSt(ur.status===401
-        ?'❌ Token inválido — gere um novo em github.com → Settings → Developer settings → Tokens (classic) → New token → escopo: repo'
-        :'❌ Erro '+ur.status+' ao autenticar','err'); return;
+      if(ur.status===401){
+        cloudSt('❌ 401 Bad credentials — o token não é aceito pelo GitHub. Causas comuns: '
+          +'(1) token expirou ou foi revogado; '
+          +'(2) o navegador preencheu o campo com uma SENHA em vez do token; '
+          +'(3) o token foi copiado incompleto. '
+          +'→ Clique em 🗑️ Limpar token, gere um novo em github.com e cole de novo.','err');
+      } else {
+        cloudSt('❌ Erro '+ur.status+' ao autenticar','err');
+      }
+      return;
     }
     var uInfo = await ur.json();
     var loginReal = (uInfo.login||'').toLowerCase();
@@ -5261,6 +5284,46 @@ async function cloudGitHubSave(){
     }
   }catch(e){ cloudSt('❌ Erro de rede: '+e.message,'err'); }
 }
+// ── Validação e visibilidade do token GitHub ──────────────────────────
+function cloudGhToggleToken(){
+  var el = document.getElementById('cfg-gh-token');
+  if(!el) return;
+  var oculto = el.style.webkitTextSecurity === 'disc' || el.style.webkitTextSecurity === '';
+  el.style.webkitTextSecurity = oculto ? 'none' : 'disc';
+}
+function cloudGhTokenCheck(){
+  var el = document.getElementById('cfg-gh-token');
+  var out = document.getElementById('gh-token-check');
+  if(!el || !out) return;
+  var t = el.value.trim();
+  if(!t){ out.textContent=''; return; }
+  // Validar formato de token do GitHub
+  var classic = /^gh[pousr]_[A-Za-z0-9]{36,}$/.test(t);
+  var fine    = /^github_pat_[A-Za-z0-9_]{50,}$/.test(t);
+  if(classic){
+    out.innerHTML = '<span style="color:var(--login-green);">✅ Formato válido (Classic) · '+t.length+' caracteres</span>';
+  } else if(fine){
+    out.innerHTML = '<span style="color:var(--login-green);">✅ Formato válido (Fine-grained) · '+t.length+' caracteres</span>';
+  } else if(t.indexOf(' ')>=0){
+    out.innerHTML = '<span style="color:var(--danger);">❌ O token contém ESPAÇOS — cole novamente sem espaços</span>';
+  } else if(t.length < 30){
+    out.innerHTML = '<span style="color:var(--danger);">❌ Muito curto ('+t.length+' chars) — isso parece uma senha, não um token. Tokens têm 40+ caracteres e começam com ghp_</span>';
+  } else {
+    out.innerHTML = '<span style="color:var(--warn);">⚠️ Formato não reconhecido ('+t.length+' chars). Tokens começam com ghp_ ou github_pat_</span>';
+  }
+}
+function cloudGhLimparToken(){
+  if(!confirm('Apagar o token salvo? Você precisará colá-lo novamente.')) return;
+  var cfg=getCfg();
+  delete cfg.githubToken;
+  saveCfg(cfg);
+  var el=document.getElementById('cfg-gh-token'); if(el) el.value='';
+  var out=document.getElementById('gh-token-check'); if(out) out.textContent='';
+  cloudGhSt('🗑️ Token apagado — cole um novo token','var(--text-dim)');
+  toast('Token apagado','ok');
+}
+
+
 function cloudCarregarArquivoLocal(inp){
   var f = inp.files && inp.files[0];
   if(!f) return;
@@ -5404,7 +5467,10 @@ function cloudRenderSavedConfig(){
   var s3Url=document.getElementById('cfg-s3-url');
   var stGh=null; // usa cloudGhSt() para escrever em ambos os painéis
   var stS3=document.getElementById('cloud-s3-cfg-status');
-  if(ghTok && cfg.githubToken) ghTok.value=cfg.githubToken;
+  if(ghTok && cfg.githubToken){
+    ghTok.value=cfg.githubToken;
+    setTimeout(cloudGhTokenCheck, 50);
+  }
   // Normalizar repo salvo (corrigir LOJAPP → lojapp)
   if(cfg.githubRepo){
     var repoNorm=cfg.githubRepo.toLowerCase().trim();
@@ -11935,7 +12001,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.9.1';
+const APP_VERSION = '2.9.2';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
