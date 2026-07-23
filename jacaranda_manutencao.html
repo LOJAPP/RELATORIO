@@ -5083,7 +5083,7 @@ function cloudGhSelectRepo(fullName){
 
   // 2) Salvar imediatamente no localStorage
   var cfg = getCfg();
-  cfg.githubRepo = fullName;
+  cfg.githubRepo = fullName.toLowerCase().trim();
   if(!cfg.githubBranch) cfg.githubBranch = 'main';
   saveCfg(cfg);
 
@@ -5147,10 +5147,10 @@ async function cloudGitHubSave(){
         :'❌ Erro '+ur.status+' ao autenticar','err'); return;
     }
     var uInfo = await ur.json();
-    var loginReal = uInfo.login;
+    var loginReal = (uInfo.login||'').toLowerCase();
 
     // 2) Corrigir repositório com login real
-    var repoSalvo = (cfg.githubRepo||'').trim().replace(/\s/g,'');
+    var repoSalvo = (cfg.githubRepo||'').trim().toLowerCase().replace(/\s/g,'');
     var repoNome  = repoSalvo.indexOf('/')>=0 ? repoSalvo.split('/').pop() : 'jac-backups';
     var repo      = loginReal+'/'+repoNome;
     if(repo!==repoSalvo){
@@ -5228,7 +5228,8 @@ function cloudGitHubSalvarConfig(){
   }
   var cfg=getCfg();
   cfg.githubToken=tk.trim();
-  cfg.githubRepo=rp.trim();
+  // Normalizar repo: lowercase e sem espaços
+  cfg.githubRepo=rp.trim().toLowerCase().replace(/\s/g,'');
   cfg.githubBranch=br.trim()||'main';
   saveCfg(cfg);
   if(st){ st.textContent='✅ Config GitHub salva!'; st.style.color='var(--login-green)'; }
@@ -5258,6 +5259,11 @@ function cloudRenderSavedConfig(){
   var stGh=document.getElementById('cloud-gh-cfg-status');
   var stS3=document.getElementById('cloud-s3-cfg-status');
   if(ghTok && cfg.githubToken) ghTok.value=cfg.githubToken;
+  // Normalizar repo salvo (corrigir LOJAPP → lojapp)
+  if(cfg.githubRepo){
+    var repoNorm=cfg.githubRepo.toLowerCase().trim();
+    if(repoNorm!==cfg.githubRepo){ cfg.githubRepo=repoNorm; saveCfg(cfg); }
+  }
   if(ghRep && cfg.githubRepo)  ghRep.value=cfg.githubRepo;
   if(ghBrn) ghBrn.value=cfg.githubBranch||'main';
   if(s3Url && cfg.s3Url) s3Url.value=cfg.s3Url;
@@ -5435,8 +5441,8 @@ async function cloudGitHubLoadFromServer(statusEl, listEl){
       return;
     }
     var uInfo  = await ur.json();
-    var login  = uInfo.login;
-    var repo   = login+'/'+(cfg.githubRepo||'jac-backups').split('/').pop();
+    var login  = (uInfo.login||'').toLowerCase();
+    var repo   = login.toLowerCase()+'/'+(cfg.githubRepo||'jac-backups').split('/').pop().toLowerCase();
     var branch = cfg.githubBranch||'main';
 
     if(statusEl) statusEl.textContent = '⏳ Buscando backups em '+repo+'...';
@@ -11782,7 +11788,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.8.7';
+const APP_VERSION = '2.8.8';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
