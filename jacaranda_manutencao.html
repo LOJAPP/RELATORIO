@@ -928,6 +928,7 @@
               </select>
             </div>
             <div class="form-group"><label>Local / Bay</label><input type="text" class="form-control" id="r-loc" placeholder="Bay 10 BE / Praça de Máquinas"></div>
+            <div class="form-group"><label>🚢 Nº Viagem</label><input type="text" class="form-control" id="r-nviagem" placeholder="ex: V-2026-07" style="width:130px;" list="r-nviagem-list"><datalist id="r-nviagem-list"></datalist></div>
           </div>
           <div class="form-group" style="margin-bottom:12px;">
             <label>👷 Equipe Responsável</label>
@@ -1458,6 +1459,35 @@
 
         <!-- GitHub Backup -->
         <div class="panel" style="margin-bottom:0;border-top:3px solid #24292f;">
+          <!-- Backup por Mês / Viagem -->
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;margin-bottom:14px;">
+            <div style="font-weight:800;font-size:12px;color:#1e40af;margin-bottom:8px;">📅 Backup por Mês ou Nº de Viagem</div>
+            <div class="form-row" style="gap:8px;margin-bottom:8px;">
+              <div class="form-group" style="flex:1;">
+                <label style="font-size:10px;font-weight:700;">Mês/Ano</label>
+                <input type="month" class="form-control" id="bkp-mes" style="font-size:11px;"
+                       value="2026-07">
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label style="font-size:10px;font-weight:700;">Nº de Viagem</label>
+                <input type="text" class="form-control" id="bkp-nviagem" placeholder="ex: V-2026-07"
+                       style="font-size:11px;" list="bkp-nv-list">
+                <datalist id="bkp-nv-list"></datalist>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+              <button class="btn btn-primary btn-sm" onclick="jacBackupMes(false)">💾 Baixar backup do mês</button>
+              <button class="btn btn-green btn-sm"   onclick="jacBackupMes(true)">📤 Salvar mês → GitHub</button>
+              <button class="btn btn-ghost btn-sm"   onclick="jacBackupViagem(false)">💾 Baixar por viagem</button>
+              <button class="btn btn-green btn-sm"   onclick="jacBackupViagem(true)">📤 Salvar viagem → GitHub</button>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="btn btn-ghost btn-sm" onclick="jacBackupMesPasta()" title="Salva na pasta de rede/Drive configurada">📁 Salvar mês → Pasta</button>
+              <button class="btn btn-ghost btn-sm" onclick="jacListarViagens()" style="font-size:11px;">🔍 Ver viagens disponíveis</button>
+            </div>
+            <div id="bkp-mes-status" style="font-size:11px;color:var(--text-dim);margin-top:6px;min-height:14px;"></div>
+          </div>
+
           <div class="panel-header" style="background:linear-gradient(135deg,#24292f,#57606a);color:#fff;">🐙 Backup no GitHub — automático, grátis, arquivos grandes</div>
           <div style="padding:14px;">
             <div id="drive-config-status" style="margin-bottom:8px;"></div>
@@ -2990,11 +3020,13 @@ function saveReg(){
   const eq=(document.getElementById('r-eq-hidden')||{}).value||'';
   // Save photos with captions
   const fotosData = (S.tp.reg||[]);
+  var rNv=(document.getElementById('r-nviagem')||{}).value||'';
   S.regs.push({id:gid(),s,lb:`SEM ${s}`,d:document.getElementById('r-data').value,
     dp:document.getElementById('r-dept').value,
     titulo, a:desc, q:eq,
     st:document.getElementById('r-st').value,
     l:document.getElementById('r-loc').value,
+    nv:rNv,
     fotos:fotosData.map(p=>p.u),
     fotosCaptions:fotosData.map(p=>p.caption||''),
     ts:Date.now()});
@@ -5557,6 +5589,143 @@ async function cloudGitHubDiag(){
       log('   → Verifique se o token tem escopo "repo" (e não apenas "public_repo")','red');
     }
   }catch(ex){ log('❌ Erro de rede: '+ex.message,'red'); }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// BACKUP POR MÊS E POR VIAGEM
+// ═══════════════════════════════════════════════════════════
+function bkpMesStatus(msg,tipo){
+  var el=document.getElementById('bkp-mes-status');
+  if(!el)return;
+  el.textContent=msg;
+  el.style.color=tipo==='err'?'var(--danger)':(tipo==='ok'?'var(--login-green)':'var(--text-dim)');
+}
+function jacListarViagens(){
+  var nvs={};
+  (S.regs||[]).forEach(function(r){if(r.nv&&r.nv.trim())nvs[r.nv.trim()]=true;});
+  var lista=Object.keys(nvs).sort();
+  ['bkp-nv-list','r-nviagem-list'].forEach(function(id){
+    var dl=document.getElementById(id);
+    if(dl)dl.innerHTML=lista.map(function(v){return '<option value="'+v+'">'+v+'</option>';}).join('');
+  });
+  if(!lista.length){bkpMesStatus('Nenhum registro com nº de viagem ainda — use o campo "Nº Viagem" ao criar relatórios','info');return;}
+  bkpMesStatus('Viagens disponíveis: '+lista.join(' · '),'ok');
+  var el=document.getElementById('bkp-nviagem');
+  if(el&&!el.value&&lista.length)el.value=lista[lista.length-1];
+}
+function jacDadosMes(mes){
+  var regs=(S.regs||[]).filter(function(r){return String(r.d||'').slice(0,7)===mes;});
+  var ofic=(S.oficina||[]).filter(function(o){return String(o.d||o.data||'').slice(0,7)===mes;});
+  var desv=(S.desvios||[]).filter(function(d){return String(d.d||d.data||'').slice(0,7)===mes;});
+  var insp=(S.inspecoes||[]).filter(function(i){return String(i.d||i.data||'').slice(0,7)===mes;});
+  return {v:5,exp:new Date().toISOString(),scope:'MES_'+mes,
+    regs:regs,crew:S.crew,fotos:[],empresas:S.empresas,
+    oficina:ofic,desvios:desv,inspecoes:insp,_total:regs.length+ofic.length+desv.length+insp.length};
+}
+function jacDadosViagem(nv){
+  var regs=(S.regs||[]).filter(function(r){return(r.nv||'').trim()===nv;});
+  var ofic=(S.oficina||[]).filter(function(o){return(o.nv||'').trim()===nv;});
+  var desv=(S.desvios||[]).filter(function(d){return(d.nv||'').trim()===nv;});
+  var insp=(S.inspecoes||[]).filter(function(i){return(i.nv||'').trim()===nv;});
+  return {v:5,exp:new Date().toISOString(),scope:'NV_'+nv,
+    regs:regs,crew:S.crew,fotos:[],empresas:S.empresas,
+    oficina:ofic,desvios:desv,inspecoes:insp,_total:regs.length+ofic.length+desv.length+insp.length};
+}
+function jacNomeArquivoMes(mes){return 'jac_backup_MES-'+mes+'.json';}
+function jacNomeArquivoNV(nv){return 'jac_backup_NV-'+nv.replace(/[^a-zA-Z0-9-]/g,'_')+'.json';}
+function jacDownloadJSON(nome,json){
+  var blob=new Blob([json],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download=nome;a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);},2000);
+}
+async function jacEnviarGitHub(nome,json,cfg){
+  try{
+    var token=cfg.githubToken.trim();
+    var auth=token.startsWith('github_pat_')?'Bearer '+token:'token '+token;
+    var hd={'Authorization':auth,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'};
+    var ur=await fetch('https://api.github.com/user',{headers:hd});
+    if(!ur.ok)return false;
+    var login=(await ur.json()).login.toLowerCase();
+    var repo=login+'/'+(cfg.githubRepo||'jac-backups').split('/').pop().toLowerCase();
+    var branch=cfg.githubBranch||'main';
+    var path='backups/'+nome;
+    var sha=null;
+    var chk=await fetch('https://api.github.com/repos/'+repo+'/contents/'+path+'?ref='+branch,{headers:hd});
+    if(chk.ok){var cj={};try{cj=await chk.json();}catch(e){}sha=cj.sha||null;}
+    var b64=cloudSafeBtoa(json);
+    var body={message:'Backup '+nome,content:b64,branch:branch};
+    if(sha)body.sha=sha;
+    var r=await fetch('https://api.github.com/repos/'+repo+'/contents/'+path,{method:'PUT',headers:hd,body:JSON.stringify(body)});
+    return r.ok;
+  }catch(e){return false;}
+}
+async function jacBackupMes(enviarGitHub){
+  var el=document.getElementById('bkp-mes');
+  var mes=el?el.value:'';
+  if(!mes){bkpMesStatus('Selecione o mês/ano','err');return;}
+  var dados=jacDadosMes(mes);
+  if(!dados._total){bkpMesStatus('Nenhum item em '+mes,'err');return;}
+  var nome=jacNomeArquivoMes(mes);
+  var json=JSON.stringify(dados,null,2);
+  bkpMesStatus('⏳ Preparando '+dados._total+' item(s) · '+Math.round(json.length/1024)+' KB...','');
+  if(enviarGitHub){
+    var cfg=getCfg();
+    if(!cfg.githubToken){bkpMesStatus('Configure o GitHub primeiro','err');return;}
+    bkpMesStatus('Enviando para o GitHub...','');
+    var ok=await jacEnviarGitHub(nome,json,cfg);
+    bkpMesStatus(ok?'✅ Salvo no GitHub: '+nome:'❌ Falha — veja o status do GitHub',ok?'ok':'err');
+  } else {
+    jacDownloadJSON(nome,json);
+    bkpMesStatus('✅ Download: '+nome+' ('+dados._total+' itens · '+Math.round(json.length/1024)+' KB)','ok');
+  }
+  if(typeof recordBackupHistory==='function') recordBackupHistory(nome,(enviarGitHub?'GitHub':'Download'),'Mês '+mes);
+}
+async function jacBackupViagem(enviarGitHub){
+  var el=document.getElementById('bkp-nviagem');
+  var nv=el?el.value.trim():'';
+  if(!nv){jacListarViagens();bkpMesStatus('Informe o nº de viagem','err');return;}
+  var dados=jacDadosViagem(nv);
+  if(!dados._total){bkpMesStatus('Nenhum registro com viagem "'+nv+'"','err');return;}
+  var nome=jacNomeArquivoNV(nv);
+  var json=JSON.stringify(dados,null,2);
+  bkpMesStatus('⏳ Preparando '+dados._total+' item(s) · '+Math.round(json.length/1024)+' KB...','');
+  if(enviarGitHub){
+    var cfg=getCfg();
+    if(!cfg.githubToken){bkpMesStatus('Configure o GitHub primeiro','err');return;}
+    bkpMesStatus('Enviando para o GitHub...','');
+    var ok=await jacEnviarGitHub(nome,json,cfg);
+    bkpMesStatus(ok?'✅ Salvo no GitHub: '+nome:'❌ Falha',ok?'ok':'err');
+  } else {
+    jacDownloadJSON(nome,json);
+    bkpMesStatus('✅ Download: '+nome,'ok');
+  }
+  if(typeof recordBackupHistory==='function') recordBackupHistory(nome,(enviarGitHub?'GitHub':'Download'),'Viagem '+nv);
+}
+async function jacBackupMesPasta(){
+  var el=document.getElementById('bkp-mes');
+  var mes=el?el.value:'';
+  if(!mes){bkpMesStatus('Selecione o mês/ano','err');return;}
+  var dados=jacDadosMes(mes);
+  if(!dados._total){bkpMesStatus('Nenhum item em '+mes,'err');return;}
+  var nome=jacNomeArquivoMes(mes);
+  var json=JSON.stringify(dados,null,2);
+  if(window._rootDir){
+    try{var ok=await jacSaveStructured(['Backups','Mensal'],nome,json,'application/json');
+      if(ok){if(typeof recordBackupHistory==='function')recordBackupHistory(nome,'Pasta raiz/Mensal','Mês '+mes);
+        bkpMesStatus('✅ Salvo na pasta raiz: Backups/Mensal/'+nome,'ok');return;}}catch(e){}
+  }
+  if(!_folderHandle){await initFolderHandle();}
+  if(!_folderHandle){bkpMesStatus('Nenhuma pasta de rede configurada — vincule em ⚙️ Configurações','err');return;}
+  try{
+    var perm=await _folderHandle.requestPermission({mode:'readwrite'});
+    if(perm!=='granted'){bkpMesStatus('Permissão negada','err');return;}
+    var fh=await _folderHandle.getFileHandle(nome,{create:true});
+    var w=await fh.createWritable();await w.write(json);await w.close();
+    if(typeof recordBackupHistory==='function')recordBackupHistory(nome,_folderHandle.name,'Mês '+mes);
+    bkpMesStatus('✅ Salvo na pasta "'+_folderHandle.name+'": '+nome,'ok');
+  }catch(e){bkpMesStatus('Erro: '+e.message,'err');}
 }
 
 
@@ -9810,9 +9979,16 @@ function buildFileName(){
   const cfg=getCfg();
   const base=cfg.netFilename||(document.getElementById('cfg-net-filename')||{}).value.trim()||'jacaranda_backup';
   const mode=cfg.netDateMode||(document.getElementById('cfg-net-date')||{}).value||'daily';
-  let s='';if(mode==='daily')s='_'+new Date().toISOString().slice(0,10);else if(mode==='weekly')s='_SEM'+String(wn()).padStart(2,'0');
+  let s='';
+  if(mode==='daily') s='_'+new Date().toISOString().slice(0,10);
+  else if(mode==='weekly') s='_SEM'+String(wn()).padStart(2,'0');
   const sc=bkpScope();
-  return base+(sc!=='GERAL'?('_'+sc):'')+s+'.json';
+  let sufixo='';
+  if(sc==='GERAL') sufixo='_GERAL';
+  else if(sc.startsWith('MES_')) sufixo='_MES-'+sc.slice(4);
+  else if(sc.startsWith('NV_')) sufixo='_NV-'+sc.slice(3).replace(/[^a-zA-Z0-9-]/g,'_');
+  else sufixo='_'+sc;
+  return base+sufixo+s+'.json';
 }
 // ─────────────────────────────────────────────
 // PASTA RAIZ DO NAVIO (ADMINISTRADOR) — persistente
@@ -10058,21 +10234,33 @@ var BKP_SCOPE_ALIAS = {
 function bkpScope(){
   return (document.getElementById('bkp-scope')||{}).value||'GERAL';
 }
-function bkpItemMatches(item, code){
-  if(code==='GERAL') return true;
-  var alias = BKP_SCOPE_ALIAS[code]||[code];
-  // 1) departamento/setor do item
-  var dp = String(item.dp||item.dept||'').toUpperCase();
-  if(dp && alias.some(function(k){ return dp.indexOf(k)>=0; })) return true;
-  // 2) função dos responsáveis/equipe
-  var ids = [].concat(item.q||[], item.resp||[], item.equipe||[]);
-  return ids.some(function(id){
-    var c = (S.crew||[]).find(function(x){ return x.id===id; });
-    if(!c) return false;
-    var a = String(c.abbr||ROLE_ABBR[c.fn]||c.fn||'').toUpperCase();
-    return alias.indexOf(a)>=0;
-  });
+function bkpScopeLabel(){
+  var s=bkpScope();
+  if(s==='GERAL') return 'Geral';
+  if(s.startsWith('MES_')) return 'Mês '+s.slice(4);
+  if(s.startsWith('NV_')) return 'Viagem '+s.slice(3);
+  return s;
 }
+function bkpItemMatches(item, scope){
+  if(!scope || scope==='GERAL') return true;
+  // Filtro por mês: scope = 'MES_2026-07'
+  if(scope.startsWith('MES_')){
+    var mes = scope.slice(4); // '2026-07'
+    var data = item.d || item.data || item.dt || '';
+    return String(data).slice(0,7) === mes;
+  }
+  // Filtro por número de viagem: scope = 'NV_V-2026-07'
+  if(scope.startsWith('NV_')){
+    var nv = scope.slice(3);
+    return (item.nv||item.numViagem||'').trim() === nv.trim();
+  }
+  // Filtro por departamento (funcionalidade original)
+  var DEPT_MAP = {CVS:'Convés',MAQ:'Máquinas',ON:'Oficial de Náutica',OM:'Oficial de Máquinas'};
+  var depts = (DEPT_MAP[scope]||scope).toLowerCase().split(',').map(function(d){return d.trim();});
+  var itemDept = (item.dp||item.dept||'').toLowerCase();
+  return depts.some(function(d){ return itemDept===d || itemDept.includes(d); });
+}
+
 function buildBackupData(scope){
   scope = scope||bkpScope();
   var regs = S.regs, oficina = S.oficina;
@@ -12288,7 +12476,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.0.0';
+const APP_VERSION = '3.1.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
