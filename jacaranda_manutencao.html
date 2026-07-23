@@ -5114,52 +5114,65 @@ async function cloudGitHubSave(){
   if(!cfg.githubToken){
     cloudSt('⚠️ Cole o Personal Access Token e clique em 💾 Salvar config','err'); return;
   }
-  cloudSt('⏳ Conectando ao GitHub...','info');
-  var token=cfg.githubToken.trim();
-  var branch=(cfg.githubBranch||'main').trim();
-  var authHeader=token.startsWith('github_pat_')?'Bearer '+token:'token '+token;
-  var hd={'Authorization':authHeader,'Accept':'application/vnd.github.v3+json',
-          'Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'};
+
+  // Garantir que os dados estão carregados em S antes de fazer o backup
+  if(typeof loadData==='function' && (!S.regs || !S.regs.length) && (!S.crew || !S.crew.length)){
+    try{ loadData(); }catch(ex){}
+  }
+
+  // Verificar se há dados reais para salvar
+  var totalItens = (S.regs||[]).length + (S.crew||[]).length + (S.inspecoes||[]).length + (S.fotos||[]).length;
+  if(totalItens === 0){
+    if(!confirm('O backup parece estar vazio (0 registros, 0 tripulantes).\nDeseja enviar mesmo assim?')) return;
+  }
+
+  cloudSt('⏳ Preparando backup... ('+totalItens+' itens)','info');
+  var token  = cfg.githubToken.trim();
+  var branch = (cfg.githubBranch||'main').trim();
+  var authHeader = token.startsWith('github_pat_')?'Bearer '+token:'token '+token;
+  var hd = {
+    'Authorization': authHeader,
+    'Accept': 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+
   try{
-    // 1) Obter usuário real do token
+    // 1) Obter login real pelo token
     cloudSt('⏳ Autenticando...','info');
-    var ur=await fetch('https://api.github.com/user',{headers:hd});
+    var ur = await fetch('https://api.github.com/user',{headers:hd});
     if(!ur.ok){
       cloudSt(ur.status===401
         ?'❌ Token inválido — gere um novo em github.com → Settings → Developer settings → Tokens (classic) → New token → escopo: repo'
         :'❌ Erro '+ur.status+' ao autenticar','err'); return;
     }
-    var uInfo=await ur.json();
-    var loginReal=uInfo.login;
+    var uInfo = await ur.json();
+    var loginReal = uInfo.login;
 
-    // 2) Corrigir repositório com usuário real
-    var repoSalvo=(cfg.githubRepo||'').trim().replace(/\s/g,'');
-    var repoNome='jac-backups';
-    if(repoSalvo.indexOf('/')>=0) repoNome=repoSalvo.split('/').pop();
-    var repo=loginReal+'/'+repoNome;
+    // 2) Corrigir repositório com login real
+    var repoSalvo = (cfg.githubRepo||'').trim().replace(/\s/g,'');
+    var repoNome  = repoSalvo.indexOf('/')>=0 ? repoSalvo.split('/').pop() : 'jac-backups';
+    var repo      = loginReal+'/'+repoNome;
     if(repo!==repoSalvo){
       cfg.githubRepo=repo; saveCfg(cfg);
       var rEl=document.getElementById('cfg-gh-repo'); if(rEl) rEl.value=repo;
-      cloudSt('⚠️ Repositório corrigido para "'+repo+'" (login real: @'+loginReal+')','info');
     }
 
     // 3) Verificar/criar repositório
     cloudSt('⏳ Verificando repositório '+repo+'...','info');
-    var rcChk=await fetch('https://api.github.com/repos/'+repo,{headers:hd});
+    var rcChk = await fetch('https://api.github.com/repos/'+repo,{headers:hd});
     if(!rcChk.ok){
       if(rcChk.status!==404){ cloudSt('❌ Erro '+rcChk.status+' ao acessar repositório','err'); return; }
-      cloudSt('⏳ Criando repositório privado "'+repo+'"...','info');
-      var cr=await fetch('https://api.github.com/user/repos',{method:'POST',headers:hd,
+      cloudSt('⏳ Criando repositório "'+repo+'"...','info');
+      var cr = await fetch('https://api.github.com/user/repos',{method:'POST',headers:hd,
         body:JSON.stringify({name:repoNome,description:'Backups LOG-IN Jacarandá',private:true,auto_init:true})});
-      if(!cr.ok){
-        var cj={}; try{cj=await cr.json();}catch(ex){}
-        cloudSt('❌ Não foi possível criar o repositório: '+(cj.message||cr.status)+'. Crie em github.com/new','err'); return;
-      }
-      cloudSt('✅ Repositório criado! Aguardando...','ok');
-      await new Promise(function(res){setTimeout(res,3500);});
+      if(!cr.ok){ var cj={}; try{cj=await cr.json();}catch(ex){}
+        cloudSt('❌ Não foi possível criar: '+(cj.message||cr.status),'err'); return; }
+      cloudSt('✅ Repositório criado!','ok');
+      await new Promise(function(res){setTimeout(res,3000);});
     }
 
-    // 4) Inicializar branch se repositório vazio
+    // 4) Inicializar branch se vazio
     var ri={}; try{ri=await(await fetch('https://api.github.com/repos/'+repo,{headers:hd})).json();}catch(e){}
     if(!branch||branch==='main') branch=ri.default_branch||'main';
     if(ri.size===0){
@@ -5169,37 +5182,38 @@ async function cloudGitHubSave(){
       await new Promise(function(res){setTimeout(res,2500);});
     }
 
-    // 5) Verificar SHA do arquivo (update vs create)
-    cloudSt('⏳ Preparando backup...','info');
-    var content=buildBackupData();
-    var b64=cloudSafeBtoa(unescape(encodeURIComponent(content)));
-    var path='backups/'+buildFileName();
-    var sha=null;
-    var fChk=await fetch('https://api.github.com/repos/'+repo+'/contents/'+path+'?ref='+branch,{headers:hd});
+    // 5) Gerar conteúdo e verificar SHA
+    var content  = buildBackupData();
+    var sizeKB   = Math.round(content.length/1024);
+    cloudSt('⏳ Codificando '+sizeKB+' KB...','info');
+    var b64  = cloudSafeBtoa(unescape(encodeURIComponent(content)));
+    var path = 'backups/'+buildFileName();
+    var sha  = null;
+    var fChk = await fetch('https://api.github.com/repos/'+repo+'/contents/'+path+'?ref='+branch,{headers:hd});
     if(fChk.ok){ var fj={}; try{fj=await fChk.json();}catch(e){} sha=fj.sha||null; }
 
     // 6) Enviar
-    cloudSt('⏳ Enviando ('+Math.round(content.length/1024)+' KB)...','info');
-    var pb={message:'Backup '+new Date().toLocaleString('pt-BR'),content:b64,branch:branch};
+    cloudSt('⏳ Enviando ('+sizeKB+' KB)...','info');
+    var pb = {message:'Backup '+new Date().toLocaleString('pt-BR')+' ('+totalItens+' itens)',content:b64,branch:branch};
     if(sha) pb.sha=sha;
-    var r=await fetch('https://api.github.com/repos/'+repo+'/contents/'+path,
+    var r = await fetch('https://api.github.com/repos/'+repo+'/contents/'+path,
       {method:'PUT',headers:hd,body:JSON.stringify(pb)});
+
     if(r.ok){
-      var msg='✅ Salvo: github.com/'+repo+' → '+path+' ('+Math.round(content.length/1024)+' KB)';
+      var msg = '✅ Backup salvo: '+path+' ('+sizeKB+' KB · '+totalItens+' itens)';
       cloudSt(msg,'ok');
       var stEl=document.getElementById('cloud-gh-cfg-status');
-      if(stEl){stEl.textContent='✅ '+path;stEl.style.color='var(--login-green)';}
-      if(typeof recordBackupHistory==='function') recordBackupHistory(path,'GitHub: '+repo,'GitHub');
-      toast('✅ Backup enviado para o GitHub!','ok');
+      if(stEl){stEl.textContent=msg;stEl.style.color='var(--login-green)';}
+      // Salvar no histórico (compatível com recordBackupHistory)
+      recordBackupHistory(path,'GitHub: '+repo,'GitHub');
+      toast('✅ Backup enviado para o GitHub! ('+sizeKB+' KB)','ok');
     } else {
       var ej={}; try{ej=await r.json();}catch(ex){}
-      cloudSt('❌ Erro '+r.status+': '+(ej.message||'falha ao salvar arquivo')
-        +(r.status===422?' — branch "'+branch+'" inválido?':''),'err');
+      cloudSt('❌ Erro '+r.status+': '+(ej.message||'falha')
+        +(r.status===422?' — verifique o branch "'+branch+'"':''),'err');
     }
   }catch(e){ cloudSt('❌ Erro de rede: '+e.message,'err'); }
 }
-
-
 function cloudGitHubSalvarConfig(){
   var tk=(document.getElementById('cfg-gh-token')||{}).value||'';
   var rp=(document.getElementById('cfg-gh-repo')||{}).value||'';
@@ -5280,13 +5294,13 @@ async function cloudGitHubLoad(){
   inner.style.cssText='background:#fff;border-radius:14px;max-width:540px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.4);';
 
   // Histórico de backups locais
-  var hist=[];
-  try{ hist=JSON.parse(localStorage.getItem('jac_backup_history')||'[]'); }catch(e){}
+  // Ler histórico do mesmo lugar onde recordBackupHistory salva
+  var hist=(getCfg().backupHistory)||[];
   var histRows=hist.length
     ? hist.slice(0,10).map(function(h,i){
         return '<tr style="border-bottom:1px solid #e2e8f0;">'
-          +'<td style="padding:8px 10px;font-size:11px;font-weight:600;">'+escHtml(h.file||h.name||'backup')+'</td>'
-          +'<td style="padding:8px 6px;font-size:10px;color:var(--text-dim);">'+escHtml(h.dest||h.tipo||'local')+'</td>'
+          +'<td style="padding:8px 10px;font-size:11px;font-weight:600;">'+escHtml(h.fileName||h.file||h.name||'backup')+'</td>'
+          +'<td style="padding:8px 6px;font-size:10px;color:var(--text-dim);">'+escHtml(h.folder||h.dest||h.tipo||'local')+'</td>'
           +'<td style="padding:8px 6px;font-size:10px;color:var(--text-dim);">'+escHtml((h.date||h.ts||'').slice(0,16).replace('T',' '))+'</td>'
           +'</tr>';
       }).join('')
@@ -11663,7 +11677,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '2.8.4';
+const APP_VERSION = '2.8.5';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
