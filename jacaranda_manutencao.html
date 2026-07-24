@@ -6180,7 +6180,14 @@ async function gdriveDiag(){
     if(!r1.ok||t1.error){
       st('❌ Token inválido: '+(t1.error||r1.status)+' — desconecte e reconecte','err'); return;
     }
-    st('✅ Token OK ('+t1.email+', expira em '+(Math.round(t1.expires_in/60))+'min)');
+    var scopeOK = t1.scope && t1.scope.includes('drive');
+    st('✅ Token OK ('+t1.email+', expira em '+(Math.round(t1.expires_in/60))+'min)'
+      + (scopeOK?' ✅ scope=drive':' ❌ scope SEM DRIVE — desconecte e reconecte'));
+    if(!scopeOK){
+      gdriveSt('❌ PROBLEMA ENCONTRADO: o token NÃO tem permissão ao Google Drive.'
+        +' Clique em ✕ Desconectar, depois em 🔗 Conectar e na tela do Google clique PERMITIR em TODAS as permissões','err');
+      return;
+    }
 
     // 2) Testar Drive API — listar arquivos (mais simples)
     st('⏳ Testando Drive API...');
@@ -6293,6 +6300,7 @@ async function gdriveUpload(token, folderId, fileName, content){
   form.append('file', file);
   var r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size',{
     method:'POST',
+    mode:'cors',
     headers:{'Authorization':'Bearer '+token},
     body:form
   });
@@ -6333,6 +6341,15 @@ async function gdriveUploadResumable(token, folderId, fileName, content){
 
 async function gdriveSalvarBackup(){
   var token=await gdriveGetToken(); if(!token) return;
+  // Verificar scope do token antes de prosseguir
+  try{
+    var ti=await fetch('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token='+token);
+    var tj=await ti.json();
+    if(!tj.scope||!tj.scope.includes('drive')){
+      gdriveSt('❌ Token sem permissão ao Drive. Clique em ✕ Desconectar → 🔗 Conectar → Permitir todas as permissões','err');
+      return;
+    }
+  }catch(e){ /* continuar mesmo se tokeninfo falhar */ }
   gdriveSt('⏳ Preparando backup...','');
   var content=buildBackupData();
   var sizeMB=(content.length/1048576).toFixed(1);
@@ -13240,7 +13257,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.2.7';
+const APP_VERSION = '3.2.8';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
