@@ -1304,9 +1304,12 @@
               <button class="btn btn-primary btn-sm" onclick="gdriveConectar()" style="flex:1;">🔗 Conectar Google Drive</button>
               <button class="btn btn-ghost btn-sm" onclick="gdriveDesconectar()" style="flex:1;font-size:11px;">✕ Desconectar</button>
             </div>
-            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+            <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
               <button class="btn btn-green btn-sm" onclick="gdriveSalvarBackup()" style="flex:1;">📤 Salvar backup no Drive</button>
               <button class="btn btn-ghost btn-sm" onclick="gdriveCarregarBackup()" style="flex:1;">📥 Carregar do Drive</button>
+            </div>
+            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+              <button class="btn btn-warn btn-sm" onclick="gdriveDiag()" style="flex:1;font-size:11px;">🔬 Testar conexão Drive</button>
             </div>
             <div style="font-size:10px;color:var(--text-dim);line-height:1.5;margin-bottom:8px;">
               Salva diretamente na pasta <strong>JAC Backups</strong> no seu Google Drive. Aceita arquivos de qualquer tamanho. Sem Apps Script.
@@ -6159,6 +6162,67 @@ async function gdriveGetToken(){
   return null;
 }
 
+async function gdriveDiag(){
+  gdriveSt('🔬 Diagnosticando...','');
+  var token = await gdriveGetToken();
+  if(!token){
+    gdriveSt('❌ Sem token — clique em 🔗 Conectar Google Drive primeiro','err');
+    return;
+  }
+  var log = [];
+  var st = function(m,t){ log.push(m); gdriveSt(log.join(' │ '), t||''); };
+
+  try{
+    // 1) Testar token
+    st('⏳ Verificando token...');
+    var r1 = await fetch('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token='+token);
+    var t1 = await r1.json();
+    if(!r1.ok||t1.error){
+      st('❌ Token inválido: '+(t1.error||r1.status)+' — desconecte e reconecte','err'); return;
+    }
+    st('✅ Token OK ('+t1.email+', expira em '+(Math.round(t1.expires_in/60))+'min)');
+
+    // 2) Testar Drive API — listar arquivos (mais simples)
+    st('⏳ Testando Drive API...');
+    var r2 = await fetch('https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id)',
+      {headers:{'Authorization':'Bearer '+token}});
+    if(!r2.ok){
+      var e2={}; try{e2=await r2.json();}catch(e){}
+      if(r2.status===403){
+        st('❌ Drive API bloqueada (403): '+(e2.error&&e2.error.message||'')
+          +' — verifique se "Google Drive API" está ativada no Google Cloud Console','err');
+      } else {
+        st('❌ Drive API erro '+r2.status+': '+(e2.error&&e2.error.message||''),'err');
+      }
+      return;
+    }
+    st('✅ Drive API acessível');
+
+    // 3) Testar criar pasta
+    st('⏳ Testando criação de pasta...');
+    var r3 = await fetch('https://www.googleapis.com/drive/v3/files',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({name:'JAC_TEST_'+Date.now(), mimeType:'application/vnd.google-apps.folder'})
+    });
+    if(!r3.ok){
+      var e3={}; try{e3=await r3.json();}catch(e){}
+      st('❌ Criar pasta falhou ('+r3.status+'): '+(e3.error&&e3.error.message||''),'err');
+      return;
+    }
+    var d3=await r3.json();
+    st('✅ Pasta criada (id='+d3.id+')');
+
+    // 4) Apagar pasta de teste
+    await fetch('https://www.googleapis.com/drive/v3/files/'+d3.id,
+      {method:'DELETE',headers:{'Authorization':'Bearer '+token}});
+    st('✅ TUDO OK — clique em 📤 Salvar backup no Drive','ok');
+  }catch(e){
+    gdriveSt('❌ Erro de rede: '+e.message,'err');
+  }
+}
+
+
 async function gdriveGetFolder(token){
   if(_gdriveFolderId) return _gdriveFolderId;
   var hd={'Authorization':'Bearer '+token,'Content-Type':'application/json'};
@@ -6246,7 +6310,7 @@ async function gdriveSalvarBackup(){
   var fileName=buildFileName();
   gdriveSt('⏳ Localizando pasta JAC Backups...','');
   var folderId=await gdriveGetFolder(token);
-  if(!folderId){ gdriveSt('❌ Não foi possível criar a pasta JAC Backups','err'); return; }
+  if(!folderId){ return; } // gdriveGetFolder já mostrou o erro detalhado
   try{
     var result;
     if(content.length>4*1024*1024){
@@ -13147,7 +13211,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.2.4';
+const APP_VERSION = '3.2.5';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
