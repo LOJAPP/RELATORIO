@@ -1424,37 +1424,42 @@
               ondragover="event.preventDefault();this.style.borderColor='var(--login-blue)';this.style.background='#dbeafe';"
               ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--login-blue-xlt)';"
               ondrop="handleImportDrop(event)"
-              style="border:2px dashed var(--border2);border-radius:10px;background:var(--login-blue-xlt);padding:18px 12px;text-align:center;cursor:pointer;margin-bottom:10px;transition:all .2s;"
+              style="border:2px dashed var(--border2);border-radius:10px;background:var(--login-blue-xlt);padding:20px 12px;text-align:center;cursor:pointer;margin-bottom:10px;transition:all .2s;"
               onclick="document.getElementById('import-file-all').click()">
-              <div style="font-size:28px;margin-bottom:4px;">📂</div>
-              <div style="font-size:12px;font-weight:700;color:var(--login-blue);margin-bottom:2px;">Arraste arquivos aqui ou clique para selecionar</div>
-              <div style="font-size:10px;color:var(--text-dim);">JSON (backup, inspeção, relatorio), CSV — aceita múltiplos arquivos</div>
+              <div style="font-size:30px;margin-bottom:6px;">📂</div>
+              <div style="font-size:13px;font-weight:700;color:var(--login-blue);margin-bottom:3px;">Arraste arquivos aqui ou clique para selecionar</div>
+              <div style="font-size:11px;color:var(--text-dim);">JSON (backup, inspeção, relatório) · CSV — aceita múltiplos arquivos</div>
+              <input type="file" id="import-file-all" accept=".json,.csv,.txt" multiple style="display:none" onchange="handleImportFiles(this)">
             </div>
-            <!-- Botões de importação rápida -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
-              <label class="btn btn-primary btn-sm" style="cursor:pointer;justify-content:center;">
-                📦 Backup completo (JSON)
-                <input type="file" id="import-file-all" accept=".json,.csv" multiple style="display:none" onchange="handleImportFiles(this)">
-              </label>
-              <label class="btn btn-ghost btn-sm" style="cursor:pointer;justify-content:center;">
-                📋 Inspeção (JSON)
+            <!-- Botões rápidos -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">
+              <label class="btn btn-primary btn-sm" style="cursor:pointer;justify-content:center;gap:6px;">
+                📦 Backup JSON
                 <input type="file" accept=".json" multiple style="display:none" onchange="handleImportFiles(this)">
               </label>
-              <label class="btn btn-ghost btn-sm" style="cursor:pointer;justify-content:center;">
-                📄 CSV / TXT (registros)
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer;justify-content:center;gap:6px;">
+                📋 Inspeção JSON
+                <input type="file" accept=".json" multiple style="display:none" onchange="handleImportFiles(this)">
+              </label>
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer;justify-content:center;gap:6px;">
+                📄 Planilha CSV
                 <input type="file" accept=".csv,.txt" multiple style="display:none" onchange="handleImportFiles(this)">
               </label>
-              <label class="btn btn-ghost btn-sm" style="cursor:pointer;justify-content:center;">
-                🚢 Relatório técnico
-                <input type="file" accept=".json" multiple style="display:none" onchange="handleImportFiles(this)">
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer;justify-content:center;gap:6px;">
+                🗂️ Múltiplos módulos
+                <input type="file" accept=".json" multiple style="display:none" onchange="importMultipleFiles(Array.from(this.files))">
               </label>
             </div>
-            <!-- Status e log -->
+            <!-- Área de status / preview -->
             <div id="import-status" style="font-size:11px;color:var(--text-dim);margin-bottom:6px;min-height:16px;"></div>
-            <div id="import-actions" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
-            <div id="import-preview" style="display:none;"></div>
+            <div id="import-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;"></div>
+            <!-- Preview do backup — preenchido por previewBackup() -->
+            <div id="import-preview" style="display:none;border:1px solid var(--border);border-radius:10px;padding:12px;">
+              <div id="import-preview-body"></div>
+            </div>
+            <!-- Log de importação -->
             <div id="import-log" style="display:none;margin-top:8px;">
-              <div id="import-log-body" style="background:#07182e;border-radius:8px;padding:10px;font-size:10px;font-family:monospace;max-height:120px;overflow-y:auto;line-height:1.6;color:#6DB847;"></div>
+              <div id="import-log-body" style="background:#07182e;border-radius:8px;padding:10px;font-size:10px;font-family:monospace;max-height:140px;overflow-y:auto;line-height:1.6;color:#6DB847;"></div>
             </div>
           </div>
         </div>
@@ -2936,7 +2941,19 @@ function _updatePinDots(){
 function pinConfirm(){
   if(_pinBuf===getPin()){
     closeModal('modal-pin');_pinBuf='';_updatePinDots();
-    if(_pinTarget){const t=_pinTarget;_pinTarget=null;_goPage(t);}
+    if(_pinTarget){
+      const t=_pinTarget;_pinTarget=null;
+      if(t==='admin'){
+        window._adminOk=true;
+        var area=document.getElementById('admin-area');
+        if(area) area.style.display='block';
+        var lock=document.getElementById('admin-lock-bar');
+        if(lock) lock.style.display='none';
+        showPage('config');
+      } else {
+        _goPage(t);
+      }
+    }
   } else {
     document.getElementById('pin-err').textContent='Senha incorreta. Tente novamente.';
     _pinBuf='';_updatePinDots();
@@ -6302,19 +6319,7 @@ async function gdriveGetFolder(token){
   return null;
 }
 
-async function gdriveUpload(token, folderId, fileName, content){
-  var meta=new Blob([JSON.stringify({name:fileName,parents:[folderId]})],{type:'application/json'});
-  var file=new Blob([content],{type:'application/json'});
-  var form=new FormData();
-  form.append('metadata',meta);
-  form.append('file',file);
-  var r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size',{
-    method:'POST',mode:'cors',headers:{'Authorization':'Bearer '+token},body:form
-  });
-  if(r.ok) return await r.json();
-  var ej={}; try{ej=await r.json();}catch(e){}
-  throw new Error('Drive erro '+r.status+': '+(ej.error&&ej.error.message||r.statusText));
-}
+
 
 async function gdriveUploadResumable(token, folderId, fileName, content){
   gdriveSt('⏳ Iniciando upload...','');
@@ -6349,6 +6354,8 @@ async function gdriveUploadResumable(token, folderId, fileName, content){
 
 async function gdriveSalvarBackup(){
   var token=await gdriveGetToken(); if(!token) return;
+
+  // Verificar scope do token
   try{
     var ti=await fetch('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token='+token);
     var tj=await ti.json();
@@ -6356,28 +6363,60 @@ async function gdriveSalvarBackup(){
       gdriveSt('❌ Token sem permissão ao Drive — clique em ✕ Desconectar e reconecte aceitando TODAS as permissões','err'); return;
     }
   }catch(e){}
+
   gdriveSt('⏳ Preparando backup...','');
   var content=buildBackupData();
   var sizeMB=(content.length/1048576).toFixed(1);
   var fileName=buildFileName();
+
+  gdriveSt('⏳ Localizando pasta JAC Backups...','');
   var folderId=await gdriveGetFolder(token);
   if(!folderId) return;
+
+  gdriveSt('⏳ Enviando '+sizeMB+' MB para o Drive...','');
   try{
     var result;
-    if(content.length>10*1024*1024){
-      result=await gdriveUploadResumable(token,folderId,fileName,content);
+    if(content.length > 5*1024*1024){
+      result = await gdriveUploadResumable(token, folderId, fileName, content);
     } else {
-      gdriveSt('⏳ Enviando '+sizeMB+' MB...','');
-      result=await gdriveUpload(token,folderId,fileName,content);
+      result = await gdriveUpload(token, folderId, fileName, content);
     }
     gdriveSt('✅ Salvo no Drive: '+fileName+' ('+sizeMB+' MB)','ok');
     if(typeof recordBackupHistory==='function') recordBackupHistory(fileName,'Google Drive','Drive');
     toast('✅ Backup salvo no Google Drive! ('+sizeMB+' MB)','ok');
   }catch(e){
     gdriveSt('❌ '+e.message,'err');
-    if(e.message.includes('401')) gdriveDesconectar();
+    if(e.message.includes('401')||e.message.includes('403')) gdriveDesconectar();
   }
 }
+
+async function gdriveUpload(token, folderId, fileName, content){
+  // Usar XMLHttpRequest com CORS simples — evita preflight OPTIONS que o Drive bloqueia
+  return new Promise(function(resolve, reject){
+    var boundary = 'JAC'+Date.now();
+    var meta = JSON.stringify({name:fileName, parents:[folderId]});
+    var body = '--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'
+      + meta + '\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'
+      + content + '\r\n--'+boundary+'--';
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST','https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size');
+    xhr.setRequestHeader('Authorization','Bearer '+token);
+    xhr.setRequestHeader('Content-Type','multipart/related; boundary='+boundary);
+    xhr.onload = function(){
+      if(xhr.status===200||xhr.status===201){
+        try{ resolve(JSON.parse(xhr.responseText)); }catch(e){ resolve({}); }
+      } else {
+        var msg=''; try{ msg=JSON.parse(xhr.responseText).error.message; }catch(e){}
+        reject(new Error('Drive erro '+xhr.status+(msg?': '+msg:'')));
+      }
+    };
+    xhr.onerror = function(){ reject(new Error('Erro de rede ao enviar para o Drive')); };
+    xhr.send(body);
+  });
+}
+
+
 
 async function gdriveCarregarBackup(){
   var token=await gdriveGetToken(); if(!token) return;
@@ -7647,7 +7686,6 @@ async function initFolderHandle(){
   updateFolderStatusUI(null);
 }
 async function pickFolder(){
-  if(!adminGuard()) return;
   if(!FS_SUPPORTED){
     toast('Use Chrome ou Edge para esta função','warn');
     const n=document.getElementById('fs-api-note');if(n)n.style.display='block';return;
