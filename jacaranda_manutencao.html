@@ -1379,6 +1379,9 @@
           <button class="btn btn-ghost btn-sm"   onclick="jacListarViagens()"  style="font-size:11px;">🔍 Ver viagens disponíveis</button>
         </div>
         <div id="bkp-mes-status" style="font-size:11px;color:var(--text-dim);min-height:16px;padding:4px 0;"></div>
+        <div style="margin-top:6px;">
+          <button class="btn btn-ghost btn-sm" onclick="jacDiagMes()" style="font-size:10px;width:100%;">🔬 Verificar antes de salvar (diagnóstico rápido)</button>
+        </div>
       </div>
 
     </div>
@@ -5138,7 +5141,7 @@ async function cloudGitHubVerificar(){
   var token=(document.getElementById('cfg-gh-token')||{}).value||cfg.githubToken||'';
   if(!token){ cloudSt('⚠️ Cole o token no campo acima primeiro','err'); return; }
   token=token.trim();
-  var authHeader=token.startsWith('github_pat_')?'Bearer '+token:'token '+token;
+  var authHeader=ghAuthHeader(token);
   var hd={'Authorization':authHeader,'Accept':'application/vnd.github.v3+json','X-GitHub-Api-Version':'2022-11-28'};
   cloudSt('⏳ Verificando token...','info');
   try{
@@ -5330,7 +5333,7 @@ async function cloudGitHubSave(){
   }
 
   cloudSt('⏳ Preparando backup... ('+totalItens+' itens)','info');
-  var token  = cfg.githubToken.trim();
+  var token  = ghTokenLimpar(cfg.githubToken);
   // Validar formato antes de gastar uma chamada à API
   if(token.length < 30 || token.indexOf(' ')>=0){
     cloudSt('❌ O token salvo parece inválido ('+token.length+' caracteres). '
@@ -5462,7 +5465,7 @@ function cloudGhTokenCheck(){
   var el = document.getElementById('cfg-gh-token');
   var out = document.getElementById('gh-token-check');
   if(!el || !out) return;
-  var t = el.value.trim();
+  var t = ghTokenLimpar(el.value);
   if(!t){ out.textContent=''; return; }
   // Validar formato de token do GitHub
   var classic = /^gh[pousr]_[A-Za-z0-9]{36,}$/.test(t);
@@ -5534,8 +5537,8 @@ async function cloudGitHubDiag(){
   for(var si=0;si<sts.length;si++) sts[si].innerHTML='<strong style="font-size:11px;">🔬 Diagnóstico GitHub:</strong><br>';
   if(!cfg.githubToken){ log('❌ Token não configurado','red'); return; }
   log('✅ Token: '+cfg.githubToken.slice(0,8)+'...','green');
-  var token=cfg.githubToken.trim();
-  var auth=token.startsWith('github_pat_')?'Bearer '+token:'token '+token;
+  var token=ghTokenLimpar(cfg.githubToken);
+  var auth=ghAuthHeader(token);
   var hd={'Authorization':auth,'Accept':'application/vnd.github.v3+json','X-GitHub-Api-Version':'2022-11-28'};
   try{
     // 1) Autenticar
@@ -5601,8 +5604,73 @@ async function cloudGitHubDiag(){
 }
 
 
-// ═══════════════════════════════════════════════════════════
-// HISTÓRICO E SUGESTÃO POR TRIPULANTE
+// ── Diagnóstico rápido antes de salvar por mês ──────────────────
+async function jacDiagMes(){
+  var log = [];
+  var ok  = true;
+  var st  = function(msg, tipo){
+    log.push(msg);
+    bkpMesStatus(log.join(' │ '), tipo==='err'?'err':'');
+    console.log('[DIAG-MES]', msg);
+  };
+
+  // 1) Dados carregados?
+  if(typeof loadData==='function' && !(S.regs||[]).length){
+    try{ loadData(); }catch(e){}
+  }
+  var nRegs = (S.regs||[]).length;
+  var nOfic = (S.oficina||[]).length;
+  st((nRegs+nOfic > 0 ? '✅' : '❌') + ' Dados: '+nRegs+' regs, '+nOfic+' oficina');
+  if(nRegs+nOfic === 0){ st('❌ Sem dados — o app pode não ter carregado ainda. Volte ao Dashboard e tente novamente.','err'); return; }
+
+  // 2) Mês selecionado?
+  var el = document.getElementById('bkp-mes');
+  var mes = el ? el.value : '';
+  if(!mes){
+    var nd = new Date(); mes = nd.getFullYear()+'-'+String(nd.getMonth()+1).padStart(2,'0');
+    if(el) el.value = mes;
+  }
+  var dados = jacDadosMes(mes);
+  st((dados._total>0?'✅':'⚠️') + ' Mês '+mes+': '+dados._total+' item(s)');
+  var sizeKB = Math.round(JSON.stringify(dados).length/1024);
+  st('📦 Tamanho: '+sizeKB+' KB (sem fotos, GitHub aceita até 100.000 KB)');
+
+  // 3) Token configurado?
+  var cfg = getCfg();
+  if(!cfg.githubToken){
+    st('❌ Token não configurado — cole o token em ⚙️ Configurações','err'); return;
+  }
+  var tokenLimpo = ghTokenLimpar(cfg.githubToken);
+  var tokenOK = ghTokenValido(tokenLimpo);
+  st((tokenOK?'✅':'⚠️') + ' Token: '+tokenLimpo.slice(0,8)+'... ('+tokenLimpo.length+' chars'+(!tokenOK?' — formato inválido!':'')+')');
+  if(!tokenOK){
+    st('❌ Token inválido — deve começar com ghp_ e ter 40+ caracteres','err'); return;
+  }
+
+  // 4) Testar conexão com GitHub
+  try{
+    st('⏳ Testando conexão GitHub...');
+    var hd = {'Authorization':ghAuthHeader(tokenLimpo),'Accept':'application/vnd.github.v3+json'};
+    var ur = await fetch('https://api.github.com/user',{headers:hd});
+    if(!ur.ok){
+      st('❌ GitHub retornou '+(ur.status===401?'401 BAD CREDENTIALS — token inválido ou expirado':ur.status),'err');
+      if(ur.status===401) st('→ Limpe o token (🗑️), gere um novo em github.com e cole novamente','err');
+      return;
+    }
+    var uInfo = await ur.json();
+    st('✅ Autenticado: @'+uInfo.login);
+    var repo = uInfo.login.toLowerCase()+'/'+(cfg.githubRepo||'jac-backups').split('/').pop().toLowerCase();
+    var rr = await fetch('https://api.github.com/repos/'+repo,{headers:hd});
+    if(rr.ok){
+      st('✅ Repo: '+repo+' — tudo pronto! Clique em 📤 Enviar mês → GitHub');
+    } else {
+      st('⚠️ Repo '+repo+' não existe — será criado automaticamente ao salvar');
+    }
+  }catch(e){
+    st('❌ Sem conexão com a internet: '+e.message,'err');
+  }
+}
+
 // ═══════════════════════════════════════════════════════════
 function crewHistorico(crewId){
   var t = (S.crew||[]).find(function(c){ return c.id===crewId; });
@@ -5808,8 +5876,8 @@ function jacDownloadJSON(nome,json){
 }
 async function jacEnviarGitHub(nome,json,cfg){
   try{
-    var token=cfg.githubToken.trim();
-    var auth=token.startsWith('github_pat_')?'Bearer '+token:'token '+token;
+    var token=ghTokenLimpar(cfg.githubToken);
+    var auth=ghAuthHeader(token);
     var hd={'Authorization':auth,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'};
     // 1) Autenticar
     var ur=await fetch('https://api.github.com/user',{headers:hd});
@@ -5937,19 +6005,36 @@ async function jacBackupMesPasta(){
 }
 
 
+// ── Limpar e validar token do GitHub ──────────────────────────────
+function ghTokenLimpar(raw){
+  // Remove TODOS os espaços, tabs, newlines, carriage returns
+  return (raw||'').replace(/[\s\r\n\t]/g,'');
+}
+function ghTokenValido(token){
+  if(!token || token.length < 30) return false;
+  return /^gh[pousr]_[A-Za-z0-9]{36,}$/.test(token) ||
+         /^github_pat_[A-Za-z0-9_]{50,}$/.test(token);
+}
+function ghAuthHeader(token){
+  var t = ghTokenLimpar(token);
+  return t.startsWith('github_pat_') ? 'Bearer '+t : 'token '+t;
+}
+
 function cloudGitHubSalvarConfig(){
   var tk=(document.getElementById('cfg-gh-token')||{}).value||'';
   var rp=(document.getElementById('cfg-gh-repo')||{}).value||'';
   var br=(document.getElementById('cfg-gh-branch')||{}).value||'main';
   if(!tk||!rp){ cloudGhSt('⚠️ Preencha o token e o repositório','var(--danger)'); return; }
   var cfg=getCfg();
-  cfg.githubToken=tk.trim();
-  // Normalizar repo: lowercase e sem espaços
-  cfg.githubRepo=rp.trim().toLowerCase().replace(/\s/g,'');
+  cfg.githubToken=ghTokenLimpar(tk);
+  cfg.githubRepo=rp.trim().toLowerCase().replace(/[\s]/g,'');
   cfg.githubBranch=br.trim()||'main';
   saveCfg(cfg);
-  if(st){ st.textContent='✅ Config GitHub salva!'; st.style.color='var(--login-green)'; }
-  toast('✅ Config GitHub salva — pronto para enviar backup','ok');
+  // Atualizar o campo com o token limpo
+  var tfEl=document.getElementById('cfg-gh-token');
+  if(tfEl) tfEl.value=cfg.githubToken;
+  cloudGhSt('✅ Config salva — token: '+cfg.githubToken.slice(0,8)+'... ('+cfg.githubToken.length+' chars)','var(--login-green)');
+  toast('✅ Config GitHub salva','ok');
 }
 function cloudS3SalvarConfig(){
   var url=(document.getElementById('cfg-s3-url')||{}).value||'';
@@ -6201,8 +6286,8 @@ async function cloudGitHubLoadFromServer(statusEl, listEl){
   if(statusEl) statusEl.textContent = '⏳ Conectando ao GitHub...';
   if(listEl)   listEl.innerHTML = '';
 
-  var token      = cfg.githubToken.trim();
-  var authHeader = token.startsWith('github_pat_') ? 'Bearer '+token : 'token '+token;
+  var token      = ghTokenLimpar(cfg.githubToken);
+  var authHeader = ghAuthHeader(token);
   var hd = {'Authorization':authHeader,'Accept':'application/vnd.github.v3+json'};
 
   try{
@@ -6277,8 +6362,8 @@ async function cloudGitHubLoadFromServer(statusEl, listEl){
 
 async function cloudGitHubLoadFile(apiUrl, fileName, hdParam){
   var cfg = getCfg();
-  var token = cfg.githubToken ? cfg.githubToken.trim() : '';
-  var authHeader = token.startsWith('github_pat_') ? 'Bearer '+token : 'token '+token;
+  var token = cfg.githubToken ? ghTokenLimpar(cfg.githubToken) : '';
+  var authHeader = ghAuthHeader(token);
   var hd = hdParam || {'Authorization':authHeader,'Accept':'application/vnd.github.v3+json'};
 
   var ov = document.getElementById('modalGhLoad'); if(ov) ov.remove();
@@ -12693,7 +12778,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.1.2';
+const APP_VERSION = '3.1.3';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
