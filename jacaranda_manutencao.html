@@ -767,54 +767,10 @@
 
 <!-- SIDEBAR -->
 <nav id="sidebar">
-  <div class="sidebar-logo" style="padding:12px 14px 12px;border-bottom:1px solid rgba(255,255,255,.1);">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-      <!-- Mascote container LOG-IN — verde/amarelo com braços e botas -->
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 105" width="58" height="68" style="flex-shrink:0;">
-        <!-- Braço esquerdo (verde) -->
-        <path d="M14,40 Q6,38 5,45 Q4,52 10,54 Q7,56 8,60 L16,58" fill="#2d8a3e" stroke="#1e6b2e" stroke-width="0.5"/>
-        <circle cx="9" cy="60" r="5" fill="#2d8a3e"/>
-        <!-- Corpo container -->
-        <rect x="15" y="10" width="60" height="48" rx="4" fill="#2d8a3e"/>
-        <!-- Metade amarela diagonal -->
-        <polygon points="45,10 75,10 75,58 15,58" fill="#f5c800"/>
-        <!-- Linha divisória diagonal -->
-        <line x1="40" y1="10" x2="18" y2="58" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
-        <!-- Ranhuras verticais -->
-        <line x1="25" y1="10" x2="25" y2="58" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
-        <line x1="35" y1="10" x2="35" y2="58" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
-        <line x1="55" y1="10" x2="55" y2="58" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
-        <line x1="65" y1="10" x2="65" y2="58" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
-        <!-- Borda topo -->
-        <rect x="13" y="8" width="64" height="6" rx="2" fill="#1a5c28"/>
-        <!-- Borda base -->
-        <rect x="13" y="56" width="64" height="5" rx="2" fill="#1a5c28"/>
-        <!-- Círculo azul brasil -->
-        <circle cx="68" cy="51" r="9" fill="#003087"/>
-        <!-- Texto login. -->
-        <text x="17" y="43" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="21" fill="#fff" letter-spacing="-0.5">login.</text>
-        <!-- Braço direito (amarelo) -->
-        <path d="M76,40 Q84,38 85,45 Q86,52 80,54 Q83,56 82,60 L74,58" fill="#f5c800" stroke="#d4a800" stroke-width="0.5"/>
-        <circle cx="81" cy="60" r="5" fill="#f5c800"/>
-        <!-- Perna esquerda: 3 segmentos + bota -->
-        <rect x="27" y="61" width="12" height="9" rx="3" fill="#f5c800"/>
-        <rect x="25" y="69" width="16" height="6" rx="3" fill="#d4a800"/>
-        <rect x="27" y="74" width="12" height="9" rx="3" fill="#f5c800"/>
-        <rect x="23" y="82" width="20" height="8" rx="4" fill="#f5c800"/>
-        <ellipse cx="33" cy="92" rx="13" ry="6" fill="#d4a800"/>
-        <!-- Perna direita: 3 segmentos + bota -->
-        <rect x="51" y="61" width="12" height="9" rx="3" fill="#f5c800"/>
-        <rect x="49" y="69" width="16" height="6" rx="3" fill="#d4a800"/>
-        <rect x="51" y="74" width="12" height="9" rx="3" fill="#f5c800"/>
-        <rect x="47" y="82" width="20" height="8" rx="4" fill="#f5c800"/>
-        <ellipse cx="57" cy="92" rx="13" ry="6" fill="#d4a800"/>
-      </svg>
-      <div>
-        <div style="font-weight:900;font-size:20px;color:#fff;line-height:1;letter-spacing:-0.5px;">log<span style="color:#f5c800;">in</span><span style="color:#f5c800;">.</span></div>
-        <div style="font-size:9px;color:rgba(255,255,255,0.5);letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;">logística intermodal</div>
-      </div>
-    </div>
-    <div class="vessel-badge">⚓ M/V LOG-IN Jacarandá</div>
+  <div class="sidebar-logo">
+    <div class="logo-mark"><span class="lo">log</span><span class="gi">in</span><span class="dot">.</span></div>
+    <div class="logo-tagline">logística intermodal</div>
+    <div class="vessel-badge">⚓ M/V Jacarandá</div>
   </div>
   <div class="nav-section">
   <div class="nav-section">
@@ -4240,8 +4196,497 @@ body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;backgr
 // ── Novo Registro: Bloco/Oficina tab ──
 var _novoTab = 'atividade';
 
-// ─────────────────────────────────────────────
-// MÉDIAS RIO AMAZONAS — ETA · Maré · UKC
+
+// ═══════════════════════════════════════════════════════════
+// FUNÇÕES UTILITÁRIAS ESSENCIAIS
+// ═══════════════════════════════════════════════════════════
+function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function modalAdminErr(msg){ var el=document.getElementById('modal-admin-err'); if(el) el.textContent=msg; }
+function modalAdminClose(){ var el=document.getElementById('modal-admin'); if(el){ el.classList.remove('open'); el.style.display='none'; } }
+
+// ═══════════════════════════════════════════════════════════
+// FUNÇÕES RIO AMAZONAS — RTZ / PORTOS / VIAGENS / MARÉ
+// ═══════════════════════════════════════════════════════════
+function rioHaversineNm(lat1,lon1,lat2,lon2){
+  var R=3440.065, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+  var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function rioSaveFile(nome, type, content){
+  var blob=new Blob([content],{type:type}); var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download=nome; a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);},2000);
+}
+function rioDistCustomLoad(){ try{ return JSON.parse(localStorage.getItem('jac_rio_dist')||'{}'); }catch(e){ return {}; } }
+function rioDistCustomSave(d){ try{ localStorage.setItem('jac_rio_dist',JSON.stringify(d)); }catch(e){} }
+function rioPortosLoad(){ try{ return JSON.parse(localStorage.getItem('jac_rio_portos')||'[]'); }catch(e){ return []; } }
+function rioPortosCustomLoad(){ try{ return JSON.parse(localStorage.getItem('jac_rio_portos_custom')||'[]'); }catch(e){ return []; } }
+function rioPortosCustomSave(d){ try{ localStorage.setItem('jac_rio_portos_custom',JSON.stringify(d)); }catch(e){} }
+function rioPortosAll(){
+  var base=[{id:'PEC',nm:'Pecém-CE',tipo:'porto'},{id:'BN',nm:'Barra Norte',tipo:'wp'},
+    {id:'MCP',nm:'Macapá (Fazendinha)',tipo:'porto'},{id:'ITA',nm:'Itacoatiara',tipo:'porto'},
+    {id:'MAO',nm:'Manaus',tipo:'porto'},{id:'VIX',nm:'Vitória-ES',tipo:'porto'},
+    {id:'SSZ',nm:'Santos-SP',tipo:'porto'},{id:'SUA',nm:'Suape-PE',tipo:'porto'},
+    {id:'SSA',nm:'Salvador-BA',tipo:'porto'},{id:'NVT',nm:'Navegantes-SC',tipo:'porto'}];
+  return base.concat(rioPortosCustomLoad());
+}
+function rioPortosRender(){
+  var body=document.getElementById('rio-portos-body'); if(!body) return;
+  var legs=rioPortosLoad();
+  var vel0=parseFloat((document.getElementById('rio-vel')||{value:15}).value)||15;
+  var dtv=(document.getElementById('rio-dt')||{}).value;
+  if(!legs.length){ body.innerHTML='<div style="padding:12px;text-align:center;color:var(--muted);font-size:12px;">Nenhum trecho adicionado. Use ➕ Adicionar trecho.</div>'; return; }
+  var t0=dtv?new Date(dtv).getTime():0;
+  var tCur=t0; var cumD=0;
+  var portos=rioPortosAll();
+  var fmt=function(ms){ if(!ms) return '—'; var d=new Date(ms); return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); };
+  body.innerHTML=legs.map(function(l,i){
+    var vel=parseFloat(l.vel)||vel0;
+    var dist=parseFloat(l.dist)||0;
+    var h=vel>0?dist/vel:0;
+    tCur+=h*3600000; cumD+=dist;
+    var portosOpts=portos.map(function(p){ return '<option value="'+p.id+'" '+(l.de===p.id?'selected':'')+'>'+escHtml(p.id)+' — '+escHtml(p.nm)+'</option>'; }).join('');
+    var portosOpts2=portos.map(function(p){ return '<option value="'+p.id+'" '+(l.para===p.id?'selected':'')+'>'+escHtml(p.id)+' — '+escHtml(p.nm)+'</option>'; }).join('');
+    return '<div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:8px;border-left:3px solid var(--login-blue);">'
+      +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">'
+      +'<strong style="font-size:11px;color:var(--text-dim);">'+( i+1)+'.</strong>'
+      +'<select class="form-control" style="font-size:11px;flex:1;min-width:120px;" onchange="rioPortoLegUpd('+i+',\'de\',this.value)">'+portosOpts+'</select>'
+      +'<span>→</span>'
+      +'<select class="form-control" style="font-size:11px;flex:1;min-width:120px;" onchange="rioPortoLegUpd('+i+',\'para\',this.value)">'+portosOpts2+'</select>'
+      +'<button class="btn btn-ghost btn-sm" style="color:var(--danger);padding:2px 8px;" onclick="rioPortoLegDel('+i+')">✕</button>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:11px;">'
+      +'<div><label style="font-size:9px;color:var(--muted);">DIST (NM)</label><input type="number" class="form-control" style="font-size:11px;" value="'+dist+'" onchange="rioPortoLegUpd('+i+',\'dist\',this.value)"></div>'
+      +'<div><label style="font-size:9px;color:var(--muted);">VEL (nós)</label><input type="number" class="form-control" style="font-size:11px;" value="'+vel+'" onchange="rioPortoLegUpd('+i+',\'vel\',this.value)"></div>'
+      +'<div><label style="font-size:9px;color:var(--muted);">TEMPO</label><div class="mono" style="padding:6px 0;font-size:12px;">'+h.toFixed(1)+'h</div></div>'
+      +'<div><label style="font-size:9px;color:var(--muted);">ETA</label><div class="mono" style="padding:6px 0;font-size:11px;color:var(--login-blue);">'+fmt(t0?tCur:0)+'</div></div>'
+      +'</div></div>';
+  }).join('');
+}
+function rioPortoLegUpd(i,field,val){
+  var legs=rioPortosLoad();
+  if(field==='dist'||field==='vel') legs[i][field]=parseFloat(val)||0;
+  else legs[i][field]=val;
+  try{ localStorage.setItem('jac_rio_portos',JSON.stringify(legs)); }catch(e){}
+  rioPortosRender();
+}
+function rioPortoLegDel(i){
+  var legs=rioPortosLoad(); legs.splice(i,1);
+  try{ localStorage.setItem('jac_rio_portos',JSON.stringify(legs)); }catch(e){}
+  rioPortosRender();
+}
+function rioPortoAdd(){
+  var id=(document.getElementById('rio-porto-novo-id')||{}).value.trim().toUpperCase();
+  var nm=(document.getElementById('rio-porto-novo-nm')||{}).value.trim();
+  var tipo=(document.getElementById('rio-porto-novo')||{}).value||'porto';
+  if(!id||!nm){ toast('Preencha código e nome','warn'); return; }
+  var custom=rioPortosCustomLoad();
+  if(!custom.find(function(c){return c.id===id;})) custom.push({id:id,nm:nm,tipo:tipo});
+  rioPortosCustomSave(custom);
+  var el=document.getElementById('rio-porto-novo-id'); if(el) el.value='';
+  var el2=document.getElementById('rio-porto-novo-nm'); if(el2) el2.value='';
+  var dl=document.getElementById('rio-portos-custom-list');
+  if(dl) dl.innerHTML=custom.map(function(c){return '<span style="font-size:10px;background:var(--surface2);padding:2px 7px;border-radius:5px;">'+escHtml(c.id)+' '+escHtml(c.nm)+'</span>';}).join(' ');
+  toast('✅ Porto "'+id+'" adicionado','ok');
+}
+function rioPortosInit(){
+  try{ rioPortosRender(); }catch(e){}
+  try{
+    var custom=rioPortosCustomLoad();
+    var dl=document.getElementById('rio-portos-custom-list');
+    if(dl) dl.innerHTML=custom.map(function(c){return '<span style="font-size:10px;background:var(--surface2);padding:2px 7px;border-radius:5px;">'+escHtml(c.id)+' '+escHtml(c.nm)+'</span>';}).join(' ');
+  }catch(e){}
+}
+function rioChmRestore(){
+  try{
+    var saved=JSON.parse(localStorage.getItem('jac_rio_chm')||'null');
+    if(!saved) return;
+    ['rio-chm-t1','rio-chm-t2','rio-chm-t3','rio-chm-t4'].forEach(function(id,i){
+      var el=document.getElementById(id); if(el&&saved.t&&saved.t[i]) el.value=saved.t[i];
+    });
+    ['rio-chm-h1','rio-chm-h2','rio-chm-h3','rio-chm-h4'].forEach(function(id,i){
+      var el=document.getElementById(id); if(el&&saved.h&&saved.h[i]) el.value=saved.h[i];
+    });
+  }catch(e){}
+}
+function rioChmSaveInputs(){
+  try{
+    var t=['rio-chm-t1','rio-chm-t2','rio-chm-t3','rio-chm-t4'].map(function(id){return (document.getElementById(id)||{}).value||'';});
+    var h=['rio-chm-h1','rio-chm-h2','rio-chm-h3','rio-chm-h4'].map(function(id){return (document.getElementById(id)||{}).value||'';});
+    localStorage.setItem('jac_rio_chm',JSON.stringify({t:t,h:h}));
+  }catch(e){}
+}
+function rioChmApply(){
+  var ts=['rio-chm-t1','rio-chm-t2','rio-chm-t3','rio-chm-t4'].map(function(id){return (document.getElementById(id)||{}).value;});
+  var hs=['rio-chm-h1','rio-chm-h2','rio-chm-h3','rio-chm-h4'].map(function(id){return parseFloat((document.getElementById(id)||{}).value)||null;});
+  var valid=ts.filter(function(t,i){return t&&hs[i]!==null;});
+  if(valid.length<2){ toast('⚠️ Preencha pelo menos 2 eventos (hora e altura)','warn'); return; }
+  // Encontrar BM e PM (menor e maior altura)
+  var eventos=ts.map(function(t,i){return {t:t,h:hs[i]};}).filter(function(e){return e.t&&e.h!==null;});
+  eventos.sort(function(a,b){return new Date(a.t)-new Date(b.t);});
+  if(eventos.length>=2){
+    var bm=eventos.reduce(function(a,b){return a.h<=b.h?a:b;});
+    var pm=eventos.reduce(function(a,b){return a.h>=b.h?a:b;});
+    ['rio-bm-t','rio-pm-t'].forEach(function(id,i){var el=document.getElementById(id);if(el)el.value=i===0?bm.t:pm.t;});
+    ['rio-bm-h','rio-pm-h'].forEach(function(id,i){var el=document.getElementById(id);if(el)el.value=i===0?bm.h:pm.h;});
+    calcUKC();
+    var st=document.getElementById('rio-chm-status');
+    if(st){st.textContent='✅ BM '+bm.h.toFixed(2)+'m às '+bm.t.slice(11,16)+' · PM '+pm.h.toFixed(2)+'m às '+pm.t.slice(11,16);st.style.color='var(--login-green)';}
+  }
+}
+function rioChmClear(){
+  ['rio-chm-t1','rio-chm-t2','rio-chm-t3','rio-chm-t4','rio-chm-h1','rio-chm-h2','rio-chm-h3','rio-chm-h4'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  localStorage.removeItem('jac_rio_chm');
+  var st=document.getElementById('rio-chm-status'); if(st) st.textContent='';
+}
+function chmAutoETA(){
+  var bnEta=window._rioBnEta&&window._rioBnEta['subida'];
+  if(!bnEta){ toast('⚠️ Calcule o ETA primeiro (aba ETA por Trecho)','warn'); return; }
+  var d=new Date(bnEta);
+  var z=function(n){return ('0'+n).slice(-2);};
+  var base=d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'T';
+  var eventos=[
+    {id:'rio-chm-t1',h:'rio-chm-h1',t:new Date(bnEta-6*3600000),hv:0.5},
+    {id:'rio-chm-t2',h:'rio-chm-h2',t:new Date(bnEta),hv:3.2},
+    {id:'rio-chm-t3',h:'rio-chm-h3',t:new Date(bnEta+6*3600000),hv:0.4},
+    {id:'rio-chm-t4',h:'rio-chm-h4',t:new Date(bnEta+12*3600000),hv:3.5}
+  ];
+  eventos.forEach(function(ev){
+    var ft=ev.t; var tStr=ft.getFullYear()+'-'+z(ft.getMonth()+1)+'-'+z(ft.getDate())+'T'+z(ft.getHours())+':'+z(ft.getMinutes());
+    var el=document.getElementById(ev.id); if(el) el.value=tStr;
+    var el2=document.getElementById(ev.h); if(el2) el2.value=ev.hv;
+  });
+  rioChmSaveInputs();
+  toast('✅ Eventos de maré estimados com base no ETA de Barra Norte — verifique com a tábua DHN','ok');
+}
+function chmParseTxt(){
+  var txt=(document.getElementById('chm-txt-input')||{}).value||'';
+  if(!txt.trim()){ toast('⚠️ Cole o texto da tábua primeiro','warn'); return; }
+  var timeRx=/(\d{1,2})[h:.](\d{2})/g;
+  var heightRx=/(\d+[.,]\d+)/g;
+  var times=[],heights=[];
+  var m;
+  while((m=timeRx.exec(txt))!==null) times.push(('0'+m[1]).slice(-2)+':'+m[2]);
+  while((m=heightRx.exec(txt))!==null) heights.push(parseFloat(m[1].replace(',','.')));
+  if(times.length<2||heights.length<2){ toast('⚠️ Não foi possível extrair os eventos — verifique o formato','warn'); return; }
+  var baseDate=new Date().toISOString().slice(0,10);
+  ['rio-chm-t1','rio-chm-t2','rio-chm-t3','rio-chm-t4'].forEach(function(id,i){
+    var el=document.getElementById(id); if(el&&times[i]) el.value=baseDate+'T'+times[i];
+  });
+  ['rio-chm-h1','rio-chm-h2','rio-chm-h3','rio-chm-h4'].forEach(function(id,i){
+    var el=document.getElementById(id); if(el&&heights[i]!==undefined) el.value=heights[i];
+  });
+  rioChmSaveInputs();
+  toast('✅ '+Math.min(times.length,4)+' eventos extraídos — verifique e clique em Aplicar','ok');
+}
+function rioUsarEtaBN(){
+  var bnEta=window._rioBnEta&&window._rioBnEta['subida'];
+  if(!bnEta){ toast('⚠️ Calcule o ETA primeiro','warn'); return; }
+  var d=new Date(bnEta); var z=function(n){return ('0'+n).slice(-2);};
+  var val=d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'T'+z(d.getHours())+':'+z(d.getMinutes());
+  var el=document.getElementById('rio-pass-dt'); if(el){ el.value=val; calcUKC(); }
+  toast('🕐 ETA de Barra Norte aplicado','ok');
+}
+async function rioFetchMare(){
+  var locKey=(document.getElementById('rio-mare-loc')||{value:'bn'}).value||'bn';
+  var loc=RIO_LOCS[locKey];
+  if(!loc){ toast('Local inválido','warn'); return; }
+  var btn=document.getElementById('rio-fetch-btn');
+  var st=document.getElementById('rio-fetch-status');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Buscando...'; }
+  if(st) st.textContent='Conectando ao Open-Meteo...';
+  try{
+    var url='https://marine-api.open-meteo.com/v1/marine?latitude='+loc.lat+'&longitude='+loc.lon+'&hourly=wave_height&timezone=auto&forecast_days=3';
+    var r=await fetch(url);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var d=await r.json();
+    if(d.hourly&&d.hourly.wave_height){
+      if(st) st.textContent='✅ Dados obtidos — use a tábua DHN para maré exata (Open-Meteo fornece ondas, não maré astronômica)';
+      toast('ℹ️ Open-Meteo retorna ondas — use a tábua CHM/DHN para maré astronômica','ok');
+    }
+  }catch(e){
+    if(st) st.textContent='❌ Erro: '+e.message+' — use a tábua DHN manual';
+  }
+  if(btn){ btn.disabled=false; btn.textContent='🌐 Buscar Maré (Open-Meteo)'; }
+}
+function rioPathsSave(){
+  var cfg=getCfg(); cfg.rioPaths=cfg.rioPaths||{};
+  var r=document.getElementById('rio-path-rede'); if(r) cfg.rioPaths.rede=r.value;
+  var d=document.getElementById('rio-path-drive'); if(d) cfg.rioPaths.drive=d.value;
+  saveCfg(cfg);
+  var lnk=document.getElementById('rio-path-drive-open');
+  if(lnk&&cfg.rioPaths.drive){ lnk.href=cfg.rioPaths.drive; lnk.style.display=''; }
+  toast('✅ Caminhos salvos','ok');
+}
+function rioPathsRender(){
+  try{
+    var cfg=getCfg(); var paths=cfg.rioPaths||{};
+    var r=document.getElementById('rio-path-rede'); if(r) r.value=paths.rede||'';
+    var d=document.getElementById('rio-path-drive'); if(d) d.value=paths.drive||'';
+    var lnk=document.getElementById('rio-path-drive-open');
+    if(lnk&&paths.drive){ lnk.href=paths.drive; lnk.style.display=''; }
+  }catch(e){}
+}
+async function rioPickDir(){
+  if(!window.showDirectoryPicker){ toast('Use Chrome/Edge para esta função','warn'); return; }
+  try{
+    var dir=await window.showDirectoryPicker({mode:'readwrite'});
+    var cfg=getCfg(); cfg.rioPaths=cfg.rioPaths||{}; cfg.rioPaths.localDir=dir.name;
+    saveCfg(cfg); window._rioDir=dir;
+    var st=document.getElementById('rio-dir-status'); if(st) st.textContent='📂 '+dir.name;
+    toast('✅ Pasta vinculada: '+dir.name,'ok');
+  }catch(e){ if(e.name!=='AbortError') toast('❌ '+e.message,'err'); }
+}
+function rioShareViagem(){
+  var nro=(document.getElementById('rio-viagem-nro')||{}).value||'';
+  if(!nro){ toast('⚠️ Informe o nº da viagem','warn'); return; }
+  toast('ℹ️ Compartilhamento: salve o backup e envie pelo WhatsApp','ok');
+}
+function rioViagemInit(){
+  try{
+    var last=localStorage.getItem('jac_viagem_last')||'';
+    var el=document.getElementById('rio-viagem-nro'); if(el&&last) el.value=last;
+    var viagens=JSON.parse(localStorage.getItem('jac_rio_viagens')||'[]');
+    var sel=document.getElementById('rio-viagem-list');
+    if(sel){ sel.innerHTML='<option value="">— selecionar —</option>'+viagens.map(function(v,i){return '<option value="'+i+'">'+escHtml(v.nro||('Viagem #'+(i+1)))+' — '+escHtml(v.exp||'').slice(0,10)+'</option>';}).join(''); }
+  }catch(e){}
+}
+function rioViagemSalvar(){
+  var nro=(document.getElementById('rio-viagem-nro')||{}).value||('V-'+new Date().toISOString().slice(0,7));
+  var viagens=JSON.parse(localStorage.getItem('jac_rio_viagens')||'[]');
+  var data={nro:nro, exp:new Date().toISOString(),
+    calado:(document.getElementById('rio-calado')||{}).value,
+    squat:(document.getElementById('rio-squat')||{}).value,
+    bm_t:(document.getElementById('rio-bm-t')||{}).value, bm_h:(document.getElementById('rio-bm-h')||{}).value,
+    pm_t:(document.getElementById('rio-pm-t')||{}).value, pm_h:(document.getElementById('rio-pm-h')||{}).value,
+    dir:(document.getElementById('rio-dir')||{}).value, trechos:rioTrechoLoad()};
+  viagens.unshift(data);
+  if(viagens.length>20) viagens=viagens.slice(0,20);
+  try{ localStorage.setItem('jac_rio_viagens',JSON.stringify(viagens)); localStorage.setItem('jac_viagem_last',nro); }catch(e){}
+  rioViagemInit(); toast('✅ Backup da viagem "'+nro+'" salvo','ok');
+  var st=document.getElementById('rio-viagem-status'); if(st) st.textContent='✅ Salvo: '+nro;
+}
+function rioViagemRestaurar(){
+  var sel=document.getElementById('rio-viagem-list');
+  if(!sel||sel.value===''){toast('⚠️ Selecione uma viagem','warn');return;}
+  var viagens=JSON.parse(localStorage.getItem('jac_rio_viagens')||'[]');
+  var v=viagens[parseInt(sel.value)]; if(!v) return;
+  ['rio-calado','rio-squat','rio-bm-h','rio-pm-h'].forEach(function(id){
+    var el=document.getElementById(id); var key=id.replace('rio-','').replace('-','_');
+    if(el&&v[key.replace('bm_h','bm_h').replace('pm_h','pm_h')]) el.value=v[id.slice(4).replace('-','_')]||'';
+  });
+  if(v.bm_t){var e=document.getElementById('rio-bm-t');if(e)e.value=v.bm_t;}
+  if(v.pm_t){var e=document.getElementById('rio-pm-t');if(e)e.value=v.pm_t;}
+  if(v.trechos) rioTrechoSave(v.trechos);
+  calcUKC(); rioBuildETA();
+  toast('✅ Viagem "'+v.nro+'" restaurada','ok');
+}
+function rioViagemExportar(){
+  var viagens=JSON.parse(localStorage.getItem('jac_rio_viagens')||'[]');
+  if(!viagens.length){toast('⚠️ Nenhuma viagem salva','warn');return;}
+  rioSaveFile('jac_rio_viagens.json','application/json',JSON.stringify(viagens,null,2));
+  toast('✅ Arquivo exportado','ok');
+}
+function rioViagemImportar(input){
+  var f=input.files&&input.files[0]; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(e){
+    try{
+      var d=JSON.parse(e.target.result);
+      var arr=Array.isArray(d)?d:[d];
+      var viagens=JSON.parse(localStorage.getItem('jac_rio_viagens')||'[]');
+      arr.forEach(function(v){if(v.nro) viagens.unshift(v);});
+      localStorage.setItem('jac_rio_viagens',JSON.stringify(viagens.slice(0,20)));
+      rioViagemInit(); toast('✅ '+arr.length+' viagem(s) importada(s)','ok');
+    }catch(ex){toast('❌ Arquivo inválido: '+ex.message,'err');}
+  };
+  r.readAsText(f);
+}
+function rioViagemExcluir(){
+  var sel=document.getElementById('rio-viagem-list');
+  if(!sel||sel.value===''){toast('⚠️ Selecione uma viagem','warn');return;}
+  if(!confirm('Excluir esta viagem?')) return;
+  var viagens=JSON.parse(localStorage.getItem('jac_rio_viagens')||'[]');
+  viagens.splice(parseInt(sel.value),1);
+  localStorage.setItem('jac_rio_viagens',JSON.stringify(viagens));
+  rioViagemInit(); toast('🗑️ Viagem excluída','ok');
+}
+function rioViagemPDFModal(){
+  toast('ℹ️ Use 🖨 Imprimir / Salvar PDF no relatório semanal','ok');
+}
+function rioMareSalvar(){
+  var data={bm_t:(document.getElementById('rio-bm-t')||{}).value,bm_h:(document.getElementById('rio-bm-h')||{}).value,
+    pm_t:(document.getElementById('rio-pm-t')||{}).value,pm_h:(document.getElementById('rio-pm-h')||{}).value,ts:Date.now()};
+  try{ localStorage.setItem('jac_rio_mare_last',JSON.stringify(data)); }catch(e){}
+  var st=document.getElementById('rio-mare-bkp-status'); if(st) st.textContent='✅ Maré salva: '+new Date().toLocaleTimeString('pt-BR');
+  toast('✅ Dados de maré salvos','ok');
+}
+function rioMareCarregar(){
+  try{
+    var d=JSON.parse(localStorage.getItem('jac_rio_mare_last')||'null');
+    if(!d){toast('⚠️ Nenhuma maré salva','warn');return;}
+    ['rio-bm-t','rio-pm-t'].forEach(function(id,i){var el=document.getElementById(id);if(el)el.value=i===0?d.bm_t:d.pm_t;});
+    ['rio-bm-h','rio-pm-h'].forEach(function(id,i){var el=document.getElementById(id);if(el)el.value=i===0?d.bm_h:d.pm_h;});
+    calcUKC();
+    var st=document.getElementById('rio-mare-bkp-status'); if(st) st.textContent='✅ Carregado: '+new Date(d.ts||0).toLocaleString('pt-BR');
+    toast('✅ Dados de maré restaurados','ok');
+  }catch(e){toast('❌ '+e.message,'err');}
+}
+// RTZ
+function rtzNew(){
+  var nome=prompt('Nome da rota:','Rota JAC '+new Date().toLocaleDateString('pt-BR'));
+  if(!nome) return;
+  localStorage.setItem('jac_rtz_route',JSON.stringify({name:nome,wps:[]}));
+  var el=document.getElementById('rtz-route-name'); if(el) el.textContent=nome;
+  rtzRender(); toast('✅ Nova rota "'+nome+'" criada','ok');
+}
+function rtzAddWp(){
+  var rtz=JSON.parse(localStorage.getItem('jac_rtz_route')||'{"name":"Rota","wps":[]}');
+  var nome=prompt('Nome do waypoint:','WP '+(rtz.wps.length+1));
+  if(!nome) return;
+  var lat=parseFloat(prompt('Latitude (decimal):','0')||'0');
+  var lon=parseFloat(prompt('Longitude (decimal):','0')||'0');
+  rtz.wps.push({name:nome,lat:lat,lon:lon,vel:15});
+  localStorage.setItem('jac_rtz_route',JSON.stringify(rtz));
+  rtzRender(); toast('✅ Waypoint adicionado','ok');
+}
+function rtzRemoveWp(i){
+  var rtz=JSON.parse(localStorage.getItem('jac_rtz_route')||'{"name":"","wps":[]}');
+  rtz.wps.splice(i,1); localStorage.setItem('jac_rtz_route',JSON.stringify(rtz));
+  rtzRender();
+}
+function rtzUpdWpVel(i,val){
+  var rtz=JSON.parse(localStorage.getItem('jac_rtz_route')||'{"name":"","wps":[]}');
+  if(rtz.wps[i]) rtz.wps[i].vel=parseFloat(val)||15;
+  localStorage.setItem('jac_rtz_route',JSON.stringify(rtz));
+}
+function rtzImport(input){
+  var f=input.files&&input.files[0]; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(e){
+    try{
+      var txt=e.target.result; var wps=[];
+      var ext=f.name.split('.').pop().toLowerCase();
+      if(ext==='csv'){
+        txt.split('\n').slice(1).forEach(function(line){
+          var cols=line.split(',');
+          if(cols.length>=3&&!isNaN(parseFloat(cols[1]))){
+            wps.push({name:cols[0].trim()||'WP'+(wps.length+1),lat:parseFloat(cols[1]),lon:parseFloat(cols[2]),vel:parseFloat(cols[4])||15});
+          }
+        });
+      } else {
+        // RTZ/GPX/KML — extrair coordenadas por regex
+        var rx=/<[Ww]aypoint[^>]*>[\s\S]*?<[Nn]ame[^>]*>([^<]*)<\/[Nn]ame>[\s\S]*?lat="([^"]+)"[\s\S]*?lon="([^"]+)"/g;
+        var rx2=/lat="([^"]+)"[^>]*lon="([^"]+)"/g;
+        var m;
+        while((m=rx.exec(txt))!==null) wps.push({name:m[1]||'WP'+(wps.length+1),lat:parseFloat(m[2]),lon:parseFloat(m[3]),vel:15});
+        if(!wps.length) while((m=rx2.exec(txt))!==null) wps.push({name:'WP'+(wps.length+1),lat:parseFloat(m[1]),lon:parseFloat(m[2]),vel:15});
+      }
+      if(!wps.length){toast('⚠️ Nenhum waypoint encontrado no arquivo','warn');return;}
+      var rota={name:f.name.replace(/\.[^.]+$/,''),wps:wps};
+      localStorage.setItem('jac_rtz_route',JSON.stringify(rota));
+      var el=document.getElementById('rtz-route-name'); if(el) el.textContent=rota.name;
+      rtzRender(); rioBuildETA();
+      toast('✅ '+wps.length+' waypoints importados de "'+f.name+'"','ok');
+    }catch(ex){toast('❌ Erro ao importar: '+ex.message,'err');}
+  };
+  r.readAsText(f);
+}
+function rtzExport(fmt){
+  var rtz=JSON.parse(localStorage.getItem('jac_rtz_route')||'null');
+  if(!rtz||!rtz.wps.length){toast('⚠️ Nenhuma rota carregada','warn');return;}
+  var vel=(document.getElementById('rio-vel')||{value:15}).value;
+  var out='',ext=fmt,mime='text/plain';
+  if(fmt==='csv'){
+    out='#,Waypoint,Lat,Lon,Vel\n'+rtz.wps.map(function(w,i){return (i+1)+','+w.name+','+w.lat.toFixed(6)+','+w.lon.toFixed(6)+','+(w.vel||vel);}).join('\n');
+    mime='text/csv';
+  } else if(fmt==='gpx'){
+    out='<?xml version="1.0"?><gpx version="1.1" creator="JAC App"><rte><name>'+escHtml(rtz.name)+'</name>'+rtz.wps.map(function(w){return '<rtept lat="'+w.lat.toFixed(6)+'" lon="'+w.lon.toFixed(6)+'"><name>'+escHtml(w.name)+'</name></rtept>';}).join('')+'</rte></gpx>';
+    mime='application/gpx+xml';
+  } else if(fmt==='kml'){
+    out='<?xml version="1.0"?><kml><Document><name>'+escHtml(rtz.name)+'</name>'+rtz.wps.map(function(w){return '<Placemark><name>'+escHtml(w.name)+'</name><Point><coordinates>'+w.lon.toFixed(6)+','+w.lat.toFixed(6)+',0</coordinates></Point></Placemark>';}).join('')+'</Document></kml>';
+    mime='application/vnd.google-earth.kml+xml';
+  } else {
+    out='<Route xmlns="http://www.cirm.org/RTZ/1/1"><Name>'+escHtml(rtz.name)+'</Name><Waypoints>'+rtz.wps.map(function(w,i){return '<Waypoint id="'+(i+1)+'" lat="'+w.lat.toFixed(6)+'" lon="'+w.lon.toFixed(6)+'"><name>'+escHtml(w.name)+'</name></Waypoint>';}).join('')+'</Waypoints></Route>';
+    ext='rtz'; mime='application/xml';
+  }
+  rioSaveFile(rtz.name.replace(/[^a-zA-Z0-9]+/g,'_')+'.'+ext, mime, out);
+  toast('✅ Rota exportada como .'+ext,'ok');
+}
+function rtzFmtCoord(v,isLat){
+  var abs=Math.abs(v),d=Math.floor(abs),m=(abs-d)*60;
+  return d+'°'+m.toFixed(2)+'\''+((isLat?(v>=0?'N':'S'):(v>=0?'E':'W')));
+}
+function rtzLibSave(){
+  var rtz=JSON.parse(localStorage.getItem('jac_rtz_route')||'null');
+  if(!rtz||!rtz.wps.length){toast('⚠️ Nenhuma rota carregada','warn');return;}
+  var lib=JSON.parse(localStorage.getItem('jac_rtz_lib')||'[]');
+  if(!lib.find(function(r){return r.name===rtz.name;})) lib.push(rtz);
+  localStorage.setItem('jac_rtz_lib',JSON.stringify(lib));
+  rtzLibRender(); toast('✅ Rota "'+rtz.name+'" salva na biblioteca','ok');
+}
+function rtzLibLoad(){
+  var sel=document.getElementById('rtz-lib-sel'); if(!sel||!sel.value) return;
+  var lib=JSON.parse(localStorage.getItem('jac_rtz_lib')||'[]');
+  var rtz=lib[parseInt(sel.value)]; if(!rtz) return;
+  localStorage.setItem('jac_rtz_route',JSON.stringify(rtz));
+  var el=document.getElementById('rtz-route-name'); if(el) el.textContent=rtz.name;
+  rtzRender(); rioBuildETA(); toast('✅ Rota "'+rtz.name+'" carregada','ok');
+}
+function rtzLibDel(){
+  var sel=document.getElementById('rtz-lib-sel'); if(!sel||!sel.value) return;
+  if(!confirm('Remover esta rota da biblioteca?')) return;
+  var lib=JSON.parse(localStorage.getItem('jac_rtz_lib')||'[]');
+  lib.splice(parseInt(sel.value),1);
+  localStorage.setItem('jac_rtz_lib',JSON.stringify(lib));
+  rtzLibRender(); toast('🗑️ Rota removida','ok');
+}
+function rtzLibRender(){
+  var sel=document.getElementById('rtz-lib-sel'); if(!sel) return;
+  try{
+    var lib=JSON.parse(localStorage.getItem('jac_rtz_lib')||'[]');
+    sel.innerHTML='<option value="">— selecionar rota salva —</option>'+lib.map(function(r,i){return '<option value="'+i+'">'+escHtml(r.name)+' ('+r.wps.length+' wps)</option>';}).join('');
+  }catch(e){}
+}
+function rtzRender(){
+  try{
+    var rtz=JSON.parse(localStorage.getItem('jac_rtz_route')||'null');
+    var body=document.getElementById('rtz-body'); if(!body) return;
+    if(!rtz||!rtz.wps||!rtz.wps.length){
+      body.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">Nenhuma rota carregada — importe um arquivo RTZ/GPX/KML/CSV ou crie uma nova</div>';
+      return;
+    }
+    var nameEl=document.getElementById('rtz-route-name'); if(nameEl) nameEl.textContent=rtz.name;
+    body.innerHTML='<div style="overflow-x:auto;"><table class="tbl" style="width:100%;font-size:11px;">'
+      +'<thead><tr><th style="padding:5px 8px;">#</th><th>Waypoint</th><th>Lat</th><th>Lon</th><th>Dist (NM)</th><th>Vel (nós)</th><th></th></tr></thead><tbody>'
+      +rtz.wps.map(function(w,i){
+        var d=i===0?0:rioHaversineNm(rtz.wps[i-1].lat,rtz.wps[i-1].lon,w.lat,w.lon);
+        return '<tr style="border-bottom:1px solid var(--border);">'
+          +'<td class="mono" style="padding:4px 8px;">'+(i+1)+'</td>'
+          +'<td style="padding:4px 8px;font-weight:600;">'+escHtml(w.name)+'</td>'
+          +'<td class="mono" style="padding:4px 6px;">'+rtzFmtCoord(w.lat,true)+'</td>'
+          +'<td class="mono" style="padding:4px 6px;">'+rtzFmtCoord(w.lon,false)+'</td>'
+          +'<td class="mono" style="padding:4px 6px;text-align:right;">'+(i===0?'—':d.toFixed(1))+'</td>'
+          +'<td style="padding:4px 6px;"><input type="number" class="form-control" style="width:65px;font-size:11px;padding:3px 5px;" value="'+(w.vel||15)+'" onchange="rtzUpdWpVel('+i+',this.value)"></td>'
+          +'<td style="padding:4px 6px;"><button class="btn btn-ghost btn-sm" style="color:var(--danger);padding:2px 6px;" onclick="rtzRemoveWp('+i+')">✕</button></td>'
+          +'</tr>';
+      }).join('')
+      +'</tbody></table></div>';
+  }catch(e){ console.error('rtzRender:',e); }
+}
+function updateFolderStatus(){
+  var el=document.getElementById('fs-status-title');
+  var pe=document.getElementById('fs-status-path');
+  if(window._folderHandle){
+    if(el) el.textContent='📂 '+window._folderHandle.name;
+    if(pe) pe.textContent='Pasta vinculada — salvar direto disponível';
+  } else {
+    if(el) el.textContent='Nenhuma pasta vinculada';
+    if(pe) pe.textContent='';
+  }
+}
+
+
 // ─────────────────────────────────────────────
 // Distâncias (nm) extraídas da planilha de bordo LOG-IN Jacarandá (Linha Amazonas)
 var RIO_SUBIDA = [
