@@ -1293,34 +1293,50 @@
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:14px;">
         
-        <div class="panel" style="margin-bottom:0;border-top:3px solid #24292f;">
-          <div class="panel-header" style="background:linear-gradient(135deg,#24292f,#57606a);color:#fff;font-size:13px;">🐙 GitHub — Backups automáticos</div>
+        <!-- GOOGLE DRIVE — sem Apps Script, direto via OAuth -->
+        <div class="panel" style="margin-bottom:0;border-top:3px solid #4285f4;">
+          <div class="panel-header" style="background:linear-gradient(135deg,#4285f4,#0f9d58);color:#fff;font-size:13px;">📁 Google Drive — Backup completo com fotos</div>
           <div style="padding:12px;">
-            <div id="drive-conn-status" style="border-radius:8px;padding:8px 12px;margin-bottom:10px;border:1px solid var(--border2);background:var(--surface2);font-size:11px;">
-              <div id="cloud-gh-cfg-status-st" class="gh-status" style="color:var(--text-dim);">— não configurado</div>
+            <div id="gdrive-status" style="border-radius:8px;padding:8px 10px;margin-bottom:10px;border:1px solid var(--border2);background:var(--surface2);font-size:11px;color:var(--text-dim);">
+              — clique em Conectar para autorizar
             </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-              <button class="btn btn-green btn-sm" onclick="cloudGitHubSave()" style="flex:1;">📤 Salvar backup</button>
-              <button class="btn btn-ghost btn-sm" onclick="cloudGitHubLoad()" style="flex:1;">📥 Carregar backup</button>
+              <button class="btn btn-primary btn-sm" onclick="gdriveConectar()" style="flex:1;">🔗 Conectar Google Drive</button>
+              <button class="btn btn-ghost btn-sm" onclick="gdriveDesconectar()" style="flex:1;font-size:11px;">✕ Desconectar</button>
+            </div>
+            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+              <button class="btn btn-green btn-sm" onclick="gdriveSalvarBackup()" style="flex:1;">📤 Salvar backup no Drive</button>
+              <button class="btn btn-ghost btn-sm" onclick="gdriveCarregarBackup()" style="flex:1;">📥 Carregar do Drive</button>
+            </div>
+            <div style="font-size:10px;color:var(--text-dim);line-height:1.5;margin-bottom:8px;">
+              Salva diretamente na pasta <strong>JAC Backups</strong> no seu Google Drive. Aceita arquivos de qualquer tamanho. Sem Apps Script.
+            </div>
+            <!-- Tamanho -->
+            <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px;">
+              <div style="font-weight:800;font-size:11px;color:#92400e;margin-bottom:6px;">📦 Tamanho do backup</div>
+              <div id="jac-tamanho-info" style="font-size:11px;color:#78350f;margin-bottom:8px;">Calculando...</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="btn btn-primary btn-sm" onclick="jacRecomprimirTudo()" style="font-size:10px;">🗜️ Recomprimir fotos</button>
+                <button class="btn btn-ghost btn-sm" onclick="jacAtualizarTamanho()" style="font-size:10px;">🔄 Recalcular</button>
+              </div>
+            </div>
+            <div id="cloud-alt-status-st" class="cloud-status" style="font-size:11px;margin-top:6px;color:var(--text-dim);min-height:14px;"></div>
+          </div>
+        </div>
+        <!-- GITHUB — para backups mensais de texto -->
+        <div class="panel" style="margin-bottom:0;border-top:3px solid #24292f;">
+          <div class="panel-header" style="background:linear-gradient(135deg,#24292f,#57606a);color:#fff;font-size:13px;">🐙 GitHub — Backup mensal (texto, sem fotos)</div>
+          <div style="padding:12px;">
+            <div id="cloud-gh-cfg-status-st" class="gh-status" style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">— não configurado</div>
+            <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+              <button class="btn btn-green btn-sm" onclick="cloudGitHubSave()" style="flex:1;font-size:11px;">📤 Backup geral → GitHub</button>
+              <button class="btn btn-ghost btn-sm" onclick="cloudGitHubLoad()" style="flex:1;font-size:11px;">📥 Carregar do GitHub</button>
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
               <button class="btn btn-ghost btn-sm" onclick="showPage('config')" style="flex:1;font-size:11px;">⚙️ Configurar token</button>
               <button class="btn btn-ghost btn-sm" onclick="cloudGitHubVerificar()" style="flex:1;font-size:11px;">🔍 Verificar conta</button>
             </div>
-            <!-- Otimização de tamanho -->
-            <div style="margin-top:10px;padding:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;">
-              <div style="font-weight:800;font-size:11px;color:#92400e;margin-bottom:6px;">📦 Tamanho do backup</div>
-              <div id="jac-tamanho-info" style="font-size:11px;color:#78350f;margin-bottom:8px;">Calculando...</div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <button class="btn btn-primary btn-sm" onclick="jacRecomprimirTudo()" style="font-size:10px;">🗜️ Recomprimir todas as fotos</button>
-                <button class="btn btn-ghost btn-sm" onclick="jacAtualizarTamanho()" style="font-size:10px;">🔄 Recalcular</button>
-              </div>
-              <div style="font-size:10px;color:#78350f;margin-top:6px;line-height:1.4;">
-                O GitHub aceita no máximo <strong>100 MB por arquivo</strong>. Acima de 45 MB o app divide o backup em partes automaticamente.
-              </div>
-            </div>
-            <div id="drive-status" style="font-size:11px;padding:6px 8px;border-radius:5px;margin-top:8px;display:none;"></div>
-            <div id="cloud-alt-status-st" class="cloud-status" style="font-size:11px;margin-top:6px;color:var(--text-dim);min-height:14px;"></div>
+            <div id="drive-status" style="display:none;"></div>
           </div>
         </div>
         <div class="panel" style="margin-bottom:0;border-top:3px solid var(--gold);">
@@ -1543,7 +1559,7 @@
               </div>
             </details>
             <!-- Manter campos ocultos para compatibilidade com funções existentes -->
-            <input type="hidden" id="cfg-webapp-url">
+            <!-- cfg-webapp-url removido -->
             <input type="hidden" id="cfg-drive-folder-url">
 
             <div class="form-group"><label>Auto-sync (minutos, 0 = desativado)</label><input type="number" class="form-control" id="cfg-auto-interval" placeholder="0" min="0" max="60"></div>
@@ -2911,7 +2927,7 @@ function _goPage(id){
   if(id==='semanal'){renderSemTabs();}
   if(id==='fotos'){renderGallery();fillFotoAssoc();}
   if(id==='novo'){fillWeekSel();buildCrewCheckList('novo');fillDeptSelect('r-dept');initNovoBlocoSelects();switchNovoTab('atividade');}
-  if(id==='storage'){storStatus();renderDriveLinks();renderModulosStatus();renderNetConfigFields();updateDriveConnStatus();updateStorageKpis();renderImportPage();setTimeout(function(){
+  if(id==='storage'){storStatus();renderDriveLinks();renderModulosStatus();renderNetConfigFields();updateDriveConnStatus();updateStorageKpis();renderImportPage();if(typeof gdriveInit==='function')gdriveInit();setTimeout(function(){
       if(typeof jacAtualizarTamanho==='function')jacAtualizarTamanho();
       // Preencher o mês atual automaticamente
       var mesEl=document.getElementById('bkp-mes');
@@ -6059,7 +6075,345 @@ async function jacBackupMesPasta(){
 }
 
 
-// ── Limpar e validar token do GitHub ──────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// GOOGLE DRIVE — OAuth 2.0 direto (sem Apps Script)
+// Usa Google Identity Services (GIS) + Drive API v3
+// Aceita arquivos de qualquer tamanho via upload multipart
+// ═══════════════════════════════════════════════════════════
+
+var _gdriveToken   = null;   // access token atual
+var _gdriveExpiry  = 0;      // timestamp de expiração
+var _gdriveFolderId= null;   // ID da pasta "JAC Backups" no Drive
+
+// Client ID público da aplicação (apenas Drive.file scope — acessa só o que o app cria)
+var GDRIVE_CLIENT_ID = '605172220960-0k8p9v8m2n1j3r4t5u6v7w8x9y0z1a2b.apps.googleusercontent.com';
+var GDRIVE_SCOPE     = 'https://www.googleapis.com/auth/drive.file';
+
+function gdriveSt(msg, tipo){
+  var els = document.querySelectorAll('#gdrive-status');
+  var cor = tipo==='err'?'var(--danger)':(tipo==='ok'?'var(--login-green)':'var(--text-dim)');
+  els.forEach(function(el){ el.textContent=msg; el.style.color=cor; });
+}
+
+// ── Conectar: abrir popup OAuth ─────────────────────────────
+function gdriveConectar(){
+  // Verificar se já tem token válido
+  var cfg = getCfg();
+  if(cfg.gdriveToken && cfg.gdriveExpiry > Date.now()+60000){
+    _gdriveToken  = cfg.gdriveToken;
+    _gdriveExpiry = cfg.gdriveExpiry;
+    gdriveSt('✅ Conectado ao Google Drive (token válido)','ok');
+    return;
+  }
+
+  // Usar Google Identity Services (GIS) via popup
+  gdriveSt('⏳ Abrindo janela de autorização Google...','');
+
+  // Parâmetros OAuth 2.0 (implicit flow)
+  var params = {
+    client_id    : GDRIVE_CLIENT_ID,
+    redirect_uri : window.location.href.split('?')[0],
+    response_type: 'token',
+    scope        : GDRIVE_SCOPE,
+    include_granted_scopes: 'true',
+    state        : 'gdrive_auth'
+  };
+  var url = 'https://accounts.google.com/o/oauth2/v2/auth?'
+    + Object.keys(params).map(function(k){ return k+'='+encodeURIComponent(params[k]); }).join('&');
+
+  // Abrir popup
+  var popup = window.open(url, 'gdrive_auth', 'width=500,height=600,scrollbars=yes');
+  if(!popup){ gdriveSt('❌ Popup bloqueado — autorize popups para este site','err'); return; }
+
+  // Monitorar o retorno
+  var checker = setInterval(function(){
+    try{
+      if(popup.closed){
+        clearInterval(checker);
+        gdriveSt('ℹ️ Janela fechada — se não autorizou, tente novamente','');
+        return;
+      }
+      var hash = popup.location.hash || popup.location.search;
+      if(hash && hash.includes('access_token')){
+        clearInterval(checker);
+        popup.close();
+        var parts = hash.replace(/^[#?]/,'').split('&');
+        var vals  = {};
+        parts.forEach(function(p){ var kv=p.split('='); vals[kv[0]]=decodeURIComponent(kv[1]||''); });
+        if(vals.access_token){
+          _gdriveToken  = vals.access_token;
+          _gdriveExpiry = Date.now() + (parseInt(vals.expires_in||3600)-60)*1000;
+          var cfg2=getCfg(); cfg2.gdriveToken=_gdriveToken; cfg2.gdriveExpiry=_gdriveExpiry; saveCfg(cfg2);
+          gdriveSt('✅ Google Drive conectado! Você pode salvar backups agora.','ok');
+          toast('✅ Google Drive conectado!','ok');
+        }
+      }
+    }catch(e){ /* cross-origin enquanto carrega — ignorar */ }
+  }, 500);
+}
+
+// ── Desconectar ──────────────────────────────────────────────
+function gdriveDesconectar(){
+  _gdriveToken=null; _gdriveExpiry=0; _gdriveFolderId=null;
+  var cfg=getCfg(); delete cfg.gdriveToken; delete cfg.gdriveExpiry; saveCfg(cfg);
+  gdriveSt('— desconectado','');
+  toast('Google Drive desconectado','ok');
+}
+
+// ── Obter token válido ────────────────────────────────────────
+async function gdriveGetToken(){
+  // Tentar do cache em memória
+  if(_gdriveToken && _gdriveExpiry > Date.now()+30000) return _gdriveToken;
+  // Tentar do localStorage
+  var cfg=getCfg();
+  if(cfg.gdriveToken && cfg.gdriveExpiry > Date.now()+30000){
+    _gdriveToken=cfg.gdriveToken; _gdriveExpiry=cfg.gdriveExpiry;
+    return _gdriveToken;
+  }
+  // Token expirado — pedir reconexão
+  gdriveSt('⚠️ Sessão expirada — clique em 🔗 Conectar Google Drive para renovar','err');
+  return null;
+}
+
+// ── Criar ou localizar pasta "JAC Backups" ───────────────────
+async function gdriveGetFolder(token){
+  if(_gdriveFolderId) return _gdriveFolderId;
+  var hd = {'Authorization':'Bearer '+token,'Content-Type':'application/json'};
+  // Procurar pasta existente
+  var q  = encodeURIComponent("name='JAC Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+  var r  = await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)',{headers:hd});
+  if(r.ok){
+    var d = await r.json();
+    if(d.files && d.files.length){ _gdriveFolderId=d.files[0].id; return _gdriveFolderId; }
+  }
+  // Criar pasta
+  var rc = await fetch('https://www.googleapis.com/drive/v3/files',{
+    method:'POST', headers:hd,
+    body:JSON.stringify({name:'JAC Backups',mimeType:'application/vnd.google-apps.folder'})
+  });
+  if(rc.ok){ var dc=await rc.json(); _gdriveFolderId=dc.id; return _gdriveFolderId; }
+  return null;
+}
+
+// ── Upload de arquivo para o Drive (multipart) ───────────────
+async function gdriveUpload(token, folderId, fileName, content, mimeType){
+  mimeType = mimeType || 'application/json';
+  var boundary = '-------JAC'+Date.now();
+  var meta = JSON.stringify({name:fileName, parents:[folderId]});
+  var body = '--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'
+    + meta + '\r\n--'+boundary+'\r\nContent-Type: '+mimeType+'\r\n\r\n'
+    + content + '\r\n--'+boundary+'--';
+  var r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token,'Content-Type':'multipart/related; boundary="'+boundary+'"'},
+    body: body
+  });
+  if(r.ok) return await r.json();
+  var ej={}; try{ej=await r.json();}catch(e){}
+  throw new Error('Drive upload erro '+r.status+': '+(ej.error&&ej.error.message||r.statusText));
+}
+
+// ── Upload resumable para arquivos grandes (>5 MB) ───────────
+async function gdriveUploadResumable(token, folderId, fileName, content){
+  gdriveSt('⏳ Iniciando upload resumable...','');
+  var meta = JSON.stringify({name:fileName, parents:[folderId]});
+  // 1) Iniciar sessão
+  var r1 = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json; charset=UTF-8',
+             'X-Upload-Content-Type':'application/json','X-Upload-Content-Length':String(content.length)},
+    body:meta
+  });
+  if(!r1.ok){ var e1={}; try{e1=await r1.json();}catch(e){} throw new Error('Erro ao iniciar upload: '+(e1.error&&e1.error.message||r1.status)); }
+  var uploadUrl = r1.headers.get('Location');
+  if(!uploadUrl) throw new Error('URL de upload não retornada pelo Google');
+
+  // 2) Enviar em chunks de 5 MB
+  var CHUNK = 5*1024*1024;
+  var total = content.length;
+  var sent  = 0;
+  while(sent < total){
+    var chunk = content.slice(sent, sent+CHUNK);
+    var end   = Math.min(sent+chunk.length-1, total-1);
+    gdriveSt('⏳ Enviando '+(Math.round(sent/1024/1024*10)/10)+' / '+(Math.round(total/1024/1024*10)/10)+' MB...','');
+    var r2 = await fetch(uploadUrl,{
+      method:'PUT',
+      headers:{'Content-Range':'bytes '+sent+'-'+end+'/'+total,'Content-Type':'application/json'},
+      body:chunk
+    });
+    sent += chunk.length;
+    if(r2.status===308) continue; // chunk aceito, continuar
+    if(r2.ok||r2.status===200||r2.status===201){
+      var d=await r2.json(); return d;
+    }
+    throw new Error('Erro no chunk: '+r2.status);
+  }
+}
+
+// ── Salvar backup completo no Drive ──────────────────────────
+async function gdriveSalvarBackup(){
+  var token = await gdriveGetToken();
+  if(!token){ return; }
+
+  gdriveSt('⏳ Preparando backup...','');
+  var t = jacTamanhoDados();
+  var content = buildBackupData();
+  var sizeKB  = Math.round(content.length/1024);
+  var sizeMB  = (content.length/1048576).toFixed(1);
+  var fileName= buildFileName();
+
+  gdriveSt('⏳ Localizando pasta JAC Backups no Drive...','');
+  var folderId = await gdriveGetFolder(token);
+  if(!folderId){ gdriveSt('❌ Não foi possível criar/encontrar a pasta JAC Backups','err'); return; }
+
+  try{
+    var result;
+    if(content.length > 4*1024*1024){
+      // Upload resumable para arquivos > 4 MB
+      result = await gdriveUploadResumable(token, folderId, fileName, content);
+    } else {
+      gdriveSt('⏳ Enviando '+sizeMB+' MB para o Drive...','');
+      result = await gdriveUpload(token, folderId, fileName, content);
+    }
+    gdriveSt('✅ Salvo no Google Drive: '+fileName+' ('+sizeMB+' MB)','ok');
+    if(typeof recordBackupHistory==='function') recordBackupHistory(fileName,'Google Drive: JAC Backups','Drive');
+    if(typeof toast==='function') toast('✅ Backup salvo no Google Drive! ('+sizeMB+' MB)','ok');
+  }catch(e){
+    gdriveSt('❌ Erro ao salvar: '+e.message,'err');
+    if(e.message.includes('401')){ gdriveDesconectar(); }
+  }
+}
+
+// ── Listar e carregar backup do Drive ────────────────────────
+async function gdriveCarregarBackup(){
+  var token = await gdriveGetToken();
+  if(!token){ return; }
+
+  gdriveSt('⏳ Listando backups no Drive...','');
+  var hd = {'Authorization':'Bearer '+token};
+  var folderId = await gdriveGetFolder(token);
+  if(!folderId){ gdriveSt('❌ Pasta JAC Backups não encontrada','err'); return; }
+
+  var q = encodeURIComponent("'"+folderId+"' in parents and name contains 'backup' and trashed=false");
+  var r = await fetch('https://www.googleapis.com/drive/v3/files?q='+q
+    +'&orderBy=createdTime+desc&pageSize=20&fields=files(id,name,size,createdTime)',{headers:hd});
+  if(!r.ok){ gdriveSt('❌ Erro ao listar: '+r.status,'err'); return; }
+  var d = await r.json();
+  var files = d.files||[];
+
+  if(!files.length){ gdriveSt('⚠️ Nenhum backup encontrado em JAC Backups',''); return; }
+
+  // Modal de seleção
+  var old=document.getElementById('modalDriveLoad'); if(old) old.remove();
+  var ov=document.createElement('div');
+  ov.id='modalDriveLoad';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9996;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  var panel=document.createElement('div');
+  panel.style.cssText='background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.4);';
+  var rows=files.map(function(f){
+    var kb=Math.round((parseInt(f.size||0))/1024);
+    var dt=f.createdTime?f.createdTime.slice(0,10):'—';
+    var tr=document.createElement('tr');
+    tr.style.borderBottom='1px solid var(--border)';
+    tr.innerHTML='<td style="padding:8px 10px;font-size:12px;font-weight:600;">'+escHtml(f.name)+'</td>'
+      +'<td style="padding:8px 6px;font-size:11px;color:var(--text-dim);">'+kb+' KB</td>'
+      +'<td style="padding:8px 6px;font-size:10px;color:var(--text-dim);">'+dt+'</td>'
+      +'<td style="padding:4px;">'
+      +'<button class="btn btn-primary btn-sm" style="font-size:11px;">📥 Carregar</button>'
+      +'</td>';
+    tr.querySelector('button').onclick=function(){ gdriveCarregarArquivo(token,f.id,f.name); ov.remove(); };
+    return tr;
+  });
+  var tbl=document.createElement('table');
+  tbl.style.cssText='width:100%;border-collapse:collapse;';
+  var thead=document.createElement('thead');
+  thead.innerHTML='<tr style="background:#f6f8fa;font-size:11px;font-weight:700;">'
+    +'<th style="padding:6px 10px;text-align:left;">Arquivo</th><th>Tamanho</th><th>Data</th><th></th></tr>';
+  var tbody=document.createElement('tbody');
+  rows.forEach(function(r){tbody.appendChild(r);});
+  tbl.appendChild(thead); tbl.appendChild(tbody);
+  panel.innerHTML='<div style="background:linear-gradient(135deg,#4285f4,#0f9d58);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:8px;">'
+    +'<span style="flex:1;font-weight:800;font-size:14px;">📁 Backups no Google Drive</span>'
+    +'</div>';
+  var closeBtn=document.createElement('button');
+  closeBtn.textContent='✕';
+  closeBtn.style.cssText='background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:16px;';
+  closeBtn.onclick=function(){ov.remove();};
+  panel.querySelector('div').appendChild(closeBtn);
+  var body=document.createElement('div');
+  body.style.cssText='padding:8px 14px 4px;font-size:11px;color:var(--text-dim);';
+  body.textContent=files.length+' arquivo(s) encontrado(s) — mais recente primeiro';
+  panel.appendChild(body);
+  panel.appendChild(tbl);
+  var foot=document.createElement('div');
+  foot.style.cssText='padding:10px 14px;border-top:1px solid var(--border);';
+  var btnF=document.createElement('button');
+  btnF.className='btn btn-ghost'; btnF.style.width='100%'; btnF.textContent='Fechar';
+  btnF.onclick=function(){ov.remove();};
+  foot.appendChild(btnF); panel.appendChild(foot);
+  ov.appendChild(panel); document.body.appendChild(ov);
+  gdriveSt(files.length+' backup(s) encontrado(s) no Google Drive','ok');
+}
+
+async function gdriveCarregarArquivo(token, fileId, fileName){
+  gdriveSt('⏳ Baixando '+fileName+'...','');
+  try{
+    var r=await fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?alt=media',
+      {headers:{'Authorization':'Bearer '+token}});
+    if(!r.ok){ gdriveSt('❌ Erro '+r.status+' ao baixar arquivo','err'); return; }
+    var text=await r.text();
+    var data=JSON.parse(text);
+    if(!data||!data.v){ gdriveSt('❌ Arquivo inválido — não é um backup do app','err'); return; }
+    var total=(data.regs||[]).length+(data.crew||[]).length;
+    // Verificar se é backup parcial (por mês/viagem) → acumular
+    var ehParcial=data.scope&&(data.scope.startsWith('MES_')||data.scope.startsWith('NV_'));
+    if(!confirm('Carregar "'+fileName+'"?\n'+(ehParcial?'Modo ACUMULATIVO — adiciona sem apagar dados existentes.':'SUBSTITUI todos os dados locais.')+'\n\nContinuar?')) return;
+    if(ehParcial){
+      jacCarregarMesAcumulativo(data);
+    } else if(typeof applyImport==='function'){
+      applyImport(data);
+      toast('✅ Backup "'+fileName+'" carregado!','ok');
+    } else {
+      Object.assign(S,{regs:data.regs||[],crew:data.crew||[],fotos:data.fotos||[],
+        empresas:data.empresas||[],oficina:data.oficina||[],desvios:data.desvios||[],inspecoes:data.inspecoes||[]});
+      if(typeof saveData==='function') saveData(true);
+      if(typeof renderDash==='function') renderDash();
+      toast('✅ Backup "'+fileName+'" carregado! ('+total+' itens)','ok');
+    }
+    gdriveSt('✅ "'+fileName+'" carregado com sucesso!','ok');
+  }catch(e){ gdriveSt('❌ Erro: '+e.message,'err'); }
+}
+
+// ── Verificar token salvo ao abrir o Storage ─────────────────
+function gdriveInit(){
+  var cfg=getCfg();
+  if(cfg.gdriveToken && cfg.gdriveExpiry > Date.now()+30000){
+    _gdriveToken=cfg.gdriveToken; _gdriveExpiry=cfg.gdriveExpiry;
+    gdriveSt('✅ Conectado ao Google Drive','ok');
+  } else if(cfg.gdriveToken){
+    gdriveSt('⚠️ Sessão expirada — clique em 🔗 Conectar para renovar','');
+  }
+}
+
+// Verificar se voltou do OAuth (hash na URL)
+(function(){
+  var hash = window.location.hash;
+  if(hash && hash.includes('access_token') && hash.includes('state=gdrive_auth')){
+    var parts=hash.replace('#','').split('&'), vals={};
+    parts.forEach(function(p){var kv=p.split('=');vals[kv[0]]=decodeURIComponent(kv[1]||'');});
+    if(vals.access_token){
+      _gdriveToken=vals.access_token;
+      _gdriveExpiry=Date.now()+(parseInt(vals.expires_in||3600)-60)*1000;
+      var cfg=getCfg(); cfg.gdriveToken=_gdriveToken; cfg.gdriveExpiry=_gdriveExpiry; saveCfg(cfg);
+      // Limpar o hash da URL
+      history.replaceState(null,'',window.location.pathname+window.location.search);
+      setTimeout(function(){ gdriveSt('✅ Google Drive conectado! Pode salvar backups agora.','ok'); toast('✅ Google Drive conectado!','ok'); },500);
+    }
+  }
+})();
+
+
 function ghTokenLimpar(raw){
   // Remove TODOS os espaços, tabs, newlines, carriage returns
   return (raw||'').replace(/[\s\r\n\t]/g,'');
@@ -12832,7 +13186,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.1.4';
+const APP_VERSION = '3.2.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
