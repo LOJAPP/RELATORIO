@@ -1312,7 +1312,7 @@
               <button class="btn btn-warn btn-sm" onclick="gdriveDiag()" style="flex:1;font-size:11px;">🔬 Testar conexão Drive</button>
             </div>
             <div style="font-size:10px;color:var(--text-dim);line-height:1.5;margin-bottom:8px;">
-              Salva diretamente na pasta <strong>JAC Backups</strong> no seu Google Drive. Aceita arquivos de qualquer tamanho. Sem Apps Script.
+              Salva na pasta <strong>JAC Backups</strong> no seu Google Drive. Se aparecer erro de permissão, clique em ✕ Desconectar e reconecte — na tela do Google, escolha a conta e clique <strong>Permitir</strong> em todas as permissões.
             </div>
             <!-- Tamanho -->
             <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px;">
@@ -6227,33 +6227,61 @@ async function gdriveGetFolder(token){
   if(_gdriveFolderId) return _gdriveFolderId;
   var hd={'Authorization':'Bearer '+token,'Content-Type':'application/json'};
 
-  // Tentar encontrar a pasta existente
+  // 1) Buscar pasta existente
+  gdriveSt('⏳ Buscando pasta JAC Backups...','');
+  var r, d, re1={};
   try{
     var q=encodeURIComponent("name='JAC Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false");
-    var r=await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)',{headers:hd});
-    if(r.status===401){ gdriveDesconectar(); gdriveSt('❌ Sessão expirada — reconecte o Google Drive','err'); return null; }
-    if(r.ok){
-      var d=await r.json();
-      if(d.files&&d.files.length){ _gdriveFolderId=d.files[0].id; return _gdriveFolderId; }
-    } else {
-      var re1={}; try{re1=await r.json();}catch(e){}
-      gdriveSt('❌ Erro ao acessar Drive ('+r.status+'): '+(re1.error&&re1.error.message||'verifique as permissões'),'err');
-      return null;
-    }
-  }catch(e){ gdriveSt('❌ Erro de rede ao buscar pasta: '+e.message,'err'); return null; }
+    r=await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)',{headers:hd});
+  }catch(e){ gdriveSt('❌ Erro de rede: '+e.message+' — verifique a internet','err'); return null; }
 
-  // Criar a pasta
-  gdriveSt('⏳ Criando pasta "JAC Backups" no Drive...','');
-  try{
-    var rc=await fetch('https://www.googleapis.com/drive/v3/files',{
-      method:'POST', headers:hd,
-      body:JSON.stringify({name:'JAC Backups', mimeType:'application/vnd.google-apps.folder'})
-    });
-    if(rc.ok){ var dc=await rc.json(); _gdriveFolderId=dc.id; return _gdriveFolderId; }
-    var re2={}; try{re2=await rc.json();}catch(e){}
-    gdriveSt('❌ Erro ao criar pasta JAC Backups ('+rc.status+'): '+(re2.error&&re2.error.message||'permissão negada — desconecte e reconecte o Drive'),'err');
+  if(r.status===401){
+    gdriveDesconectar();
+    gdriveSt('❌ Token expirado (401) — clique em 🔗 Conectar novamente','err');
     return null;
+  }
+  if(r.status===403){
+    try{re1=await r.json();}catch(e){}
+    var msg403=(re1.error&&re1.error.message)||'acesso negado';
+    gdriveSt('❌ Permissão negada (403): '+msg403+' — desconecte (✕) e clique em 🔗 Conectar para renovar as permissões','err');
+    return null;
+  }
+  if(!r.ok){
+    try{re1=await r.json();}catch(e){}
+    gdriveSt('❌ Erro Drive API ('+r.status+'): '+((re1.error&&re1.error.message)||r.statusText),'err');
+    return null;
+  }
+
+  try{d=await r.json();}catch(e){ gdriveSt('❌ Resposta inválida da Drive API','err'); return null; }
+  if(d.files&&d.files.length){
+    _gdriveFolderId=d.files[0].id;
+    return _gdriveFolderId;
+  }
+
+  // 2) Pasta não existe — criar
+  gdriveSt('⏳ Criando pasta "JAC Backups" no Drive...','');
+  var rc, dc={}, re2={};
+  try{
+    rc=await fetch('https://www.googleapis.com/drive/v3/files',{
+      method:'POST', headers:hd,
+      body:JSON.stringify({name:'JAC Backups',mimeType:'application/vnd.google-apps.folder'})
+    });
   }catch(e){ gdriveSt('❌ Erro de rede ao criar pasta: '+e.message,'err'); return null; }
+
+  if(rc.ok){
+    try{dc=await rc.json();}catch(e){}
+    _gdriveFolderId=dc.id;
+    return _gdriveFolderId;
+  }
+  try{re2=await rc.json();}catch(e){}
+  var errMsg=(re2.error&&re2.error.message)||rc.statusText||'erro desconhecido';
+  if(rc.status===403){
+    gdriveSt('❌ Sem permissão para criar pasta (403): '+errMsg
+      +' — clique em ✕ Desconectar e depois em 🔗 Conectar para re-autorizar com escopo drive completo','err');
+  } else {
+    gdriveSt('❌ Erro '+rc.status+' ao criar pasta: '+errMsg,'err');
+  }
+  return null;
 }
 
 async function gdriveUpload(token, folderId, fileName, content){
@@ -13211,7 +13239,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.2.5';
+const APP_VERSION = '3.2.6';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
