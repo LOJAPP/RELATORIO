@@ -6084,7 +6084,7 @@ var _gdriveToken   = null;
 var _gdriveExpiry  = 0;
 var _gdriveFolderId= null;
 var GDRIVE_CLIENT_ID = '288312239434-i7d9h5f5k0u145hqofpr24d2aprk5mhg.apps.googleusercontent.com';
-var GDRIVE_SCOPE     = 'https://www.googleapis.com/auth/drive.file';
+var GDRIVE_SCOPE     = 'https://www.googleapis.com/auth/drive';
 
 function gdriveSt(msg, tipo){
   var els = document.querySelectorAll('#gdrive-status');
@@ -6127,8 +6127,9 @@ function gdriveConectar(){
           }
           _gdriveToken  = resp.access_token;
           _gdriveExpiry = Date.now() + (parseInt(resp.expires_in||3600)-60)*1000;
+          _gdriveFolderId = null; // forçar nova busca da pasta com novo token
           var cfg2=getCfg(); cfg2.gdriveToken=_gdriveToken; cfg2.gdriveExpiry=_gdriveExpiry; saveCfg(cfg2);
-          gdriveSt('✅ Google Drive conectado! Conta: '+jacarandaloginHint,'ok');
+          gdriveSt('✅ Google Drive conectado! Clique em 📤 Salvar backup agora.','ok');
           toast('✅ Google Drive conectado!','ok');
         }
       });
@@ -6161,15 +6162,34 @@ async function gdriveGetToken(){
 async function gdriveGetFolder(token){
   if(_gdriveFolderId) return _gdriveFolderId;
   var hd={'Authorization':'Bearer '+token,'Content-Type':'application/json'};
-  var q=encodeURIComponent("name='JAC Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false");
-  var r=await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)',{headers:hd});
-  if(r.ok){ var d=await r.json(); if(d.files&&d.files.length){ _gdriveFolderId=d.files[0].id; return _gdriveFolderId; } }
-  var rc=await fetch('https://www.googleapis.com/drive/v3/files',{
-    method:'POST',headers:hd,
-    body:JSON.stringify({name:'JAC Backups',mimeType:'application/vnd.google-apps.folder'})
-  });
-  if(rc.ok){ var dc=await rc.json(); _gdriveFolderId=dc.id; return _gdriveFolderId; }
-  return null;
+
+  // Tentar encontrar a pasta existente
+  try{
+    var q=encodeURIComponent("name='JAC Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+    var r=await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)',{headers:hd});
+    if(r.status===401){ gdriveDesconectar(); gdriveSt('❌ Sessão expirada — reconecte o Google Drive','err'); return null; }
+    if(r.ok){
+      var d=await r.json();
+      if(d.files&&d.files.length){ _gdriveFolderId=d.files[0].id; return _gdriveFolderId; }
+    } else {
+      var re1={}; try{re1=await r.json();}catch(e){}
+      gdriveSt('❌ Erro ao acessar Drive ('+r.status+'): '+(re1.error&&re1.error.message||'verifique as permissões'),'err');
+      return null;
+    }
+  }catch(e){ gdriveSt('❌ Erro de rede ao buscar pasta: '+e.message,'err'); return null; }
+
+  // Criar a pasta
+  gdriveSt('⏳ Criando pasta "JAC Backups" no Drive...','');
+  try{
+    var rc=await fetch('https://www.googleapis.com/drive/v3/files',{
+      method:'POST', headers:hd,
+      body:JSON.stringify({name:'JAC Backups', mimeType:'application/vnd.google-apps.folder'})
+    });
+    if(rc.ok){ var dc=await rc.json(); _gdriveFolderId=dc.id; return _gdriveFolderId; }
+    var re2={}; try{re2=await rc.json();}catch(e){}
+    gdriveSt('❌ Erro ao criar pasta JAC Backups ('+rc.status+'): '+(re2.error&&re2.error.message||'permissão negada — desconecte e reconecte o Drive'),'err');
+    return null;
+  }catch(e){ gdriveSt('❌ Erro de rede ao criar pasta: '+e.message,'err'); return null; }
 }
 
 async function gdriveUpload(token, folderId, fileName, content){
@@ -6346,7 +6366,7 @@ var _gdriveFolderId= null;   // ID da pasta "JAC Backups" no Drive
 
 // Client ID público da aplicação (apenas Drive.file scope — acessa só o que o app cria)
 var GDRIVE_CLIENT_ID = '288312239434-i7d9h5f5k0u145hqofpr24d2aprk5mhg.apps.googleusercontent.com';
-var GDRIVE_SCOPE     = 'https://www.googleapis.com/auth/drive.file';
+var GDRIVE_SCOPE     = 'https://www.googleapis.com/auth/drive';
 
 function gdriveSt(msg, tipo){
   var els = document.querySelectorAll('#gdrive-status');
@@ -13127,7 +13147,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.2.3';
+const APP_VERSION = '3.2.4';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
