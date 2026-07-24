@@ -1370,13 +1370,18 @@
             <datalist id="bkp-nv-list"></datalist>
           </div>
         </div>
+        <!-- Nota: backups por mês/viagem NÃO incluem fotos (arquivo leve <1 MB) -->
+        <div style="font-size:10px;color:#3730a3;background:#e0e7ff;border-radius:5px;padding:4px 8px;margin-bottom:8px;">
+          ℹ️ Backup de texto (sem fotos) — arquivos leves, ideais para o GitHub. Fotos ficam no backup GERAL.
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
-          <button class="btn btn-primary btn-sm" onclick="jacBackupMes(false)" style="font-size:11px;">💾 Baixar backup do mês</button>
-          <button class="btn btn-green btn-sm"   onclick="jacBackupMes(true)"  style="font-size:11px;">📤 Enviar mês → GitHub</button>
-          <button class="btn btn-ghost btn-sm"   onclick="jacBackupViagem(false)" style="font-size:11px;">💾 Baixar por viagem</button>
-          <button class="btn btn-green btn-sm"   onclick="jacBackupViagem(true)"  style="font-size:11px;">📤 Enviar viagem → GitHub</button>
-          <button class="btn btn-ghost btn-sm"   onclick="jacBackupMesPasta()" style="font-size:11px;">📁 Salvar mês → Pasta de rede</button>
-          <button class="btn btn-ghost btn-sm"   onclick="jacListarViagens()"  style="font-size:11px;">🔍 Ver viagens disponíveis</button>
+          <button class="btn btn-primary btn-sm" onclick="jacBackupMes(false)" style="font-size:11px;">💾 Baixar mês (texto)</button>
+          <button class="btn btn-green btn-sm"   onclick="jacBackupMes(true)"  style="font-size:11px;">📤 Mês → GitHub</button>
+          <button class="btn btn-ghost btn-sm"   onclick="jacBackupViagem(false)" style="font-size:11px;">💾 Baixar viagem</button>
+          <button class="btn btn-green btn-sm"   onclick="jacBackupViagem(true)"  style="font-size:11px;">📤 Viagem → GitHub</button>
+          <button class="btn btn-ghost btn-sm"   onclick="jacBackupMesFotosDownload()" style="font-size:11px;">📷 Baixar fotos do mês</button>
+          <button class="btn btn-ghost btn-sm"   onclick="jacBackupMesPasta()" style="font-size:11px;">📁 Mês → Pasta rede</button>
+          <button class="btn btn-ghost btn-sm"   onclick="jacListarViagens()"  style="font-size:11px;" style="grid-column:span 2;">🔍 Ver viagens</button>
         </div>
         <div id="bkp-mes-status" style="font-size:11px;color:var(--text-dim);min-height:16px;padding:4px 0;"></div>
         <div style="margin-top:6px;">
@@ -5848,24 +5853,54 @@ function jacListarViagens(){
   var el=document.getElementById('bkp-nviagem');
   if(el&&!el.value&&lista.length)el.value=lista[lista.length-1];
 }
-function jacDadosMes(mes){
-  var regs=(S.regs||[]).filter(function(r){return String(r.d||'').slice(0,7)===mes;});
-  var ofic=(S.oficina||[]).filter(function(o){return String(o.d||o.data||'').slice(0,7)===mes;});
-  var desv=(S.desvios||[]).filter(function(d){return String(d.d||d.data||'').slice(0,7)===mes;});
-  var insp=(S.inspecoes||[]).filter(function(i){return String(i.d||i.data||'').slice(0,7)===mes;});
-  return {v:5,exp:new Date().toISOString(),scope:'MES_'+mes,
-    regs:regs,crew:S.crew,fotos:[],empresas:S.empresas,
-    oficina:ofic,desvios:desv,inspecoes:insp,_total:regs.length+ofic.length+desv.length+insp.length};
+function jacDadosMes(mes, incluirFotos){
+  // Remover fotos dos registros para manter o backup leve (<1 MB)
+  var semFoto = function(r){
+    var c = Object.assign({}, r);
+    if(!incluirFotos){ delete c.fotos; delete c.fotosCaptions; }
+    return c;
+  };
+  var regs = (S.regs||[]).filter(function(r){ return String(r.d||'').slice(0,7)===mes; }).map(semFoto);
+  var ofic = (S.oficina||[]).filter(function(o){ return String(o.d||o.data||'').slice(0,7)===mes; }).map(semFoto);
+  var desv = (S.desvios||[]).filter(function(d){ return String(d.d||d.data||'').slice(0,7)===mes; }).map(semFoto);
+  var insp = (S.inspecoes||[]).filter(function(i){ return String(i.d||i.data||'').slice(0,7)===mes; }).map(semFoto);
+  return {v:5, exp:new Date().toISOString(), scope:'MES_'+mes,
+    regs:regs, crew:S.crew, fotos:[], empresas:S.empresas,
+    oficina:ofic, desvios:desv, inspecoes:insp,
+    _total:regs.length+ofic.length+desv.length+insp.length,
+    _semFotos:!incluirFotos};
 }
-function jacDadosViagem(nv){
-  var regs=(S.regs||[]).filter(function(r){return(r.nv||'').trim()===nv;});
-  var ofic=(S.oficina||[]).filter(function(o){return(o.nv||'').trim()===nv;});
-  var desv=(S.desvios||[]).filter(function(d){return(d.nv||'').trim()===nv;});
-  var insp=(S.inspecoes||[]).filter(function(i){return(i.nv||'').trim()===nv;});
-  return {v:5,exp:new Date().toISOString(),scope:'NV_'+nv,
-    regs:regs,crew:S.crew,fotos:[],empresas:S.empresas,
-    oficina:ofic,desvios:desv,inspecoes:insp,_total:regs.length+ofic.length+desv.length+insp.length};
+
+function jacDadosViagem(nv, incluirFotos){
+  var semFoto = function(r){
+    var c = Object.assign({}, r);
+    if(!incluirFotos){ delete c.fotos; delete c.fotosCaptions; }
+    return c;
+  };
+  var regs = (S.regs||[]).filter(function(r){ return (r.nv||'').trim()===nv; }).map(semFoto);
+  var ofic = (S.oficina||[]).filter(function(o){ return (o.nv||'').trim()===nv; }).map(semFoto);
+  var desv = (S.desvios||[]).filter(function(d){ return (d.nv||'').trim()===nv; }).map(semFoto);
+  var insp = (S.inspecoes||[]).filter(function(i){ return (i.nv||'').trim()===nv; }).map(semFoto);
+  return {v:5, exp:new Date().toISOString(), scope:'NV_'+nv,
+    regs:regs, crew:S.crew, fotos:[], empresas:S.empresas,
+    oficina:ofic, desvios:desv, inspecoes:insp,
+    _total:regs.length+ofic.length+desv.length+insp.length,
+    _semFotos:!incluirFotos};
 }
+
+// Backup separado só com as fotos de um mês (quando o usuário quiser)
+function jacDadosMesFotos(mes){
+  var regsComFotos = (S.regs||[])
+    .filter(function(r){ return String(r.d||'').slice(0,7)===mes && (r.fotos||[]).length; })
+    .map(function(r){ return {id:r.id, d:r.d, titulo:r.titulo||r.a, fotos:r.fotos, fotosCaptions:r.fotosCaptions}; });
+  var inspComFotos = (S.inspecoes||[])
+    .filter(function(i){ return String(i.d||i.data||'').slice(0,7)===mes && (i.fotos||[]).length; })
+    .map(function(i){ return {id:i.id, d:i.d||i.data, titulo:i.titulo||i.it, fotos:i.fotos}; });
+  return {v:5, exp:new Date().toISOString(), scope:'MES_FOTOS_'+mes,
+    regs:regsComFotos, inspecoes:inspComFotos,
+    _total:regsComFotos.length+inspComFotos.length};
+}
+
 function jacNomeArquivoMes(mes){return 'jac_backup_MES-'+mes+'.json';}
 function jacNomeArquivoNV(nv){return 'jac_backup_NV-'+nv.replace(/[^a-zA-Z0-9-]/g,'_')+'.json';}
 function jacDownloadJSON(nome,json){
@@ -5958,6 +5993,25 @@ async function jacBackupMes(enviarGitHub){
   }
   if(typeof recordBackupHistory==='function') recordBackupHistory(nome,(enviarGitHub?'GitHub':'Download'),'Mês '+mes);
 }
+function jacBackupMesFotosDownload(){
+  var el=document.getElementById('bkp-mes');
+  var mes=el?el.value:'';
+  if(!mes){bkpMesStatus('Selecione o mês/ano','err');return;}
+  var dados=jacDadosMesFotos(mes);
+  if(!dados._total){bkpMesStatus('Nenhuma foto encontrada em '+mes,'err');return;}
+  var nome='jac_FOTOS_MES-'+mes+'.json';
+  var json=JSON.stringify(dados);
+  var sizeKB=Math.round(json.length/1024);
+  var sizeMB=(json.length/1048576).toFixed(1);
+  if(sizeKB>45000){
+    bkpMesStatus('⚠️ Fotos de '+mes+' pesam '+sizeMB+' MB — recomprima primeiro com 🗜️ antes de baixar','err');
+    return;
+  }
+  jacDownloadJSON(nome,json);
+  bkpMesStatus('✅ Fotos do mês '+mes+' baixadas: '+nome+' ('+sizeMB+' MB · '+dados._total+' reg(s) com fotos)','ok');
+}
+
+
 async function jacBackupViagem(enviarGitHub){
   var el=document.getElementById('bkp-nviagem');
   var nv=el?el.value.trim():'';
@@ -12778,7 +12832,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.1.3';
+const APP_VERSION = '3.1.4';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
