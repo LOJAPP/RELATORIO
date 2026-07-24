@@ -6076,7 +6076,266 @@ async function jacBackupMesPasta(){
 
 
 // ═══════════════════════════════════════════════════════════
-// GOOGLE DRIVE — OAuth 2.0 direto (sem Apps Script)
+// GOOGLE DRIVE — OAuth via Google Identity Services (GIS)
+// Não precisa de redirect_uri cadastrado no Cloud Console
+// ═══════════════════════════════════════════════════════════
+
+var _gdriveToken   = null;
+var _gdriveExpiry  = 0;
+var _gdriveFolderId= null;
+var GDRIVE_CLIENT_ID = '288312239434-i7d9h5f5k0u145hqofpr24d2aprk5mhg.apps.googleusercontent.com';
+var GDRIVE_SCOPE     = 'https://www.googleapis.com/auth/drive.file';
+
+function gdriveSt(msg, tipo){
+  var els = document.querySelectorAll('#gdrive-status');
+  var cor = tipo==='err'?'var(--danger)':(tipo==='ok'?'var(--login-green)':'var(--text-dim)');
+  els.forEach(function(el){ el.textContent=msg; el.style.color=cor; });
+}
+
+// ── Carregar Google Identity Services dinamicamente ──────────
+function gdriveCarregarGIS(callback){
+  if(window.google && window.google.accounts){
+    callback(); return;
+  }
+  var s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.onload = callback;
+  s.onerror = function(){ gdriveSt('❌ Não foi possível carregar o serviço de login do Google. Verifique a conexão.','err'); };
+  document.head.appendChild(s);
+}
+
+// ── Conectar via GIS Token Client (popup, sem redirect) ──────
+function gdriveConectar(){
+  var cfg = getCfg();
+  // Verificar token ainda válido
+  if(cfg.gdriveToken && cfg.gdriveExpiry > Date.now()+60000){
+    _gdriveToken = cfg.gdriveToken;
+    _gdriveExpiry = cfg.gdriveExpiry;
+    gdriveSt('✅ Já conectado ao Google Drive','ok');
+    return;
+  }
+  gdriveSt('⏳ Carregando serviço Google...','');
+  gdriveCarregarGIS(function(){
+    try{
+      var client = google.accounts.oauth2.initTokenClient({
+        client_id: GDRIVE_CLIENT_ID,
+        scope:     GDRIVE_SCOPE,
+        callback:  function(resp){
+          if(resp.error){
+            gdriveSt('❌ Erro ao autorizar: '+resp.error+(resp.error_description?' — '+resp.error_description:''),'err');
+            return;
+          }
+          _gdriveToken  = resp.access_token;
+          _gdriveExpiry = Date.now() + (parseInt(resp.expires_in||3600)-60)*1000;
+          var cfg2=getCfg(); cfg2.gdriveToken=_gdriveToken; cfg2.gdriveExpiry=_gdriveExpiry; saveCfg(cfg2);
+          gdriveSt('✅ Google Drive conectado! Conta: '+jacarandaloginHint,'ok');
+          toast('✅ Google Drive conectado!','ok');
+        }
+      });
+      var jacarandaloginHint = '';
+      client.requestAccessToken({prompt:'select_account'});
+    }catch(e){
+      gdriveSt('❌ Erro ao iniciar login Google: '+e.message,'err');
+    }
+  });
+}
+
+function gdriveDesconectar(){
+  _gdriveToken=null; _gdriveExpiry=0; _gdriveFolderId=null;
+  var cfg=getCfg(); delete cfg.gdriveToken; delete cfg.gdriveExpiry; saveCfg(cfg);
+  gdriveSt('— desconectado','');
+  toast('Google Drive desconectado','ok');
+}
+
+async function gdriveGetToken(){
+  if(_gdriveToken && _gdriveExpiry > Date.now()+30000) return _gdriveToken;
+  var cfg=getCfg();
+  if(cfg.gdriveToken && cfg.gdriveExpiry > Date.now()+30000){
+    _gdriveToken=cfg.gdriveToken; _gdriveExpiry=cfg.gdriveExpiry;
+    return _gdriveToken;
+  }
+  gdriveSt('⚠️ Sessão expirada — clique em 🔗 Conectar Google Drive','err');
+  return null;
+}
+
+async function gdriveGetFolder(token){
+  if(_gdriveFolderId) return _gdriveFolderId;
+  var hd={'Authorization':'Bearer '+token,'Content-Type':'application/json'};
+  var q=encodeURIComponent("name='JAC Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+  var r=await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)',{headers:hd});
+  if(r.ok){ var d=await r.json(); if(d.files&&d.files.length){ _gdriveFolderId=d.files[0].id; return _gdriveFolderId; } }
+  var rc=await fetch('https://www.googleapis.com/drive/v3/files',{
+    method:'POST',headers:hd,
+    body:JSON.stringify({name:'JAC Backups',mimeType:'application/vnd.google-apps.folder'})
+  });
+  if(rc.ok){ var dc=await rc.json(); _gdriveFolderId=dc.id; return _gdriveFolderId; }
+  return null;
+}
+
+async function gdriveUpload(token, folderId, fileName, content){
+  var boundary='JAC'+Date.now();
+  var meta=JSON.stringify({name:fileName,parents:[folderId]});
+  var body='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'
+    +meta+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'
+    +content+'\r\n--'+boundary+'--';
+  var r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token,'Content-Type':'multipart/related; boundary="'+boundary+'"'},
+    body:body
+  });
+  if(r.ok) return await r.json();
+  var ej={}; try{ej=await r.json();}catch(e){}
+  throw new Error('Drive erro '+r.status+': '+(ej.error&&ej.error.message||r.statusText));
+}
+
+async function gdriveUploadResumable(token, folderId, fileName, content){
+  gdriveSt('⏳ Iniciando upload...','');
+  var meta=JSON.stringify({name:fileName,parents:[folderId]});
+  var r1=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json; charset=UTF-8',
+             'X-Upload-Content-Type':'application/json','X-Upload-Content-Length':String(content.length)},
+    body:meta
+  });
+  if(!r1.ok){ var e1={}; try{e1=await r1.json();}catch(e){} throw new Error('Erro ao iniciar: '+(e1.error&&e1.error.message||r1.status)); }
+  var uploadUrl=r1.headers.get('Location');
+  if(!uploadUrl) throw new Error('URL de upload não retornada pelo Google');
+  var CHUNK=5*1024*1024, total=content.length, sent=0;
+  while(sent<total){
+    var chunk=content.slice(sent,sent+CHUNK);
+    var end=Math.min(sent+chunk.length-1,total-1);
+    var pct=Math.round(sent/total*100);
+    gdriveSt('⏳ Enviando... '+pct+'% ('+Math.round(sent/1048576*10)/10+' / '+Math.round(total/1048576*10)/10+' MB)','');
+    var r2=await fetch(uploadUrl,{
+      method:'PUT',
+      headers:{'Content-Range':'bytes '+sent+'-'+end+'/'+total,'Content-Type':'application/json'},
+      body:chunk
+    });
+    sent+=chunk.length;
+    if(r2.status===308) continue;
+    if(r2.ok||r2.status===200||r2.status===201) return await r2.json();
+    throw new Error('Erro no chunk: '+r2.status);
+  }
+}
+
+async function gdriveSalvarBackup(){
+  var token=await gdriveGetToken(); if(!token) return;
+  gdriveSt('⏳ Preparando backup...','');
+  var content=buildBackupData();
+  var sizeMB=(content.length/1048576).toFixed(1);
+  var fileName=buildFileName();
+  gdriveSt('⏳ Localizando pasta JAC Backups...','');
+  var folderId=await gdriveGetFolder(token);
+  if(!folderId){ gdriveSt('❌ Não foi possível criar a pasta JAC Backups','err'); return; }
+  try{
+    var result;
+    if(content.length>4*1024*1024){
+      result=await gdriveUploadResumable(token,folderId,fileName,content);
+    } else {
+      gdriveSt('⏳ Enviando '+sizeMB+' MB...','');
+      result=await gdriveUpload(token,folderId,fileName,content);
+    }
+    gdriveSt('✅ Salvo no Drive: '+fileName+' ('+sizeMB+' MB)','ok');
+    if(typeof recordBackupHistory==='function') recordBackupHistory(fileName,'Google Drive','Drive');
+    toast('✅ Backup salvo no Google Drive! ('+sizeMB+' MB)','ok');
+  }catch(e){
+    gdriveSt('❌ '+e.message,'err');
+    if(e.message.includes('401')) gdriveDesconectar();
+  }
+}
+
+async function gdriveCarregarBackup(){
+  var token=await gdriveGetToken(); if(!token) return;
+  gdriveSt('⏳ Listando backups...','');
+  var hd={'Authorization':'Bearer '+token};
+  var folderId=await gdriveGetFolder(token);
+  if(!folderId){ gdriveSt('❌ Pasta não encontrada','err'); return; }
+  var q=encodeURIComponent("'"+folderId+"' in parents and trashed=false");
+  var r=await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&orderBy=createdTime+desc&pageSize=25&fields=files(id,name,size,createdTime)',{headers:hd});
+  if(!r.ok){ gdriveSt('❌ Erro '+r.status+' ao listar','err'); return; }
+  var d=await r.json(); var files=d.files||[];
+  if(!files.length){ gdriveSt('⚠️ Nenhum backup em JAC Backups — salve um primeiro',''); return; }
+
+  var old=document.getElementById('modalDriveLoad'); if(old) old.remove();
+  var ov=document.createElement('div');
+  ov.id='modalDriveLoad';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9996;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  var panel=document.createElement('div');
+  panel.style.cssText='background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.4);';
+
+  var hdr=document.createElement('div');
+  hdr.style.cssText='background:linear-gradient(135deg,#4285f4,#0f9d58);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;';
+  hdr.innerHTML='<span style="flex:1;font-weight:800;font-size:14px;">📁 Backups no Google Drive</span>';
+  var btnX=document.createElement('button');
+  btnX.textContent='✕'; btnX.style.cssText='background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:16px;';
+  btnX.onclick=function(){ov.remove();}; hdr.appendChild(btnX); panel.appendChild(hdr);
+
+  var info=document.createElement('div');
+  info.style.cssText='padding:8px 14px;font-size:11px;color:var(--text-dim);border-bottom:1px solid var(--border);';
+  info.textContent=files.length+' arquivo(s) encontrado(s) • mais recente primeiro';
+  panel.appendChild(info);
+
+  var tbl=document.createElement('table'); tbl.style.cssText='width:100%;border-collapse:collapse;';
+  var thead=document.createElement('thead');
+  thead.innerHTML='<tr style="background:#f6f8fa;font-size:11px;font-weight:700;"><th style="padding:6px 10px;text-align:left;">Arquivo</th><th style="padding:6px 6px;text-align:right;">Tamanho</th><th style="padding:6px 6px;">Data</th><th></th></tr>';
+  tbl.appendChild(thead);
+  var tbody=document.createElement('tbody');
+  files.forEach(function(f){
+    var tr=document.createElement('tr'); tr.style.borderBottom='1px solid #e2e8f0';
+    var kb=Math.round((parseInt(f.size||0))/1024);
+    var dt=(f.createdTime||'').slice(0,10);
+    tr.innerHTML='<td style="padding:7px 10px;font-size:12px;font-weight:600;">'+escHtml(f.name)+'</td>'
+      +'<td style="padding:7px 6px;font-size:11px;color:var(--text-dim);text-align:right;">'+kb+' KB</td>'
+      +'<td style="padding:7px 6px;font-size:10px;color:var(--text-dim);">'+dt+'</td>'
+      +'<td style="padding:4px 6px;">';
+    var btn=document.createElement('button'); btn.className='btn btn-primary btn-sm'; btn.textContent='📥 Carregar';
+    btn.onclick=(function(fid,fnm){ return function(){ gdriveCarregarArquivo(token,fid,fnm); ov.remove(); }; })(f.id,f.name);
+    tr.querySelector('td:last-child').appendChild(btn);
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody); panel.appendChild(tbl);
+
+  var foot=document.createElement('div'); foot.style.cssText='padding:10px 14px;border-top:1px solid var(--border);';
+  var btnClose=document.createElement('button'); btnClose.className='btn btn-ghost'; btnClose.style.width='100%'; btnClose.textContent='Fechar';
+  btnClose.onclick=function(){ov.remove();}; foot.appendChild(btnClose); panel.appendChild(foot);
+  ov.appendChild(panel); document.body.appendChild(ov);
+  gdriveSt(files.length+' backup(s) no Google Drive','ok');
+}
+
+async function gdriveCarregarArquivo(token,fileId,fileName){
+  gdriveSt('⏳ Baixando '+fileName+'...','');
+  try{
+    var r=await fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?alt=media',{headers:{'Authorization':'Bearer '+token}});
+    if(!r.ok){ gdriveSt('❌ Erro '+r.status+' ao baixar','err'); return; }
+    var text=await r.text(); var data=JSON.parse(text);
+    if(!data||!data.v){ gdriveSt('❌ Arquivo inválido','err'); return; }
+    var ehParcial=data.scope&&(data.scope.startsWith('MES_')||data.scope.startsWith('NV_'));
+    if(!confirm('Carregar "'+fileName+'"?\n'+(ehParcial?'Modo ACUMULATIVO (não apaga dados existentes)':'SUBSTITUI todos os dados locais')+'\n\nContinuar?')) return;
+    if(ehParcial){ jacCarregarMesAcumulativo(data); }
+    else if(typeof applyImport==='function'){ applyImport(data); toast('✅ Backup carregado!','ok'); }
+    else{
+      Object.assign(S,{regs:data.regs||[],crew:data.crew||[],fotos:data.fotos||[],
+        empresas:data.empresas||[],oficina:data.oficina||[],desvios:data.desvios||[],inspecoes:data.inspecoes||[]});
+      if(typeof saveData==='function') saveData(true);
+      if(typeof renderDash==='function') renderDash();
+      toast('✅ "'+fileName+'" carregado!','ok');
+    }
+    gdriveSt('✅ "'+fileName+'" carregado com sucesso!','ok');
+  }catch(e){ gdriveSt('❌ Erro: '+e.message,'err'); }
+}
+
+function gdriveInit(){
+  var cfg=getCfg();
+  if(cfg.gdriveToken && cfg.gdriveExpiry>Date.now()+30000){
+    _gdriveToken=cfg.gdriveToken; _gdriveExpiry=cfg.gdriveExpiry;
+    gdriveSt('✅ Conectado ao Google Drive','ok');
+  } else if(cfg.gdriveToken){
+    gdriveSt('⚠️ Sessão expirada — clique em 🔗 Conectar para renovar','');
+  }
+}
+
+
 // Usa Google Identity Services (GIS) + Drive API v3
 // Aceita arquivos de qualquer tamanho via upload multipart
 // ═══════════════════════════════════════════════════════════
@@ -13186,7 +13445,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.2.1';
+const APP_VERSION = '3.2.2';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
