@@ -767,11 +767,56 @@
 
 <!-- SIDEBAR -->
 <nav id="sidebar">
-  <div class="sidebar-logo">
-    <div class="logo-mark"><span class="lo">log</span><span class="gi">in</span><span class="dot">.</span></div>
-    <div class="logo-tagline">logística intermodal</div>
-    <div class="vessel-badge">⚓ M/V Jacarandá</div>
+  <div class="sidebar-logo" style="padding:12px 14px 12px;border-bottom:1px solid rgba(255,255,255,.1);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <!-- Mascote container LOG-IN — verde/amarelo com braços e botas -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 105" width="58" height="68" style="flex-shrink:0;">
+        <!-- Braço esquerdo (verde) -->
+        <path d="M14,40 Q6,38 5,45 Q4,52 10,54 Q7,56 8,60 L16,58" fill="#2d8a3e" stroke="#1e6b2e" stroke-width="0.5"/>
+        <circle cx="9" cy="60" r="5" fill="#2d8a3e"/>
+        <!-- Corpo container -->
+        <rect x="15" y="10" width="60" height="48" rx="4" fill="#2d8a3e"/>
+        <!-- Metade amarela diagonal -->
+        <polygon points="45,10 75,10 75,58 15,58" fill="#f5c800"/>
+        <!-- Linha divisória diagonal -->
+        <line x1="40" y1="10" x2="18" y2="58" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
+        <!-- Ranhuras verticais -->
+        <line x1="25" y1="10" x2="25" y2="58" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+        <line x1="35" y1="10" x2="35" y2="58" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+        <line x1="55" y1="10" x2="55" y2="58" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+        <line x1="65" y1="10" x2="65" y2="58" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+        <!-- Borda topo -->
+        <rect x="13" y="8" width="64" height="6" rx="2" fill="#1a5c28"/>
+        <!-- Borda base -->
+        <rect x="13" y="56" width="64" height="5" rx="2" fill="#1a5c28"/>
+        <!-- Círculo azul brasil -->
+        <circle cx="68" cy="51" r="9" fill="#003087"/>
+        <!-- Texto login. -->
+        <text x="17" y="43" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="21" fill="#fff" letter-spacing="-0.5">login.</text>
+        <!-- Braço direito (amarelo) -->
+        <path d="M76,40 Q84,38 85,45 Q86,52 80,54 Q83,56 82,60 L74,58" fill="#f5c800" stroke="#d4a800" stroke-width="0.5"/>
+        <circle cx="81" cy="60" r="5" fill="#f5c800"/>
+        <!-- Perna esquerda: 3 segmentos + bota -->
+        <rect x="27" y="61" width="12" height="9" rx="3" fill="#f5c800"/>
+        <rect x="25" y="69" width="16" height="6" rx="3" fill="#d4a800"/>
+        <rect x="27" y="74" width="12" height="9" rx="3" fill="#f5c800"/>
+        <rect x="23" y="82" width="20" height="8" rx="4" fill="#f5c800"/>
+        <ellipse cx="33" cy="92" rx="13" ry="6" fill="#d4a800"/>
+        <!-- Perna direita: 3 segmentos + bota -->
+        <rect x="51" y="61" width="12" height="9" rx="3" fill="#f5c800"/>
+        <rect x="49" y="69" width="16" height="6" rx="3" fill="#d4a800"/>
+        <rect x="51" y="74" width="12" height="9" rx="3" fill="#f5c800"/>
+        <rect x="47" y="82" width="20" height="8" rx="4" fill="#f5c800"/>
+        <ellipse cx="57" cy="92" rx="13" ry="6" fill="#d4a800"/>
+      </svg>
+      <div>
+        <div style="font-weight:900;font-size:20px;color:#fff;line-height:1;letter-spacing:-0.5px;">log<span style="color:#f5c800;">in</span><span style="color:#f5c800;">.</span></div>
+        <div style="font-size:9px;color:rgba(255,255,255,0.5);letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;">logística intermodal</div>
+      </div>
+    </div>
+    <div class="vessel-badge">⚓ M/V LOG-IN Jacarandá</div>
   </div>
+  <div class="nav-section">
   <div class="nav-section">
     <div class="nav-label">Dashboard</div>
     <div class="nav-item active" onclick="showPage('dashboard')"><span class="ico">📊</span> Painel Geral</div>
@@ -1285,131 +1330,105 @@
 
     <!-- ARQUIVOS -->
     <div id="page-storage" class="page">
+      <!-- KPIs -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:16px;">
         <div class="kpi-card" style="border-top:3px solid var(--login-blue);text-align:center;padding:12px;"><div class="kpi-val" id="st-regs" style="font-size:28px;">0</div><div class="kpi-label">Registros</div></div>
         <div class="kpi-card" style="border-top:3px solid var(--login-green);text-align:center;padding:12px;"><div class="kpi-val gv" id="st-crew" style="font-size:28px;">0</div><div class="kpi-label">Tripulantes</div></div>
         <div class="kpi-card" style="border-top:3px solid #7c3aed;text-align:center;padding:12px;"><div class="kpi-val" id="st-insp" style="font-size:28px;color:#7c3aed;">0</div><div class="kpi-label">Inspeções</div></div>
         <div class="kpi-card" style="border-top:3px solid var(--warn);text-align:center;padding:12px;"><div class="kpi-val" id="st-dv" style="font-size:28px;color:var(--warn);">0</div><div class="kpi-label">Desvios</div></div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:14px;">
-        
-        <!-- GOOGLE DRIVE — OAuth via GIS -->
-        <div class="panel" style="margin-bottom:0;border-top:3px solid #4285f4;">
-          <div class="panel-header" style="background:linear-gradient(135deg,#4285f4,#0f9d58);color:#fff;font-size:13px;">📁 Google Drive — Backup completo com fotos</div>
-          <div style="padding:12px;">
-            <div id="gdrive-status" style="border-radius:8px;padding:8px 10px;margin-bottom:10px;border:1px solid var(--border2);background:var(--surface2);font-size:11px;color:var(--text-dim);">
-              — clique em Conectar para autorizar
-            </div>
-            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-              <button class="btn btn-primary btn-sm" onclick="gdriveConectar()" style="flex:1;">🔗 Conectar Google Drive</button>
-              <button class="btn btn-ghost btn-sm" onclick="gdriveDesconectar()" style="flex:1;font-size:11px;">✕ Desconectar</button>
-            </div>
-            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-              <button class="btn btn-green btn-sm" onclick="gdriveSalvarBackup()" style="flex:1;">📤 Salvar backup no Drive</button>
-              <button class="btn btn-ghost btn-sm" onclick="gdriveCarregarBackup()" style="flex:1;">📥 Carregar do Drive</button>
-            </div>
-            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-              <button class="btn btn-warn btn-sm" onclick="gdriveDiag()" style="flex:1;font-size:11px;">🔬 Testar conexão Drive</button>
-            </div>
-            <div style="font-size:10px;color:var(--text-dim);line-height:1.5;margin-bottom:8px;">
-              Salva na pasta <strong>JAC Backups</strong> no seu Google Drive. Se aparecer erro de permissão, clique em ✕ Desconectar e reconecte — na tela do Google, escolha a conta e clique <strong>Permitir</strong> em todas as permissões.
-            </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:14px;">
+
+        <!-- PAINEL PRINCIPAL: SALVAR E CARREGAR -->
+        <div class="panel" style="margin-bottom:0;border-top:3px solid var(--login-green);">
+          <div class="panel-header" style="font-size:13px;">💾 Salvar & Carregar Backup</div>
+          <div style="padding:14px;">
             <!-- Tamanho -->
-            <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px;">
-              <div style="font-weight:800;font-size:11px;color:#92400e;margin-bottom:6px;">📦 Tamanho do backup</div>
-              <div id="jac-tamanho-info" style="font-size:11px;color:#78350f;margin-bottom:8px;">Calculando...</div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <button class="btn btn-primary btn-sm" onclick="jacRecomprimirTudo()" style="font-size:10px;">🗜️ Recomprimir fotos</button>
-                <button class="btn btn-ghost btn-sm" onclick="jacAtualizarTamanho()" style="font-size:10px;">🔄 Recalcular</button>
+            <div id="jac-tamanho-info" style="font-size:11px;color:#78350f;margin-bottom:12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px;">Calculando...</div>
+
+            <!-- Google Drive -->
+            <div style="margin-bottom:12px;">
+              <div style="font-weight:700;font-size:12px;color:var(--text);margin-bottom:6px;">📁 Google Drive</div>
+              <div id="gdrive-status" style="font-size:11px;color:var(--text-dim);background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;margin-bottom:6px;">— clique em Conectar para autorizar</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+                <button class="btn btn-primary btn-sm" onclick="gdriveConectar()">🔗 Conectar Drive</button>
+                <button class="btn btn-ghost btn-sm" onclick="gdriveDesconectar()">✕ Desconectar</button>
+                <button class="btn btn-green btn-sm" onclick="gdriveSalvarBackup()">📤 Salvar no Drive</button>
+                <button class="btn btn-ghost btn-sm" onclick="gdriveCarregarBackup()">📥 Carregar do Drive</button>
+              </div>
+              <button class="btn btn-warn btn-sm" onclick="gdriveDiag()" style="width:100%;font-size:11px;margin-bottom:4px;">🔬 Testar conexão Drive</button>
+            </div>
+
+            <!-- Pasta de rede -->
+            <div style="margin-bottom:12px;">
+              <div style="font-weight:700;font-size:12px;color:var(--text);margin-bottom:6px;">📂 Pasta de rede / dispositivo</div>
+              <div id="drive-conn-status" style="font-size:11px;color:var(--text-dim);margin-bottom:6px;"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                <button class="btn btn-primary btn-sm" onclick="pickFolder()">📂 Vincular pasta</button>
+                <button class="btn btn-green btn-sm" onclick="saveToFolder()">💾 Salvar na pasta</button>
+              </div>
+              <div id="drive-config-status" style="font-size:10px;color:var(--text-dim);margin-top:4px;"></div>
+            </div>
+
+            <!-- Backup local -->
+            <div>
+              <div style="font-weight:700;font-size:12px;color:var(--text);margin-bottom:6px;">⬇️ Download local</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                <button class="btn btn-ghost btn-sm" onclick="salvarTudo()">💾 Salvar tudo</button>
+                <button class="btn btn-ghost btn-sm" onclick="jacRecomprimirTudo()">🗜️ Recomprimir fotos</button>
               </div>
             </div>
-            <div id="cloud-alt-status-st" class="cloud-status" style="font-size:11px;margin-top:6px;color:var(--text-dim);min-height:14px;"></div>
+
+            <div id="cloud-alt-status-st" class="cloud-status" style="font-size:11px;margin-top:8px;color:var(--text-dim);min-height:14px;"></div>
           </div>
         </div>
-<!-- GITHUB — para backups mensais de texto -->
-        <div class="panel" style="margin-bottom:0;border-top:3px solid #24292f;">
-          <div class="panel-header" style="background:linear-gradient(135deg,#24292f,#57606a);color:#fff;font-size:13px;">🐙 GitHub — Backup mensal (texto, sem fotos)</div>
-          <div style="padding:12px;">
-            <div id="cloud-gh-cfg-status-st" class="gh-status" style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">— não configurado</div>
-            <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-              <button class="btn btn-green btn-sm" onclick="cloudGitHubSave()" style="flex:1;font-size:11px;">📤 Backup geral → GitHub</button>
-              <button class="btn btn-ghost btn-sm" onclick="cloudGitHubLoad()" style="flex:1;font-size:11px;">📥 Carregar do GitHub</button>
+
+        <!-- PAINEL BACKUP POR MÊS/VIAGEM -->
+        <div class="panel" style="margin-bottom:0;border-top:3px solid #4285f4;">
+          <div class="panel-header" style="font-size:13px;">📅 Backup por Mês ou Viagem</div>
+          <div style="padding:14px;">
+            <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
+              Arquivos leves (sem fotos) — ao carregar, acumula sem apagar dados existentes.
             </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button class="btn btn-ghost btn-sm" onclick="showPage('config')" style="flex:1;font-size:11px;">⚙️ Configurar token</button>
-              <button class="btn btn-ghost btn-sm" onclick="cloudGitHubVerificar()" style="flex:1;font-size:11px;">🔍 Verificar conta</button>
+            <div class="form-row" style="gap:8px;margin-bottom:10px;">
+              <div class="form-group" style="flex:1;">
+                <label style="font-size:11px;font-weight:700;">📆 Mês/Ano</label>
+                <input type="month" class="form-control" id="bkp-mes" style="font-size:12px;">
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label style="font-size:11px;font-weight:700;">🚢 Nº Viagem</label>
+                <input type="text" class="form-control" id="bkp-nviagem" placeholder="ex: V-2026-07" style="font-size:12px;" list="bkp-nv-list">
+                <datalist id="bkp-nv-list"></datalist>
+              </div>
             </div>
-            <div id="drive-status" style="display:none;"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+              <button class="btn btn-primary btn-sm" onclick="jacBackupMes(false)">💾 Baixar mês</button>
+              <button class="btn btn-green btn-sm"   onclick="jacBackupMesDrive()">📁 Mês → Drive</button>
+              <button class="btn btn-ghost btn-sm"   onclick="jacBackupViagem(false)">💾 Baixar viagem</button>
+              <button class="btn btn-ghost btn-sm"   onclick="jacBackupMesPasta()">📂 Mês → Pasta rede</button>
+              <button class="btn btn-ghost btn-sm"   onclick="jacBackupMesFotosDownload()">📷 Fotos do mês</button>
+              <button class="btn btn-ghost btn-sm"   onclick="jacListarViagens()">🔍 Ver viagens</button>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="jacDiagMes()" style="width:100%;font-size:11px;">🔬 Verificar antes de salvar</button>
+            <div id="bkp-mes-status" style="font-size:11px;color:var(--text-dim);margin-top:8px;min-height:16px;"></div>
           </div>
         </div>
+
+        <!-- IMPORTAR -->
         <div class="panel" style="margin-bottom:0;border-top:3px solid var(--gold);">
-          <div class="panel-header" style="font-size:13px;">📤 Compartilhar & Exportar</div>
-          <div style="padding:12px;display:flex;flex-direction:column;gap:7px;">
-            <button class="btn btn-primary btn-sm" onclick="saveHTMLLocal()" style="justify-content:flex-start;gap:10px;">📄 <div style="text-align:left;"><div style="font-weight:700;">App Editável</div><div style="font-size:10px;opacity:.8;">Compartilhar com outro dispositivo</div></div></button>
-            <button class="btn btn-green btn-sm" onclick="exportSnapshot()" style="justify-content:flex-start;gap:10px;background:var(--login-green);">🔒 <div style="text-align:left;"><div style="font-weight:700;">Snapshot Read-Only</div><div style="font-size:10px;opacity:.8;">Ninguém pode editar</div></div></button>
-            <button class="btn btn-ghost btn-sm" onclick="whatsappSummary()" style="justify-content:flex-start;gap:10px;">📲 <div style="text-align:left;"><div style="font-weight:700;">Resumo WhatsApp</div><div style="font-size:10px;opacity:.8;">Copia resumo semanal</div></div></button>
-            <button class="btn btn-ghost btn-sm" onclick="exportJSON()" style="justify-content:flex-start;gap:10px;">💾 <div style="text-align:left;"><div style="font-weight:700;">Backup JSON</div><div style="font-size:10px;opacity:.8;">Download dos dados</div></div></button>
-            <button class="btn btn-ghost btn-sm" onclick="importJSON()" style="justify-content:flex-start;gap:10px;">📂 <div style="text-align:left;"><div style="font-weight:700;">Restaurar Backup</div><div style="font-size:10px;opacity:.8;">Carregar arquivo JSON</div></div></button>
-            <div style="border-top:1px solid var(--border);padding-top:8px;">
-              <div id="stor-status" class="mono" style="font-size:11px;color:var(--login-green);margin-bottom:8px;"></div>
-              <div style="display:flex;gap:6px;"><button class="btn btn-primary btn-sm" onclick="saveData()" style="flex:1;">💾 Salvar Agora</button><button class="btn btn-danger btn-sm" onclick="clearAll()" style="flex:1;">🗑 Limpar</button></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;">
-        <div class="panel" style="margin-bottom:0;border-top:3px solid #7c3aed;">
           <div class="panel-header" style="font-size:13px;">📥 Importar Dados</div>
-          <div style="padding:12px;">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-              <label style="display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--login-blue-xlt);border:2px dashed var(--border2);border-radius:10px;padding:14px 8px;cursor:pointer;text-align:center;" onmouseover="this.style.borderColor='var(--login-blue)'" onmouseout="this.style.borderColor='var(--border2)'"><span style="font-size:28px;">💾</span><div style="font-size:12px;font-weight:700;color:var(--login-blue);">Backup JSON</div><div style="font-size:10px;color:var(--text-dim);">Restaurar dados</div><input type="file" accept=".json" style="display:none" onchange="importBackupJSON(this)"><span class="btn btn-primary btn-sm" style="pointer-events:none;font-size:10px;">Selecionar</span></label>
-              <div style="display:flex;flex-direction:column;align-items:center;gap:8px;background:#eff6ff;border:2px dashed #93c5fd;border-radius:10px;padding:14px 8px;cursor:pointer;text-align:center;" onclick="loadBackupDaPasta()" onmouseover="this.style.borderColor='#1A5FA8'" onmouseout="this.style.borderColor='#93c5fd'"><span style="font-size:28px;">📂</span><div style="font-size:12px;font-weight:700;color:#1e40af;">Backup da Pasta</div><div style="font-size:10px;color:var(--text-dim);">Carregar da pasta de Backups do navio</div><span class="btn btn-primary btn-sm" style="pointer-events:none;font-size:10px;">Abrir pasta</span></div>
-              <label style="display:flex;flex-direction:column;align-items:center;gap:8px;background:#f5f3ff;border:2px dashed #ddd6fe;border-radius:10px;padding:14px 8px;cursor:pointer;text-align:center;" onmouseover="this.style.borderColor='#7c3aed'" onmouseout="this.style.borderColor='#ddd6fe'"><span style="font-size:28px;">🔍</span><div style="font-size:12px;font-weight:700;color:#7c3aed;">Inspeções</div><div style="font-size:10px;color:var(--text-dim);">Importar inspeções</div><input type="file" accept=".json" style="display:none" onchange="importInspecaoFile(this)"><span class="btn btn-sm" style="pointer-events:none;background:#7c3aed;color:#fff;border-color:#7c3aed;font-size:10px;">Selecionar</span></label>
-            </div>
-            <div id="import-preview" style="display:none;"><div id="import-preview-body" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:180px;overflow-y:auto;font-size:12px;margin-bottom:8px;"></div><div id="import-actions" style="display:flex;gap:8px;flex-wrap:wrap;"></div></div>
+          <div style="padding:14px;">
+            <div id="import-status" style="font-size:11px;color:var(--text-dim);margin-bottom:8px;max-height:80px;overflow-y:auto;"></div>
+            <div id="import-actions" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
             <div id="import-log" style="display:none;margin-top:8px;"><div id="import-log-body" style="background:#07182e;border-radius:8px;padding:10px;font-size:10px;font-family:monospace;max-height:80px;overflow-y:auto;line-height:1.6;color:#6DB847;"></div></div>
           </div>
         </div>
-        
+
       </div>
+
       <input type="file" id="json-import" accept=".json" style="display:none" onchange="loadJSON(this)">
-
-      <!-- PAINEL BACKUP POR MÊS E VIAGEM — dentro de page-storage -->
-      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-top:14px;">
-        <div style="font-weight:800;font-size:13px;color:#1e40af;margin-bottom:10px;">📅 Backup por Mês ou Nº de Viagem</div>
-        <div style="font-size:11px;color:#3730a3;margin-bottom:10px;">Arquivos leves (sem fotos) · salva no GitHub ou baixa localmente · ao carregar, vai acumulando até completar o ano</div>
-        <div class="form-row" style="gap:10px;margin-bottom:10px;">
-          <div class="form-group" style="flex:1;">
-            <label style="font-size:11px;font-weight:700;">📆 Mês/Ano</label>
-            <input type="month" class="form-control" id="bkp-mes" style="font-size:12px;">
-          </div>
-          <div class="form-group" style="flex:1;">
-            <label style="font-size:11px;font-weight:700;">🚢 Nº de Viagem</label>
-            <input type="text" class="form-control" id="bkp-nviagem" placeholder="ex: V-2026-07" style="font-size:12px;" list="bkp-nv-list">
-            <datalist id="bkp-nv-list"></datalist>
-          </div>
-        </div>
-        <!-- Nota: backups por mês/viagem NÃO incluem fotos (arquivo leve <1 MB) -->
-        <div style="font-size:10px;color:#3730a3;background:#e0e7ff;border-radius:5px;padding:4px 8px;margin-bottom:8px;">
-          ℹ️ Backup de texto (sem fotos) — arquivos leves, ideais para o GitHub. Fotos ficam no backup GERAL.
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
-          <button class="btn btn-primary btn-sm" onclick="jacBackupMes(false)" style="font-size:11px;">💾 Baixar mês (texto)</button>
-          <button class="btn btn-green btn-sm"   onclick="jacBackupMes(true)"  style="font-size:11px;">📤 Mês → GitHub</button>
-          <button class="btn btn-ghost btn-sm"   onclick="jacBackupViagem(false)" style="font-size:11px;">💾 Baixar viagem</button>
-          <button class="btn btn-green btn-sm"   onclick="jacBackupViagem(true)"  style="font-size:11px;">📤 Viagem → GitHub</button>
-          <button class="btn btn-ghost btn-sm"   onclick="jacBackupMesFotosDownload()" style="font-size:11px;">📷 Baixar fotos do mês</button>
-          <button class="btn btn-ghost btn-sm"   onclick="jacBackupMesPasta()" style="font-size:11px;">📁 Mês → Pasta rede</button>
-          <button class="btn btn-ghost btn-sm"   onclick="jacListarViagens()"  style="font-size:11px;" style="grid-column:span 2;">🔍 Ver viagens</button>
-        </div>
-        <div id="bkp-mes-status" style="font-size:11px;color:var(--text-dim);min-height:16px;padding:4px 0;"></div>
-        <div style="margin-top:6px;">
-          <button class="btn btn-ghost btn-sm" onclick="jacDiagMes()" style="font-size:10px;width:100%;">🔬 Verificar antes de salvar (diagnóstico rápido)</button>
-        </div>
-      </div>
-
     </div>
-
 
     <!-- CONFIGURAÇÕES -->
     <div id="page-config" class="page">
@@ -6052,6 +6071,37 @@ async function jacBackupViagem(enviarGitHub){
   }
   if(typeof recordBackupHistory==='function') recordBackupHistory(nome,(enviarGitHub?'GitHub':'Download'),'Viagem '+nv);
 }
+async function jacBackupMesDrive(){
+  // Salvar backup do mês diretamente no Google Drive
+  var el=document.getElementById('bkp-mes');
+  var mes=el?el.value:'';
+  if(!mes){var nd=new Date();mes=nd.getFullYear()+'-'+String(nd.getMonth()+1).padStart(2,'0');if(el)el.value=mes;}
+  var dados=jacDadosMes(mes);
+  if(!dados._total){bkpMesStatus('Nenhum item em '+mes,'err');return;}
+  var nome=jacNomeArquivoMes(mes);
+  var json=JSON.stringify(dados,null,2);
+  var token=await gdriveGetToken();
+  if(!token){ bkpMesStatus('Conecte o Google Drive primeiro (painel acima)','err'); return; }
+  bkpMesStatus('⏳ Salvando '+nome+' no Drive...','');
+  try{
+    var folderId=await gdriveGetFolder(token);
+    if(!folderId){ bkpMesStatus('❌ Não foi possível acessar a pasta JAC Backups','err'); return; }
+    var meta=new Blob([JSON.stringify({name:nome,parents:[folderId]})],{type:'application/json'});
+    var file=new Blob([json],{type:'application/json'});
+    var form=new FormData(); form.append('metadata',meta); form.append('file',file);
+    var r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{
+      method:'POST',mode:'cors',headers:{'Authorization':'Bearer '+token},body:form
+    });
+    if(r.ok){
+      bkpMesStatus('✅ Salvo no Drive: '+nome+' ('+dados._total+' itens)','ok');
+      if(typeof recordBackupHistory==='function') recordBackupHistory(nome,'Google Drive','Drive');
+    } else {
+      var ej={}; try{ej=await r.json();}catch(e){}
+      bkpMesStatus('❌ Erro '+r.status+': '+(ej.error&&ej.error.message||'falha'),'err');
+    }
+  }catch(e){ bkpMesStatus('❌ '+e.message,'err'); }
+}
+
 async function jacBackupMesPasta(){
   var el=document.getElementById('bkp-mes');
   var mes=el?el.value:'';
@@ -10071,7 +10121,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.3.1';
+const APP_VERSION = '3.4.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
