@@ -6285,15 +6285,16 @@ async function gdriveGetFolder(token){
 }
 
 async function gdriveUpload(token, folderId, fileName, content){
-  var boundary='JAC'+Date.now();
-  var meta=JSON.stringify({name:fileName,parents:[folderId]});
-  var body='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'
-    +meta+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'
-    +content+'\r\n--'+boundary+'--';
-  var r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size',{
+  var meta = new Blob([JSON.stringify({name:fileName, parents:[folderId]})],
+    {type:'application/json'});
+  var file = new Blob([content], {type:'application/json'});
+  var form = new FormData();
+  form.append('metadata', meta);
+  form.append('file', file);
+  var r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size',{
     method:'POST',
-    headers:{'Authorization':'Bearer '+token,'Content-Type':'multipart/related; boundary="'+boundary+'"'},
-    body:body
+    headers:{'Authorization':'Bearer '+token},
+    body:form
   });
   if(r.ok) return await r.json();
   var ej={}; try{ej=await r.json();}catch(e){}
@@ -6306,7 +6307,7 @@ async function gdriveUploadResumable(token, folderId, fileName, content){
   var r1=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',{
     method:'POST',
     headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json; charset=UTF-8',
-             'X-Upload-Content-Type':'application/json','X-Upload-Content-Length':String(content.length)},
+             'X-Upload-Content-Type':'application/json'},
     body:meta
   });
   if(!r1.ok){ var e1={}; try{e1=await r1.json();}catch(e){} throw new Error('Erro ao iniciar: '+(e1.error&&e1.error.message||r1.status)); }
@@ -6341,7 +6342,7 @@ async function gdriveSalvarBackup(){
   if(!folderId){ return; } // gdriveGetFolder já mostrou o erro detalhado
   try{
     var result;
-    if(content.length>4*1024*1024){
+    if(content.length>10*1024*1024){
       result=await gdriveUploadResumable(token,folderId,fileName,content);
     } else {
       gdriveSt('⏳ Enviando '+sizeMB+' MB...','');
@@ -13239,7 +13240,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.2.6';
+const APP_VERSION = '3.2.7';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
