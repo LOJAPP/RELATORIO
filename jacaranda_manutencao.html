@@ -5811,22 +5811,64 @@ async function jacEnviarGitHub(nome,json,cfg){
     var token=cfg.githubToken.trim();
     var auth=token.startsWith('github_pat_')?'Bearer '+token:'token '+token;
     var hd={'Authorization':auth,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'};
+    // 1) Autenticar
     var ur=await fetch('https://api.github.com/user',{headers:hd});
-    if(!ur.ok)return false;
+    if(!ur.ok){
+      var ec=ur.status;
+      bkpMesStatus(ec===401?'❌ Token inválido (401 Bad credentials) — limpe o token e gere um novo em github.com':'❌ Erro '+ec+' ao autenticar','err');
+      cloudSt(ec===401?'❌ Token inválido (401)':'❌ Erro '+ec+' ao autenticar GitHub','err');
+      return false;
+    }
     var login=(await ur.json()).login.toLowerCase();
-    var repo=login+'/'+(cfg.githubRepo||'jac-backups').split('/').pop().toLowerCase();
+    var repoNome=(cfg.githubRepo||'jac-backups').split('/').pop().toLowerCase();
+    var repo=login+'/'+repoNome;
     var branch=cfg.githubBranch||'main';
+    bkpMesStatus('2/3 Verificando repositório '+repo+'...','');
+    // 2) Verificar/criar repositório
+    var rr=await fetch('https://api.github.com/repos/'+repo,{headers:hd});
+    if(!rr.ok){
+      if(rr.status===404){
+        bkpMesStatus('⏳ Criando repositório '+repo+'...','');
+        var cr=await fetch('https://api.github.com/user/repos',{method:'POST',headers:hd,
+          body:JSON.stringify({name:repoNome,description:'Backups JAC',private:true,auto_init:true})});
+        if(!cr.ok){var cj={};try{cj=await cr.json();}catch(ex){}
+          bkpMesStatus('❌ Não foi possível criar: '+(cj.message||cr.status),'err'); return false;}
+        bkpMesStatus('✅ Repositório criado! Aguardando...','');
+        await new Promise(function(r){setTimeout(r,3000);});
+        // Re-verificar após criar
+        var ri=await fetch('https://api.github.com/repos/'+repo,{headers:hd});
+        if(ri.ok){ var rid=await ri.json(); branch=rid.default_branch||'main'; }
+      } else {
+        bkpMesStatus('❌ Erro '+rr.status+' ao acessar repositório','err'); return false;
+      }
+    } else {
+      var rd=await rr.json(); branch=rd.default_branch||branch;
+    }
+    // 3) Verificar SHA
     var path='backups/'+nome;
     var sha=null;
-    var chk=await fetch('https://api.github.com/repos/'+repo+'/contents/'+path+'?ref='+branch,{headers:hd});
-    if(chk.ok){var cj={};try{cj=await chk.json();}catch(e){}sha=cj.sha||null;}
+    var ck=await fetch('https://api.github.com/repos/'+repo+'/contents/'+path+'?ref='+branch,{headers:hd});
+    if(ck.ok){var cj2={};try{cj2=await ck.json();}catch(ex){}sha=cj2.sha||null;}
+    // 4) Enviar
+    bkpMesStatus('3/3 Enviando '+Math.round(json.length/1024)+' KB para '+repo+'...','');
     var b64=cloudSafeBtoa(json);
     var body={message:'Backup '+nome,content:b64,branch:branch};
-    if(sha)body.sha=sha;
-    var r=await fetch('https://api.github.com/repos/'+repo+'/contents/'+path,{method:'PUT',headers:hd,body:JSON.stringify(body)});
-    return r.ok;
-  }catch(e){return false;}
+    if(sha) body.sha=sha;
+    var r=await fetch('https://api.github.com/repos/'+repo+'/contents/'+path,
+      {method:'PUT',headers:hd,body:JSON.stringify(body)});
+    if(!r.ok){
+      var ej={};try{ej=await r.json();}catch(ex){}
+      bkpMesStatus('❌ Erro '+r.status+' ao salvar: '+(ej.message||'falha')
+        +(r.status===401?' → Token inválido, gere um novo':''),'err');
+      return false;
+    }
+    return true;
+  }catch(e){
+    bkpMesStatus('❌ Erro de rede: '+e.message,'err');
+    return false;
+  }
 }
+
 async function jacBackupMes(enviarGitHub){
   var el=document.getElementById('bkp-mes');
   var mes=el?el.value:'';
@@ -12651,7 +12693,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.1.1';
+const APP_VERSION = '3.1.2';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
