@@ -4563,35 +4563,120 @@ function rtzUpdWpVel(i,val){
 function rtzImport(input){
   var f=input.files&&input.files[0]; if(!f) return;
   var r=new FileReader();
-  r.onload=function(e){
+  r.onload=function(ev){
     try{
-      var txt=e.target.result; var wps=[];
+      var txt=ev.target.result;
       var ext=f.name.split('.').pop().toLowerCase();
-      if(ext==='csv'){
-        txt.split('\n').slice(1).forEach(function(line){
+      var wps=[];
+
+      if(ext==='csv'||ext==='txt'){
+        // CSV: #, Nome, Lat, Lon, Vel
+        txt.split('\n').forEach(function(line){
+          if(!line.trim()||line.startsWith('#')) return;
           var cols=line.split(',');
-          if(cols.length>=3&&!isNaN(parseFloat(cols[1]))){
-            wps.push({name:cols[0].trim()||'WP'+(wps.length+1),lat:parseFloat(cols[1]),lon:parseFloat(cols[2]),vel:parseFloat(cols[4])||15});
-          }
+          if(cols.length<3) return;
+          // Detectar se primeira coluna é número (índice) ou nome
+          var idx=0;
+          if(!isNaN(parseFloat(cols[0]))&&cols.length>=4){ idx=1; }
+          var name=(cols[idx]||'').trim()||'WP'+(wps.length+1);
+          var lat=parseFloat(cols[idx+1]);
+          var lon=parseFloat(cols[idx+2]);
+          var vel=parseFloat(cols[idx+3])||15;
+          if(!isNaN(lat)&&!isNaN(lon)) wps.push({name:name,lat:lat,lon:lon,vel:vel});
         });
-      } else {
-        // RTZ/GPX/KML — extrair coordenadas por regex
-        var rx=/<[Ww]aypoint[^>]*>[\s\S]*?<[Nn]ame[^>]*>([^<]*)<\/[Nn]ame>[\s\S]*?lat="([^"]+)"[\s\S]*?lon="([^"]+)"/g;
-        var rx2=/lat="([^"]+)"[^>]*lon="([^"]+)"/g;
+
+      } else if(ext==='rtz'||txt.indexOf('cirm.org/RTZ')>=0||txt.indexOf('<Route')>=0){
+        // RTZ — <waypoint id="1" name="WP NAME"><position lat="x" lon="y"/><leg speed="s"/>
+        var blockRx=/<waypoint\b([^>]*)>([\s\S]*?)<\/waypoint>/gi;
         var m;
-        while((m=rx.exec(txt))!==null) wps.push({name:m[1]||'WP'+(wps.length+1),lat:parseFloat(m[2]),lon:parseFloat(m[3]),vel:15});
-        if(!wps.length) while((m=rx2.exec(txt))!==null) wps.push({name:'WP'+(wps.length+1),lat:parseFloat(m[1]),lon:parseFloat(m[2]),vel:15});
+        while((m=blockRx.exec(txt))!==null){
+          var attrs=m[1], inner=m[2];
+          // Nome: atributo name="" na tag waypoint
+          var nameM=attrs.match(/\bname=["']([^"']*)["']/i);
+          var name=(nameM?nameM[1].trim():'')||'WP'+(wps.length+1);
+          // lat/lon: dentro da tag <position>
+          var latM=inner.match(/\blat=["']([^"']+)["']/i)||attrs.match(/\blat=["']([^"']+)["']/i);
+          var lonM=inner.match(/\blon=["']([^"']+)["']/i)||attrs.match(/\blon=["']([^"']+)["']/i);
+          if(!latM||!lonM) continue;
+          var velM=inner.match(/\bspeed=["']([^"']+)["']/i);
+          wps.push({name:name,lat:parseFloat(latM[1]),lon:parseFloat(lonM[1]),vel:velM?parseFloat(velM[1]):15});
+        }
+
+      } else if(ext==='gpx'||txt.indexOf('<gpx')>=0){
+        // GPX — <rtept lat="x" lon="y"><name>NM</name></rtept> ou <wpt>
+        var gpxRx=/<(?:rtept|wpt)\b([^>]*)>([\s\S]*?)<\/(?:rtept|wpt)>/gi;
+        var m;
+        while((m=gpxRx.exec(txt))!==null){
+          var attrs=m[1], inner=m[2];
+          var latM=attrs.match(/\blat=["']([^"']+)["']/i);
+          var lonM=attrs.match(/\blon=["']([^"']+)["']/i);
+          if(!latM||!lonM) continue;
+          var nameM=inner.match(/<name[^>]*>([^<]*)<\/name>/i);
+          var cmtM =inner.match(/<cmt[^>]*>([^<]*)<\/cmt>/i);
+          var name=(nameM?nameM[1].trim():'')||(cmtM?cmtM[1].trim():'')||'WP'+(wps.length+1);
+          var velM=inner.match(/<speed[^>]*>([^<]*)<\/speed>/i);
+          wps.push({name:name,lat:parseFloat(latM[1]),lon:parseFloat(lonM[1]),vel:velM?parseFloat(velM[1]):15});
+        }
+
+      } else if(ext==='kml'||txt.indexOf('<kml')>=0){
+        // KML — <Placemark><name>NM</name><Point><coordinates>lon,lat,alt</coordinates></Point></Placemark>
+        var kmlRx=/<Placemark[^>]*>([\s\S]*?)<\/Placemark>/gi;
+        var m;
+        while((m=kmlRx.exec(txt))!==null){
+          var inner=m[1];
+          var nameM=inner.match(/<name[^>]*>([^<]*)<\/name>/i);
+          var coordM=inner.match(/<coordinates[^>]*>([^<]*)<\/coordinates>/i);
+          if(!coordM) continue;
+          var parts=coordM[1].trim().split(',');
+          if(parts.length<2) continue;
+          var name=(nameM?nameM[1].trim():'')||'WP'+(wps.length+1);
+          wps.push({name:name,lat:parseFloat(parts[1]),lon:parseFloat(parts[0]),vel:15});
+        }
+
+      } else {
+        // Fallback genérico: tentar RTZ depois GPX depois coordenadas soltas
+        var fallRx=/<waypoint\b([^>]*)>([\s\S]*?)<\/waypoint>/gi;
+        var m;
+        while((m=fallRx.exec(txt))!==null){
+          var attrs=m[1],inner=m[2];
+          var nameM=attrs.match(/\bname=["']([^"']*)["']/i);
+          var latM=inner.match(/\blat=["']([^"']+)["']/i)||attrs.match(/\blat=["']([^"']+)["']/i);
+          var lonM=inner.match(/\blon=["']([^"']+)["']/i)||attrs.match(/\blon=["']([^"']+)["']/i);
+          if(!latM||!lonM) continue;
+          var velM=inner.match(/\bspeed=["']([^"']+)["']/i);
+          wps.push({name:(nameM?nameM[1].trim():'')||'WP'+(wps.length+1),lat:parseFloat(latM[1]),lon:parseFloat(lonM[1]),vel:velM?parseFloat(velM[1]):15});
+        }
+        if(!wps.length){
+          // Último recurso: extrair qualquer lat/lon
+          var llRx=/lat=["']([^"']+)["'][^>]*lon=["']([^"']+)["']/gi;
+          while((m=llRx.exec(txt))!==null)
+            wps.push({name:'WP'+(wps.length+1),lat:parseFloat(m[1]),lon:parseFloat(m[2]),vel:15});
+        }
       }
-      if(!wps.length){toast('⚠️ Nenhum waypoint encontrado no arquivo','warn');return;}
-      var rota={name:f.name.replace(/\.[^.]+$/,''),wps:wps};
+
+      if(!wps.length){
+        toast('⚠️ Nenhum waypoint encontrado em "'+f.name+'" — verifique se é RTZ, GPX, KML ou CSV válido','warn');
+        return;
+      }
+
+      var rota={name:f.name.replace(/\.[^.]+$/,''), wps:wps};
       localStorage.setItem('jac_rtz_route',JSON.stringify(rota));
       var el=document.getElementById('rtz-route-name'); if(el) el.textContent=rota.name;
-      rtzRender(); rioBuildETA();
-      toast('✅ '+wps.length+' waypoints importados de "'+f.name+'"','ok');
-    }catch(ex){toast('❌ Erro ao importar: '+ex.message,'err');}
+      rtzRender();
+      try{ rioBuildETA(); }catch(e){}
+      var dist=wps.reduce(function(acc,w,i){
+        return i===0?0:acc+rioHaversineNm(wps[i-1].lat,wps[i-1].lon,w.lat,w.lon);
+      },0);
+      toast('✅ '+wps.length+' waypoints importados · '+dist.toFixed(0)+' NM total','ok');
+
+    }catch(ex){
+      console.error('rtzImport:',ex);
+      toast('❌ Erro ao importar: '+ex.message,'err');
+    }
   };
-  r.readAsText(f);
+  r.readAsText(f,'UTF-8');
 }
+
 function rtzExport(fmt){
   var rtz=JSON.parse(localStorage.getItem('jac_rtz_route')||'null');
   if(!rtz||!rtz.wps.length){toast('⚠️ Nenhuma rota carregada','warn');return;}
@@ -4652,28 +4737,87 @@ function rtzRender(){
   try{
     var rtz=JSON.parse(localStorage.getItem('jac_rtz_route')||'null');
     var body=document.getElementById('rtz-body'); if(!body) return;
+
     if(!rtz||!rtz.wps||!rtz.wps.length){
-      body.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">Nenhuma rota carregada — importe um arquivo RTZ/GPX/KML/CSV ou crie uma nova</div>';
+      body.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px;">'
+        +'📂 Nenhuma rota carregada<br><small>Importe um arquivo RTZ, GPX, KML ou CSV</small></div>';
       return;
     }
-    var nameEl=document.getElementById('rtz-route-name'); if(nameEl) nameEl.textContent=rtz.name;
-    body.innerHTML='<div style="overflow-x:auto;"><table class="tbl" style="width:100%;font-size:11px;">'
-      +'<thead><tr><th style="padding:5px 8px;">#</th><th>Waypoint</th><th>Lat</th><th>Lon</th><th>Dist (NM)</th><th>Vel (nós)</th><th></th></tr></thead><tbody>'
-      +rtz.wps.map(function(w,i){
-        var d=i===0?0:rioHaversineNm(rtz.wps[i-1].lat,rtz.wps[i-1].lon,w.lat,w.lon);
-        return '<tr style="border-bottom:1px solid var(--border);">'
-          +'<td class="mono" style="padding:4px 8px;">'+(i+1)+'</td>'
-          +'<td style="padding:4px 8px;font-weight:600;">'+escHtml(w.name)+'</td>'
-          +'<td class="mono" style="padding:4px 6px;">'+rtzFmtCoord(w.lat,true)+'</td>'
-          +'<td class="mono" style="padding:4px 6px;">'+rtzFmtCoord(w.lon,false)+'</td>'
-          +'<td class="mono" style="padding:4px 6px;text-align:right;">'+(i===0?'—':d.toFixed(1))+'</td>'
-          +'<td style="padding:4px 6px;"><input type="number" class="form-control" style="width:65px;font-size:11px;padding:3px 5px;" value="'+(w.vel||15)+'" onchange="rtzUpdWpVel('+i+',this.value)"></td>'
-          +'<td style="padding:4px 6px;"><button class="btn btn-ghost btn-sm" style="color:var(--danger);padding:2px 6px;" onclick="rtzRemoveWp('+i+')">✕</button></td>'
-          +'</tr>';
-      }).join('')
-      +'</tbody></table></div>';
-  }catch(e){ console.error('rtzRender:',e); }
+
+    var nameEl=document.getElementById('rtz-route-name');
+    if(nameEl) nameEl.textContent=rtz.name;
+
+    var velGlobal=parseFloat((document.getElementById('rio-vel')||{value:15}).value)||15;
+    var dtPart=(document.getElementById('rio-dt')||{}).value;
+    var t0=dtPart?new Date(dtPart).getTime():0;
+    var tCur=t0, cumDist=0;
+
+    var fmt12=function(ms){
+      if(!ms||!t0) return '—';
+      var d=new Date(ms);
+      return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+' '
+        +('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+    };
+
+    var rows=rtz.wps.map(function(w,i){
+      var dist=i===0?0:rioHaversineNm(rtz.wps[i-1].lat,rtz.wps[i-1].lon,w.lat,w.lon);
+      var vel=parseFloat(w.vel)||velGlobal;
+      var h=vel>0&&dist>0?dist/vel:0;
+      cumDist+=dist; tCur+=h*3600000;
+      var eta=fmt12(t0?tCur:0);
+
+      // Formatar coordenadas em graus e minutos decimais
+      var fmtLat=function(v){ var a=Math.abs(v),d=Math.floor(a),m=(a-d)*60;
+        return d+'°'+m.toFixed(2)+'\''+( v>=0?'N':'S'); };
+      var fmtLon=function(v){ var a=Math.abs(v),d=Math.floor(a),m=(a-d)*60;
+        return d+'°'+m.toFixed(2)+'\''+( v>=0?'E':'W'); };
+
+      return '<tr style="border-bottom:1px solid var(--border);">'
+        +'<td style="padding:5px 8px;text-align:center;font-size:10px;color:var(--text-dim);font-weight:700;">'+(i+1)+'</td>'
+        +'<td style="padding:5px 8px;font-weight:700;font-size:12px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+escHtml(w.name)+'">'+escHtml(w.name)+'</td>'
+        +'<td style="padding:5px 6px;font-size:11px;font-family:monospace;white-space:nowrap;">'+fmtLat(w.lat)+'</td>'
+        +'<td style="padding:5px 6px;font-size:11px;font-family:monospace;white-space:nowrap;">'+fmtLon(w.lon)+'</td>'
+        +'<td style="padding:5px 6px;text-align:right;font-size:11px;font-family:monospace;">'+(i===0?'—':dist.toFixed(1))+'</td>'
+        +'<td style="padding:4px 5px;">'
+        +'<input type="number" class="form-control" style="width:58px;font-size:11px;padding:3px 5px;text-align:center;" '
+        +'value="'+vel+'" min="1" max="25" onchange="rtzUpdWpVel('+i+',this.value);rtzRender();" title="Velocidade neste trecho (nós)"></td>'
+        +'<td style="padding:5px 6px;font-size:10px;color:var(--login-blue);white-space:nowrap;">'+eta+'</td>'
+        +'<td style="padding:4px 5px;"><button class="btn btn-ghost btn-sm" style="color:var(--danger);padding:2px 7px;font-size:13px;" '
+        +'onclick="rtzRemoveWp('+i+')" title="Remover waypoint">✕</button></td>'
+        +'</tr>';
+    }).join('');
+
+    // Resumo da rota
+    var totalH=cumDist/(velGlobal||15);
+    var resumo='<div style="background:var(--login-blue-xlt);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;gap:16px;flex-wrap:wrap;font-size:12px;">'
+      +'<span>📍 <strong>'+rtz.wps.length+'</strong> waypoints</span>'
+      +'<span>🛣️ <strong>'+cumDist.toFixed(0)+'</strong> NM total</span>'
+      +'<span>⏱️ <strong>'+(totalH/24).toFixed(1)+'</strong> dias estimados</span>'
+      +(t0?'<span>🏁 ETA final: <strong>'+fmt12(tCur)+'</strong></span>':'<span style="color:var(--text-dim);">Defina a data/hora de saída para ver ETAs</span>')
+      +'</div>';
+
+    body.innerHTML=resumo
+      +'<div style="overflow-x:auto;">'
+      +'<table style="width:100%;border-collapse:collapse;min-width:580px;">'
+      +'<thead><tr style="background:var(--surface2);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">'
+      +'<th style="padding:5px 8px;text-align:center;">#</th>'
+      +'<th style="padding:5px 8px;text-align:left;">Waypoint</th>'
+      +'<th style="padding:5px 8px;">Latitude</th>'
+      +'<th style="padding:5px 8px;">Longitude</th>'
+      +'<th style="padding:5px 8px;text-align:right;">Dist (NM)</th>'
+      +'<th style="padding:5px 8px;text-align:center;">Vel (nós)</th>'
+      +'<th style="padding:5px 8px;">ETA</th>'
+      +'<th style="padding:5px 8px;"></th>'
+      +'</tr></thead>'
+      +'<tbody>'+rows+'</tbody>'
+      +'</table></div>';
+  }catch(e){
+    console.error('rtzRender:',e);
+    var body=document.getElementById('rtz-body');
+    if(body) body.innerHTML='<div style="color:var(--danger);padding:12px;font-size:12px;">❌ Erro ao renderizar rota: '+e.message+'</div>';
+  }
 }
+
 function updateFolderStatus(){
   var el=document.getElementById('fs-status-title');
   var pe=document.getElementById('fs-status-path');
