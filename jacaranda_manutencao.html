@@ -1224,10 +1224,42 @@
           <button onclick="deselectAllCrew()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:7px;padding:7px 12px;font-size:12px;cursor:pointer;">✕ Cancelar</button>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
-          <input type="text" class="form-control" id="crew-q" placeholder="🔍 Buscar por nome, função ou matrícula..." oninput="renderCrew()" style="flex:1;min-width:200px;">
+          <input type="text" class="form-control" id="crew-q" placeholder="🔍 Buscar nome, função, matrícula..." oninput="renderCrew()" style="flex:1;min-width:180px;">
+          <select class="form-control" id="crew-filt-status" onchange="renderCrew()" style="width:120px;font-size:11px;">
+            <option value="">Todos status</option>
+            <option value="abordo">A bordo</option>
+            <option value="desembarcado">Desembarcado</option>
+          </select>
           <button class="btn btn-ghost btn-sm" onclick="selectAllCrew()">☑ Todos</button>
-          <button class="btn btn-ghost btn-sm" onclick="jacLimparCrewDuplicado()" title="Remove tripulantes com nome repetido" style="font-size:11px;">🧹 Duplicados</button>
           <button class="btn btn-ghost btn-sm" onclick="deselectAllCrew()">☐ Nenhum</button>
+          <button class="btn btn-ghost btn-sm" onclick="jacLimparCrewDuplicado()" style="font-size:11px;" title="Remove duplicatas de nome">🧹</button>
+        </div>
+        <!-- Banco de Tripulantes (tabela completa) -->
+        <div style="margin-bottom:12px;">
+          <button class="btn btn-ghost btn-sm" onclick="crewBancoOpen()" style="width:100%;justify-content:center;gap:6px;font-size:12px;">
+            🗂️ Ver banco de tripulantes (lista completa)
+          </button>
+          <div id="banco-crew-panel" style="display:none;margin-top:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+            <div style="background:var(--surface2);padding:10px 14px;display:flex;align-items:center;gap:8px;">
+              <span style="font-weight:700;font-size:13px;">🗂️ Banco de Tripulantes</span>
+              <span id="banco-count" style="font-size:11px;color:var(--text-dim);"></span>
+              <input type="text" class="form-control" id="banco-q" placeholder="Buscar..." oninput="crewBancoRender()" style="flex:1;max-width:200px;font-size:11px;">
+            </div>
+            <div style="overflow-x:auto;">
+              <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                <thead><tr style="background:var(--surface2);font-weight:700;font-size:10px;text-transform:uppercase;">
+                  <th style="padding:6px 10px;text-align:left;">Nome</th>
+                  <th style="padding:6px 6px;">Matrícula</th>
+                  <th style="padding:6px 6px;">Depto.</th>
+                  <th style="padding:6px 6px;">Empresa</th>
+                  <th style="padding:6px 6px;text-align:center;">Status</th>
+                  <th style="padding:6px 6px;text-align:center;">Embarques</th>
+                  <th style="padding:6px 6px;"></th>
+                </tr></thead>
+                <tbody id="banco-crew-body"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
         <div id="crew-list"></div>
       </div>
@@ -4469,53 +4501,6 @@ function openCrew(id){
   openModal('modal-crew');
 }
 
-function renderCrew(){
-  const q=(document.getElementById('crew-q')?.value||'').toLowerCase();
-  let crew=S.crew.filter(t=>!q||t.nm.toLowerCase().includes(q)||t.fn.toLowerCase().includes(q)||(t.mat||'').includes(q));
-  const list=document.getElementById('crew-list');
-  if(!crew.length){ list.innerHTML='<div class="empty-state"><div class="ico">👤</div><p>Nenhum tripulante</p></div>'; return; }
-  // Group by dept
-  const byDept={};
-  crew.forEach(t=>{ byDept[t.dp]=byDept[t.dp]||[]; byDept[t.dp].push(t); });
-  list.innerHTML=Object.entries(byDept).map(([dept,members])=>`
-    <div style="margin-bottom:16px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">
-        <span style="font-size:13px;font-weight:700;text-transform:uppercase;color:var(--text-dim);">${dtg(dept)} ${dept}</span>
-        <span style="background:var(--login-blue);color:#fff;font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;">${members.length}</span>
-        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);margin-left:auto;cursor:pointer;">
-          <input type="checkbox" onchange="members.forEach(c=>{ this.checked?_crewSel.add(c.id):_crewSel.delete(c.id); }); renderCrew(); _updateCrewBulkBar();" ${members.every(c=>_crewSel.has(c.id))?'checked':''}>
-          Selec. todos
-        </label>
-      </div>
-      ${members.map(t=>{
-        const abbr=t.abbr||(ROLE_ABBR[t.fn]||t.fn.slice(0,3).toUpperCase());
-        const sel=_crewSel.has(t.id);
-        return `<div class="crew-card" style="border-left:4px solid ${sel?'var(--login-blue)':'transparent'};background:${sel?'var(--login-blue-xlt)':'#fff'};cursor:pointer;" onclick="toggleCrewSel('${t.id}')">
-          <div style="display:flex;align-items:center;gap:10px;width:100%;">
-            <input type="checkbox" ${sel?'checked':''} onchange="toggleCrewSel('${t.id}')" onclick="event.stopPropagation()" style="flex-shrink:0;width:16px;height:16px;">
-            <div class="crew-av" style="background:${deptColor(t.dp)}">${t.nm.split(' ').map(w=>w[0]).slice(0,2).join('')}</div>
-            <div style="flex:1;min-width:0;">
-              <div class="crew-name">${escHtml(t.nm)}</div>
-              <div class="crew-role">${escHtml(t.fn)} <span class="crew-tag-pill" style="font-size:9px;">${abbr}</span></div>
-              <div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap;">
-                ${t.em?`<span class="emb-b">⬆ ${fd(t.em)}</span>`:''}
-                ${t.de?`<span class="des-b">⬇ ${fd(t.de)}</span>`:t.em?'<span style="font-size:10px;font-weight:700;color:#16a34a;">✅ A bordo</span>':''}
-                ${t.porto?`<span style="font-size:10px;color:var(--text-dim);">🚢 ${escHtml(t.porto)}</span>`:''}
-              </div>
-            </div>
-            <div style="text-align:right;font-size:11px;color:var(--text-dim);flex-shrink:0;">
-              <div class="mono">#${t.mat||'—'}</div>
-              <div>${t.tu}</div>
-              <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end;" onclick="event.stopPropagation()">
-                <button class="btn btn-primary btn-sm" onclick="openCrew('${t.id}')">✏️</button>
-                <button class="btn btn-danger btn-sm" onclick="delCrew('${t.id}')">🗑</button>
-              </div>
-            </div>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>`).join('');
-}
 
 function openBulkUpdate(){
   const n = _crewSel.size;
@@ -4569,17 +4554,9 @@ function openBulkUpdate(){
   modal.onclick = e=>{ if(e.target===modal) closeBulkUpdate(); };
 }
 
-function selectAllCrew(){
-  S.crew.forEach(c=>_crewSel.add(c.id));
-  renderCrew(); _updateCrewBulkBar();
-}
 
-function deselectAllCrew(){
-  _crewSel.clear();
-  renderCrew(); _updateCrewBulkBar();
-}
 
-// === FUNCOES RESTAURADAS ===
+// === FUNÇÕES RESTAURADAS (não-tripulantes) ===
 
 function filterHistorico(){
   var dept=(document.getElementById('histo-dept')||{}).value||'';
@@ -4612,7 +4589,7 @@ function renderSemanal(){
         +'<td style="padding:5px 8px;font-size:11px;">'+escHtml(r.st||'')+'</td></tr>';
     }).join('');
     return '<div style="margin-bottom:14px;">'
-      +'<div style="font-weight:700;font-size:12px;color:var(--login-blue);border-bottom:2px solid var(--login-blue);padding-bottom:4px;margin-bottom:6px;">'+fd(wk)+' — '+fd(end.toISOString().slice(0,10))+' ('+weeks[wk].length+' reg.)</div>'
+      +'<div style="font-weight:700;font-size:12px;color:var(--login-blue);border-bottom:2px solid var(--login-blue);padding-bottom:4px;margin-bottom:6px;">'+fd(wk)+' a '+fd(end.toISOString().slice(0,10))+' ('+weeks[wk].length+' reg.)</div>'
       +'<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:var(--surface2);">'
       +'<th style="padding:4px 8px;text-align:left;">Data</th><th style="padding:4px 8px;text-align:left;">Dep.</th>'
       +'<th style="padding:4px 8px;text-align:left;">Atividade</th><th style="padding:4px 8px;text-align:left;">Qtd.</th>'
@@ -4624,14 +4601,6 @@ function saveSemanal(){
   renderSemanal();
   setTimeout(function(){exportPDF();},300);
   toast('PDF do relatório semanal sendo gerado...','ok');
-}
-
-function jacLimparCrewDuplicado(){
-  var antes=(S.crew||[]).length,seen={},uniq=[];
-  (S.crew||[]).forEach(function(c){var k=(c.nm||'').toLowerCase().trim();if(!seen[k]){seen[k]=true;uniq.push(c);}});
-  S.crew=uniq;saveData();
-  toast('Removidos '+(antes-uniq.length)+' duplicados','ok');
-  renderCrew();
 }
 
 function renderFotosPage(){
@@ -4647,9 +4616,9 @@ function renderFotosPage(){
   window._fotosPageData=all;
   body.innerHTML=all.map(function(f,i){
     return '<div style="position:relative;border-radius:8px;overflow:hidden;cursor:pointer;aspect-ratio:1;background:#000;" onclick="showFoto('+i+')">'
-      +'<img src="'+f.src+'" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.parentElement.style.display=\'none\'">'
+      +'<img src="'+f.src+'" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.parentElement.style.display=&apos;none&apos;">'
       +(f.cap?'<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:9px;padding:3px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(f.cap)+'</div>':'')
-      +'<button onclick="event.stopPropagation();deleteFoto(\''+f.t+'\',\''+(f.regId||'')+'\','+f.idx+')" style="position:absolute;top:4px;right:4px;background:rgba(220,38,38,.85);border:none;color:#fff;border-radius:4px;width:20px;height:20px;cursor:pointer;font-size:11px;">x</button>'
+      +'<button onclick="event.stopPropagation();deleteFoto(&quot;'+f.t+'&quot;,&quot;'+(f.regId||'')+'&quot;,'+f.idx+')" style="position:absolute;top:4px;right:4px;background:rgba(220,38,38,.85);border:none;color:#fff;border-radius:4px;width:20px;height:20px;cursor:pointer;font-size:11px;line-height:20px;">x</button>'
       +'</div>';
   }).join('');
 }
@@ -4714,7 +4683,7 @@ function openInspecao(id){
   var grid=document.getElementById('ins-fotos-grid');
   if(grid)grid.innerHTML=(o&&o.fotos||[]).map(function(src,i){
     return '<div style="position:relative;display:inline-block;margin:4px;">'
-      +'<img src="'+src+'" style="width:80px;height:80px;object-fit:cover;border-radius:6px;cursor:pointer;" onclick="showFoto('+i+')">'
+      +'<img src="'+src+'" style="width:80px;height:80px;object-fit:cover;border-radius:6px;" onclick="showFoto('+i+')">'
       +'</div>';
   }).join('');
   showPage('inspecao');
@@ -4734,13 +4703,340 @@ function addFotoInspecao(input){
         var grid=document.getElementById('ins-fotos-grid');
         if(grid)grid.innerHTML=(o.fotos||[]).map(function(s,i){
           return '<div style="position:relative;display:inline-block;margin:4px;">'
-            +'<img src="'+s+'" style="width:80px;height:80px;object-fit:cover;border-radius:6px;cursor:pointer;" onclick="showFoto('+i+')">'
+            +'<img src="'+s+'" style="width:80px;height:80px;object-fit:cover;border-radius:6px;" onclick="showFoto('+i+')">'
             +'</div>';
         }).join('');
       });
     };
     r.readAsDataURL(file);
   });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// MÓDULO TRIPULANTES v2 — banco, histórico, sugestões, sem duplicatas
+// ═══════════════════════════════════════════════════════════════════
+
+function saveCrew(){
+  var id  =(document.getElementById('mcrew-id')||{}).value||'';
+  var nm  =((document.getElementById('mc-nm')||{}).value||'').trim();
+  var mat =((document.getElementById('mc-mat')||{}).value||'').trim();
+  var fn  =((document.getElementById('mc-fn')||{}).value||'').trim();
+  var dp  =((document.getElementById('mc-dp')||{}).value||'').trim();
+  var tu  =((document.getElementById('mc-tu')||{}).value||'').trim();
+  var nat =((document.getElementById('mc-nat')||{}).value||'').trim();
+  var em  =((document.getElementById('mc-em')||{}).value||'').trim();
+  var de  =((document.getElementById('mc-de')||{}).value||'').trim();
+  var porto   =((document.getElementById('mc-porto')||{}).value||'').trim();
+  var empresa =((document.getElementById('mc-empresa')||{}).value||'').trim();
+  var co  =((document.getElementById('mc-co')||{}).value||'').trim();
+  var ob  =((document.getElementById('mc-ob')||{}).value||'').trim();
+  if(!nm){toast('Nome obrigatorio','warn');return;}
+  if(!S.crew)S.crew=[];
+  var existing=S.crew.find(function(c){return c.id===id;});
+  var dupName=S.crew.find(function(c){return c.id!==id&&(c.nm||'').trim().toLowerCase()===nm.toLowerCase();});
+  if(dupName&&!confirm('Ja existe "'+dupName.nm+'".\nContinuar assim mesmo?'))return;
+  if(mat){
+    var dupMat=S.crew.find(function(c){return c.id!==id&&(c.mat||'').trim()===mat;});
+    if(dupMat){toast('Matricula "'+mat+'" ja em uso por '+dupMat.nm,'warn');return;}
+  }
+  var emAnt=existing?existing.em:null;
+  var deAnt=existing?existing.de:null;
+  if(existing){
+    existing.nm=nm;existing.mat=mat;existing.fn=fn;existing.dp=dp;
+    existing.tu=tu;existing.nat=nat;existing.em=em;existing.de=de;
+    existing.porto=porto;existing.empresa=empresa;existing.co=co;existing.ob=ob;
+    existing._upd=Date.now();
+  } else {
+    id=id||gid();
+    S.crew.push({id:id,nm:nm,mat:mat,fn:fn,dp:dp,tu:tu,nat:nat,em:em,de:de,
+      porto:porto,empresa:empresa,co:co,ob:ob,sugestoes:[],ts:Date.now()});
+    existing=S.crew[S.crew.length-1];
+  }
+  if(em&&em!==emAnt) logEmbarkHistory(existing.id,em,de||null,porto||'');
+  else if(de&&de!==deAnt&&em){
+    var last=(S.embHistory||[]).find(function(h){return h.crewId===existing.id&&h.em===em&&!h.de;});
+    if(last){last.de=de;}else{logEmbarkHistory(existing.id,em,de,porto||'');}
+  }
+  saveData(true);closeModal('modal-crew');renderCrew();
+  toast('Tripulante "'+nm+'" salvo','ok');
+}
+
+function logEmbarkHistory(crewId,em,de,porto){
+  if(!S.embHistory)S.embHistory=[];
+  var existe=S.embHistory.find(function(h){return h.crewId===crewId&&h.em===em;});
+  if(existe){if(de&&!existe.de)existe.de=de;return;}
+  var cfg=getCfg();var v=cfg.vessel||{};
+  S.embHistory.push({id:gid(),crewId:crewId,em:em,de:de||null,porto:porto||'',
+    vessel:v.name||'M/V Jacaranda',ts:Date.now()});
+}
+
+function delCrew(id){
+  var t=(S.crew||[]).find(function(c){return c.id===id;});
+  if(!t||!confirm('Excluir "'+t.nm+'"?\nHistorico mantido.'))return;
+  S.crew=S.crew.filter(function(c){return c.id!==id;});
+  if(_crewSel)_crewSel.delete(id);
+  saveData(true);renderCrew();toast('Tripulante removido','ok');
+}
+
+function renderCrew(){
+  var q=((document.getElementById('crew-q')||{}).value||'').toLowerCase().trim();
+  var filtDept=((document.getElementById('crew-filt-dept')||{}).value||'');
+  var filtStatus=((document.getElementById('crew-filt-status')||{}).value||'');
+  var crew=(S.crew||[]).filter(function(t){
+    if(q&&!((t.nm||'').toLowerCase().includes(q)||(t.fn||'').toLowerCase().includes(q)||
+      (t.mat||'').includes(q)||(t.empresa||'').toLowerCase().includes(q)))return false;
+    if(filtDept&&t.dp!==filtDept)return false;
+    if(filtStatus==='abordo'&&!(!t.de&&t.em))return false;
+    if(filtStatus==='desembarcado'&&!t.de)return false;
+    return true;
+  });
+  var list=document.getElementById('crew-list');if(!list)return;
+  if(!crew.length){
+    list.innerHTML='<div style="padding:32px;text-align:center;color:var(--muted);">'
+      +'<div style="font-size:40px;margin-bottom:8px;">&#128100;</div>'
+      +'<div style="font-size:14px;font-weight:700;">Nenhum tripulante encontrado</div>'
+      +'<div style="font-size:12px;margin-top:4px;">Adicione com o botão + Novo</div></div>';
+    return;
+  }
+  var abordo=(S.crew||[]).filter(function(t){return t.em&&!t.de;}).length;
+  var total=(S.crew||[]).length;
+  var kpiHtml='<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">'
+    +'<div style="flex:1;min-width:100px;background:var(--login-blue);color:#fff;border-radius:10px;padding:10px 14px;">'
+    +'<div style="font-size:22px;font-weight:800;">'+abordo+'</div><div style="font-size:10px;opacity:.8;">A bordo</div></div>'
+    +'<div style="flex:1;min-width:100px;background:var(--surface2);border-radius:10px;padding:10px 14px;">'
+    +'<div style="font-size:22px;font-weight:800;">'+total+'</div><div style="font-size:10px;color:var(--text-dim);">Cadastrados</div></div>'
+    +'<div style="flex:1;min-width:100px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 14px;">'
+    +'<div style="font-size:22px;font-weight:800;color:#15803d;">'+(S.embHistory||[]).length+'</div>'
+    +'<div style="font-size:10px;color:#15803d;">Embarques</div></div></div>';
+  var byDept={};
+  crew.forEach(function(t){byDept[t.dp]=byDept[t.dp]||[];byDept[t.dp].push(t);});
+  var cardsHtml=Object.keys(byDept).sort().map(function(dept){
+    var members=byDept[dept];
+    var deptCards=members.map(function(t){
+      var sel=_crewSel&&_crewSel.has(t.id);
+      var ab=t.em&&!t.de;
+      var hist=(S.embHistory||[]).filter(function(h){return h.crewId===t.id;}).length;
+      var dias=ab&&t.em?Math.ceil((Date.now()-new Date(t.em+'T12:00').getTime())/864e5):0;
+      return '<div style="border:1px solid '+(sel?'var(--login-blue)':'var(--border)')+';border-radius:12px;padding:12px;margin-bottom:8px;'
+        +'border-left:4px solid '+(ab?'#16a34a':sel?'var(--login-blue)':'var(--border)')+';background:'+(sel?'var(--login-blue-xlt)':'#fff')+';cursor:pointer;" '
+        +'onclick="toggleCrewSel(\''+t.id+'\')">'
+        +'<div style="display:flex;align-items:center;gap:10px;">'
+        +'<input type="checkbox" '+(sel?'checked':'')+' onchange="toggleCrewSel(\''+t.id+'\')" onclick="event.stopPropagation()" style="width:16px;height:16px;flex-shrink:0;">'
+        +'<div style="width:40px;height:40px;border-radius:50%;background:'+deptColor(t.dp)+';display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;flex-shrink:0;">'
+        +t.nm.split(' ').map(function(w){return w[0];}).slice(0,2).join('')+'</div>'
+        +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escHtml(t.nm)+'</div>'
+        +'<div style="font-size:11px;color:var(--text-dim);">'+escHtml(t.fn||'')
+        +(t.mat?' <span style="font-family:monospace;background:var(--surface2);padding:1px 5px;border-radius:3px;font-size:10px;">#'+escHtml(t.mat)+'</span>':'')+'</div>'
+        +'</div>'
+        +(ab?'<span style="flex-shrink:0;background:#dcfce7;color:#15803d;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;">A bordo</span>'
+          :(t.em?'<span style="flex-shrink:0;background:#f1f5f9;color:var(--text-dim);font-size:10px;padding:3px 8px;border-radius:6px;">Desemb.</span>':''))
+        +'</div>'
+        +'<div style="display:flex;gap:8px;margin-top:7px;flex-wrap:wrap;font-size:11px;color:var(--text-dim);">'
+        +(t.em?'<span>Emb: '+fd(t.em)+'</span>':'')
+        +(t.de?'<span>Des: '+fd(t.de)+'</span>':'')
+        +(ab&&dias?'<span style="color:var(--login-blue);font-weight:700;">'+dias+'d a bordo</span>':'')
+        +(t.empresa?'<span>'+escHtml(t.empresa)+'</span>':'')
+        +(hist>1?'<span style="color:var(--login-blue);">'+hist+' embarques</span>':'')
+        +'</div>'
+        +'<div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end;" onclick="event.stopPropagation();">'
+        +'<button class="btn btn-ghost btn-sm" onclick="crewHistorico(\''+t.id+'\')" style="font-size:11px;">Historico</button>'
+        +'<button class="btn btn-ghost btn-sm" onclick="crewSugestao(\''+t.id+'\')" style="font-size:11px;">Sugestao</button>'
+        +'<button class="btn btn-primary btn-sm" onclick="openCrew(\''+t.id+'\')" style="font-size:11px;">Editar</button>'
+        +'<button class="btn btn-danger btn-sm" onclick="delCrew(\''+t.id+'\')" style="font-size:11px;">Del</button>'
+        +'</div></div>';
+    }).join('');
+    return '<div style="margin-bottom:20px;">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--border);">'
+      +'<span style="font-size:12px;font-weight:800;text-transform:uppercase;color:var(--text-dim);">'+dtg(dept)+' '+dept+'</span>'
+      +'<span style="background:var(--login-blue);color:#fff;font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;">'+members.length+'</span>'
+      +'<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);margin-left:auto;cursor:pointer;">'
+      +'<input type="checkbox" onchange="(function(chk){members.forEach(function(c){chk?(_crewSel&&_crewSel.add(c.id)):(_crewSel&&_crewSel.delete(c.id));}); renderCrew(); _updateCrewBulkBar();})(this.checked)" '
+      +(members.every(function(c){return _crewSel&&_crewSel.has(c.id);})?'checked':'')+'>'
+      +'Selec. todos</label></div>'
+      +deptCards+'</div>';
+  }).join('');
+  list.innerHTML=kpiHtml+cardsHtml;
+}
+
+function crewBancoRender(){
+  var q=((document.getElementById('banco-q')||{}).value||'').toLowerCase().trim();
+  var all=(S.crew||[]).filter(function(t){
+    return !q||(t.nm||'').toLowerCase().includes(q)||(t.fn||'').toLowerCase().includes(q);
+  }).sort(function(a,b){return (a.nm||'').localeCompare(b.nm||'');});
+  var body=document.getElementById('banco-crew-body');if(!body)return;
+  if(!all.length){body.innerHTML='<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted);">Nenhum tripulante cadastrado.</td></tr>';return;}
+  body.innerHTML=all.map(function(t){
+    var ab=t.em&&!t.de;
+    var hist=(S.embHistory||[]).filter(function(h){return h.crewId===t.id;}).length;
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      +'<td style="padding:8px 10px;"><div style="font-weight:700;font-size:13px;">'+escHtml(t.nm)+'</div>'
+      +'<div style="font-size:10px;color:var(--text-dim);">'+escHtml(t.fn||'')+'</div></td>'
+      +'<td style="padding:8px 6px;font-size:11px;font-family:monospace;">'+(t.mat||'—')+'</td>'
+      +'<td style="padding:8px 6px;font-size:11px;">'+escHtml(t.dp||'')+'</td>'
+      +'<td style="padding:8px 6px;font-size:11px;">'+escHtml(t.empresa||'—')+'</td>'
+      +'<td style="padding:8px 6px;text-align:center;">'
+      +(ab?'<span style="background:#dcfce7;color:#15803d;font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;">A bordo</span>'
+        :'<span style="background:#f1f5f9;color:var(--text-dim);font-size:10px;padding:2px 8px;border-radius:5px;">—</span>')+'</td>'
+      +'<td style="padding:8px 6px;text-align:center;font-size:11px;color:var(--login-blue);font-weight:700;">'+hist+'</td>'
+      +'<td style="padding:6px;"><div style="display:flex;gap:4px;justify-content:flex-end;">'
+      +'<button class="btn btn-ghost btn-sm" onclick="crewHistorico(\''+t.id+'\')" style="font-size:11px;">Hist.</button>'
+      +'<button class="btn btn-primary btn-sm" onclick="openCrew(\''+t.id+'\')" style="font-size:11px;">Editar</button>'
+      +'<button class="btn btn-danger btn-sm" onclick="delCrew(\''+t.id+'\')" style="font-size:11px;">Del</button>'
+      +'</div></td></tr>';
+  }).join('');
+  var ct=document.getElementById('banco-count');if(ct)ct.textContent=all.length+' tripulante(s)';
+}
+
+function crewHistorico(crewId){
+  var t=(S.crew||[]).find(function(c){return c.id===crewId;});
+  if(!t){toast('Tripulante nao encontrado','err');return;}
+  var hist=(S.embHistory||[]).filter(function(h){return h.crewId===crewId;})
+    .sort(function(a,b){return (b.ts||0)-(a.ts||0);});
+  var totalDias=hist.reduce(function(acc,h){
+    if(h.em&&h.de)acc+=Math.ceil((new Date(h.de+'T12:00')-new Date(h.em+'T12:00'))/864e5);
+    return acc;
+  },0);
+  var ab=t.em&&!t.de;
+  var diasAtual=ab?Math.ceil((Date.now()-new Date(t.em+'T12:00').getTime())/864e5):0;
+  if(!hist.length&&t.em){logEmbarkHistory(t.id,t.em,t.de||null,t.porto||'');saveData();
+    hist=(S.embHistory||[]).filter(function(h){return h.crewId===crewId;});}
+  var linhas=hist.length?hist.map(function(h){
+    var dias=(h.em&&h.de)?Math.ceil((new Date(h.de+'T12:00')-new Date(h.em+'T12:00'))/864e5):null;
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      +'<td style="padding:8px 10px;font-size:12px;white-space:nowrap;">'+(h.em?fd(h.em):'—')+'</td>'
+      +'<td style="padding:8px 10px;font-size:12px;white-space:nowrap;">'+(h.de?fd(h.de):'<strong style="color:#16a34a;">A bordo</strong>')+'</td>'
+      +'<td style="padding:8px 6px;font-size:12px;font-family:monospace;text-align:center;">'+(dias!==null?dias+'d':'—')+'</td>'
+      +'<td style="padding:8px 6px;font-size:11px;color:var(--text-dim);">'+escHtml(h.porto||'')+'</td>'
+      +'<td style="padding:8px 6px;font-size:11px;color:var(--text-dim);">'+escHtml(h.vessel||'')+'</td></tr>';
+  }).join('')
+  :'<tr><td colspan="5" style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">Nenhum embarque registrado ainda.<br>'
+    +'<small>O historico e criado ao salvar data de embarque.</small></td></tr>';
+  var sugs=(t.sugestoes||[]);
+  var sugHtml=sugs.length?'<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">'
+    +'<div style="font-weight:700;font-size:13px;margin-bottom:8px;">Sugestoes / Recomendacoes</div>'
+    +sugs.map(function(sg){
+      return '<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:8px;">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+        +'<span style="font-weight:700;font-size:12px;color:var(--login-blue);">'+escHtml(sg.tipo||'Obs.')+'</span>'
+        +'<span style="font-size:10px;color:var(--text-dim);">'+(sg.data?fd(sg.data):'')+'</span></div>'
+        +'<div style="font-size:12px;">'+escHtml(sg.txt||'')+'</div>'
+        +(sg.autor?'<div style="font-size:10px;color:var(--text-dim);margin-top:4px;">— '+escHtml(sg.autor)+'</div>':'')
+        +'</div>';
+    }).join('')+'</div>'
+    :'<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;color:var(--muted);font-size:12px;text-align:center;">Nenhuma sugestao registrada.</div>';
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  var panel=document.createElement('div');
+  panel.style.cssText='background:#fff;border-radius:14px;max-width:600px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.35);';
+  var initials=t.nm.split(' ').map(function(w){return w[0];}).slice(0,2).join('');
+  panel.innerHTML='<div style="background:linear-gradient(135deg,var(--login-blue),#1e40af);color:#fff;padding:16px 18px;border-radius:14px 14px 0 0;">'
+    +'<div style="display:flex;align-items:center;gap:12px;">'
+    +'<div style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;">'+initials+'</div>'
+    +'<div style="flex:1;">'
+    +'<div style="font-weight:800;font-size:16px;">'+escHtml(t.nm)+'</div>'
+    +'<div style="font-size:12px;opacity:.85;">'+escHtml(t.fn||'')+(t.mat?' · #'+t.mat:'')+(t.dp?' · '+t.dp:'')+'</div>'
+    +'</div>'
+    +'<div style="text-align:right;flex-shrink:0;">'
+    +'<div style="font-size:11px;opacity:.8;">'+hist.length+' embarque(s)</div>'
+    +'<div style="font-size:11px;opacity:.8;">'+(totalDias+diasAtual)+' dias total</div>'
+    +(ab?'<div style="font-size:11px;font-weight:700;color:#86efac;">A bordo ('+diasAtual+'d)</div>':'')
+    +'</div>'
+    +'<button onclick="this.closest(\'div\').parentElement.parentElement.remove()" '
+    +'style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:18px;margin-left:8px;">x</button>'
+    +'</div></div>'
+    +'<div style="padding:16px;">'
+    +'<div style="font-weight:700;font-size:13px;margin-bottom:10px;">Historico de Embarques</div>'
+    +'<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;">'
+    +'<table style="width:100%;border-collapse:collapse;">'
+    +'<thead><tr style="background:var(--surface2);font-size:11px;font-weight:700;">'
+    +'<th style="padding:7px 10px;text-align:left;">Embarque</th>'
+    +'<th style="padding:7px 10px;text-align:left;">Desembarque</th>'
+    +'<th style="padding:7px 6px;text-align:center;">Dias</th>'
+    +'<th style="padding:7px 6px;">Porto</th>'
+    +'<th style="padding:7px 6px;">Navio</th>'
+    +'</tr></thead><tbody>'+linhas+'</tbody></table></div>'
+    +sugHtml
+    +'<div style="display:flex;gap:8px;margin-top:14px;">'
+    +'<button class="btn btn-primary" onclick="crewSugestao(\''+crewId+'\');this.closest(\'div\').parentElement.parentElement.remove();" style="flex:1;">Adicionar sugestao</button>'
+    +'<button class="btn btn-ghost" onclick="this.closest(\'div\').parentElement.parentElement.remove()">Fechar</button>'
+    +'</div></div>';
+  ov.appendChild(panel);document.body.appendChild(ov);
+}
+
+function crewSugestao(crewId){
+  var t=(S.crew||[]).find(function(c){return c.id===crewId;});
+  if(!t){toast('Tripulante nao encontrado','err');return;}
+  var cfg=getCfg();var cmte=(cfg.vessel||{}).cmte||'Comandante';
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  var panel=document.createElement('div');
+  panel.style.cssText='background:#fff;border-radius:14px;max-width:480px;width:100%;';
+  panel.innerHTML='<div style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;">'
+    +'<div style="font-weight:800;font-size:15px;">Sugestao / Recomendacao</div>'
+    +'<div style="font-size:12px;opacity:.85;">'+escHtml(t.nm)+'</div></div>'
+    +'<div style="padding:16px;">'
+    +'<div class="form-group"><label style="font-size:12px;font-weight:700;">Tipo</label>'
+    +'<select class="form-control" id="sug-tipo" style="font-size:12px;">'
+    +'<option>Recomendacao positiva</option><option>Promocao sugerida</option>'
+    +'<option>Area a melhorar</option><option>Observacao de conduta</option>'
+    +'<option>Elogio formal</option><option>Aviso formal</option><option>Outro</option>'
+    +'</select></div>'
+    +'<div class="form-group"><label style="font-size:12px;font-weight:700;">Descricao</label>'
+    +'<textarea class="form-control" id="sug-txt" rows="4" style="font-size:12px;" placeholder="Descreva..."></textarea></div>'
+    +'<div class="form-row" style="gap:10px;">'
+    +'<div class="form-group"><label style="font-size:12px;font-weight:700;">Data</label>'
+    +'<input type="date" class="form-control" id="sug-data" value="'+new Date().toISOString().slice(0,10)+'"></div>'
+    +'<div class="form-group"><label style="font-size:12px;font-weight:700;">Autor</label>'
+    +'<input type="text" class="form-control" id="sug-autor" value="'+escHtml(cmte)+'"></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button class="btn btn-green" style="flex:1;" onclick="crewSugestaoSalvar(\''+crewId+'\')">Salvar</button>'
+    +'<button class="btn btn-ghost" onclick="this.closest(\'div\').parentElement.parentElement.remove()">Cancelar</button>'
+    +'</div></div>';
+  ov.appendChild(panel);document.body.appendChild(ov);
+}
+
+function crewSugestaoSalvar(crewId){
+  var t=(S.crew||[]).find(function(c){return c.id===crewId;});if(!t)return;
+  var tipo=(document.getElementById('sug-tipo')||{}).value||'Obs.';
+  var txt=(document.getElementById('sug-txt')||{}).value||'';
+  var data=(document.getElementById('sug-data')||{}).value||new Date().toISOString().slice(0,10);
+  var autor=(document.getElementById('sug-autor')||{}).value||'Comandante';
+  if(!txt.trim()){toast('Escreva a sugestao','warn');return;}
+  if(!t.sugestoes)t.sugestoes=[];
+  t.sugestoes.unshift({id:gid(),tipo:tipo,txt:txt.trim(),data:data,autor:autor,ts:Date.now()});
+  saveData(true);toast('Sugestao salva para '+t.nm,'ok');
+  document.querySelectorAll('div[style*="z-index:9999"],div[style*="z-index:9998"]')
+    .forEach(function(el){el.remove();});
+}
+
+function jacLimparCrewDuplicado(){
+  var antes=(S.crew||[]).length,seen={},uniq=[];
+  (S.crew||[]).forEach(function(c){
+    var k=(c.nm||'').toLowerCase().trim();if(!seen[k]){seen[k]=true;uniq.push(c);}
+  });
+  var rm=antes-uniq.length;
+  if(!rm){toast('Nenhum duplicado encontrado','ok');return;}
+  S.crew=uniq;saveData(true);renderCrew();crewBancoRender();
+  toast(rm+' duplicado(s) removido(s)','ok');
+}
+
+function selectAllCrew(){
+  (S.crew||[]).forEach(function(c){if(_crewSel)_crewSel.add(c.id);});
+  renderCrew();_updateCrewBulkBar();
+}
+function deselectAllCrew(){
+  if(_crewSel)_crewSel.clear();
+  renderCrew();_updateCrewBulkBar();
+}
+function crewBancoOpen(){
+  crewBancoRender();
+  var el=document.getElementById('banco-crew-panel');
+  if(el)el.style.display=el.style.display==='none'?'block':'none';
 }
 
 
@@ -6903,123 +7199,8 @@ async function jacDiagMes(){
 }
 
 // ═══════════════════════════════════════════════════════════
-function crewHistorico(crewId){
-  var t = (S.crew||[]).find(function(c){ return c.id===crewId; });
-  if(!t){ toast('Tripulante não encontrado','err'); return; }
-  var hist = (S.embHistory||[])
-    .filter(function(h){ return h.crewId===crewId; })
-    .sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
 
-  var totalDias = hist.reduce(function(acc,h){
-    if(h.em&&h.de) acc += Math.ceil((new Date(h.de+'T12:00')-new Date(h.em+'T12:00'))/864e5);
-    return acc;
-  },0);
 
-  var linhas = hist.length ? hist.map(function(h){
-    var dias = (h.em&&h.de)?Math.ceil((new Date(h.de+'T12:00')-new Date(h.em+'T12:00'))/864e5):null;
-    return '<tr style="border-bottom:1px solid var(--border);">'
-      +'<td style="padding:6px 8px;font-size:11px;white-space:nowrap;">'+(h.em?fd(h.em):'—')+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px;white-space:nowrap;">'+(h.de?fd(h.de):'<strong style="color:#16a34a;">A bordo</strong>')+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px;font-family:monospace;">'+(dias?dias+'d':'—')+'</td>'
-      +'<td style="padding:6px 4px;font-size:10px;color:var(--text-dim);">'+(h.porto?escHtml(h.porto):'')+'</td>'
-      +'<td style="padding:6px 4px;font-size:10px;color:var(--text-dim);">'+(h.vessel?escHtml(h.vessel):'')+'</td>'
-      +'</tr>';
-  }).join('') : '<tr><td colspan="5" style="padding:12px;text-align:center;color:var(--text-dim);font-size:11px;">Nenhum embarque registrado ainda.</td></tr>';
-
-  var sugs = (t.sugestoes||[]);
-  var sugHtml = sugs.length ? '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">'
-    +'<div style="font-weight:700;font-size:12px;margin-bottom:8px;">💬 Recomendações / Sugestões</div>'
-    + sugs.map(function(s,i){
-      return '<div style="background:var(--surface2);border-radius:7px;padding:8px 10px;margin-bottom:6px;font-size:12px;">'
-        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
-        +'<span style="font-weight:700;color:var(--login-blue);">'+(s.tipo||'Observação')+'</span>'
-        +'<span style="font-size:10px;color:var(--text-dim);">'+(s.data?fd(s.data):'')+'</span>'
-        +'</div>'
-        +'<div>'+escHtml(s.txt||'')+'</div>'
-        +(s.autor?'<div style="font-size:10px;color:var(--text-dim);margin-top:3px;">— '+escHtml(s.autor)+'</div>':'')
-        +'</div>';
-    }).join('') + '</div>' : '';
-
-  var ov = document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;';
-  ov.onclick=function(e){if(e.target===ov)ov.remove();};
-  var panel=document.createElement('div');
-  panel.style.cssText='background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;';
-  panel.innerHTML='<div style="background:linear-gradient(135deg,var(--login-blue),#1e40af);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:10px;">'
-    +'<div style="flex:1;">'
-    +'<div style="font-weight:800;font-size:15px;">📋 '+escHtml(t.nm)+'</div>'
-    +'<div style="font-size:11px;opacity:.85;">'+escHtml(t.fn||'')+(t.mat?' · #'+t.mat:'')+'</div>'
-    +'</div>'
-    +'<div style="text-align:right;font-size:11px;opacity:.85;">'+hist.length+' embarque(s)<br>'+totalDias+' dias a bordo</div>'
-    +'<button onclick="this.closest(\'div\').parentElement.parentElement.remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:16px;margin-left:8px;">✕</button>'
-    +'</div>'
-    +'<div style="padding:14px;">'
-    +'<div style="font-weight:700;font-size:12px;margin-bottom:8px;">🚢 Histórico de Embarques</div>'
-    +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">'
-    +'<thead><tr style="background:var(--surface2);font-size:11px;font-weight:700;">'
-    +'<th style="padding:5px 8px;text-align:left;">Embarque</th>'
-    +'<th style="padding:5px 8px;text-align:left;">Desembarque</th>'
-    +'<th style="padding:5px 8px;">Dias</th>'
-    +'<th style="padding:5px 8px;">Porto</th>'
-    +'<th style="padding:5px 8px;">Navio</th>'
-    +'</tr></thead><tbody>'+linhas+'</tbody></table></div>'
-    +sugHtml
-    +'<div style="margin-top:12px;display:flex;gap:8px;">'
-    +'<button class="btn btn-primary" onclick="crewSugestao(\''+crewId+'\',this.closest(\'div\').parentElement.parentElement)" style="flex:1;">💬 Adicionar sugestão</button>'
-    +'<button class="btn btn-ghost" onclick="this.closest(\'div\').parentElement.parentElement.remove()">Fechar</button>'
-    +'</div>'
-    +'</div>';
-  ov.appendChild(panel); document.body.appendChild(ov);
-}
-
-function crewSugestao(crewId, ovPai){
-  var t=(S.crew||[]).find(function(c){return c.id===crewId;});
-  if(!t){ toast('Tripulante não encontrado','err'); return; }
-  var cfg=getCfg(); var cmte=(cfg.vessel||{}).cmte||'Comandante';
-
-  var ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
-  ov.onclick=function(e){if(e.target===ov)ov.remove();};
-  var panel=document.createElement('div');
-  panel.style.cssText='background:#fff;border-radius:14px;max-width:480px;width:100%;';
-  panel.innerHTML='<div style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;padding:14px 18px;border-radius:14px 14px 0 0;">'
-    +'<div style="font-weight:800;">💬 Sugestão / Recomendação</div>'
-    +'<div style="font-size:11px;opacity:.85;">'+escHtml(t.nm)+'</div>'
-    +'</div>'
-    +'<div style="padding:16px;">'
-    +'<div class="form-group"><label style="font-size:11px;font-weight:700;">Tipo</label>'
-    +'<select class="form-control" id="sug-tipo" style="font-size:11px;">'
-    +'<option>Recomendação positiva</option><option>Área a melhorar</option>'
-    +'<option>Observação de conduta</option><option>Promoção sugerida</option>'
-    +'<option>Aviso formal</option><option>Elogio</option><option>Outro</option>'
-    +'</select></div>'
-    +'<div class="form-group"><label style="font-size:11px;font-weight:700;">Texto</label>'
-    +'<textarea class="form-control" id="sug-txt" rows="4" style="font-size:12px;" placeholder="Descreva a observação..."></textarea></div>'
-    +'<div class="form-group"><label style="font-size:11px;font-weight:700;">Data</label>'
-    +'<input type="date" class="form-control" id="sug-data" value="'+new Date().toISOString().slice(0,10)+'" style="font-size:11px;"></div>'
-    +'<div style="display:flex;gap:8px;">'
-    +'<button class="btn btn-green" style="flex:1;" onclick="crewSugestaoSalvar(\''+crewId+'\')">💾 Salvar</button>'
-    +'<button class="btn btn-ghost" onclick="this.closest(\'div\').parentElement.parentElement.remove()">Cancelar</button>'
-    +'</div></div>';
-  ov.appendChild(panel); document.body.appendChild(ov);
-}
-
-function crewSugestaoSalvar(crewId){
-  var t=(S.crew||[]).find(function(c){return c.id===crewId;});
-  if(!t) return;
-  var tipo=(document.getElementById('sug-tipo')||{}).value||'Observação';
-  var txt =(document.getElementById('sug-txt')||{}).value||'';
-  var data=(document.getElementById('sug-data')||{}).value||new Date().toISOString().slice(0,10);
-  var cfg=getCfg(); var cmte=(cfg.vessel||{}).cmte||'Comandante';
-  if(!txt.trim()){ toast('Escreva a sugestão antes de salvar','warn'); return; }
-  if(!t.sugestoes) t.sugestoes=[];
-  t.sugestoes.unshift({id:gid(),tipo:tipo,txt:txt.trim(),data:data,autor:cmte,ts:Date.now()});
-  saveData(true);
-  toast('✅ Sugestão salva para '+t.nm,'ok');
-  // Fechar modais abertos
-  document.querySelectorAll('div[style*="z-index:9999"],div[style*="z-index:9998"]')
-    .forEach(function(el){el.remove();});
-}
 
 // ── Carregamento acumulativo por mês (não substitui, acumula) ──────────
 function jacCarregarMesAcumulativo(dados){
