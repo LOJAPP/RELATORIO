@@ -1213,7 +1213,7 @@
 
     <!-- TRIPULANTES -->
     <div id="page-tripulantes" class="page">
-      <div class="export-bar"><span>👥</span><p>Gestão da tripulação a bordo. Selecione múltiplos para atualização em lote.</p><button class="btn btn-primary btn-sm" onclick="openCrew(null)">➕ Novo</button></div>
+      <div class="export-bar"><span>👥</span><p>Gestão da tripulação a bordo.</p><button class="btn btn-primary btn-sm" onclick="openCrew(null)">➕ Novo</button><button class="btn btn-ghost btn-sm" onclick="crewListIMOOpen()">🚢 Crew List IMO</button></div>
       <!-- Crew list tab -->
       <div id="cpanel-list">
         <!-- Bulk action bar (hidden by default) -->
@@ -2986,7 +2986,7 @@ function _goPage(id){
   if(id==='dashboard'){renderDash();}
   if(id==='historico'){renderHistorico();}
   if(id==='tripulantes'){renderCrew();_crewSel.clear();_updateCrewBulkBar();switchCrewTab('list');}
-  if(id==='semanal'){try{popOficiais('sr-oficial','sr-func');}catch(e){}}
+  if(id==='semanal'){try{popOficiais('sr-oficial','sr-func');}catch(e){}try{renderSemTabs();}catch(e){}}
   if(id==='novo'){try{npPopulate();popLoadFunc('np-load-func');}catch(e){}}
   if(id==='embarque'){renderEmbarque();}
   if(id==='semanal'){renderSemTabs();}
@@ -4841,10 +4841,11 @@ function renderCrew(){
         +(hist>1?'<span style="color:var(--login-blue);">'+hist+' embarques</span>':'')
         +'</div>'
         +'<div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end;" onclick="event.stopPropagation();">'
-        +'<button class="btn btn-ghost btn-sm" onclick="crewHistorico(\''+t.id+'\')" style="font-size:11px;">Historico</button>'
-        +'<button class="btn btn-ghost btn-sm" onclick="crewSugestao(\''+t.id+'\')" style="font-size:11px;">Sugestao</button>'
-        +'<button class="btn btn-primary btn-sm" onclick="openCrew(\''+t.id+'\')" style="font-size:11px;">Editar</button>'
-        +'<button class="btn btn-danger btn-sm" onclick="delCrew(\''+t.id+'\')" style="font-size:11px;">Del</button>'
+        +'<button class="btn btn-ghost btn-sm" onclick="crewVincularHistorico(\''+t.id+'\')" style="font-size:11px;" title="Registrar embarque">🔗 Vincular</button>'
+        +'<button class="btn btn-ghost btn-sm" onclick="crewHistorico(\''+t.id+'\')" style="font-size:11px;">📋 Hist.</button>'
+        +'<button class="btn btn-ghost btn-sm" onclick="crewSugestao(\''+t.id+'\')" style="font-size:11px;">💬</button>'
+        +'<button class="btn btn-primary btn-sm" onclick="openCrew(\''+t.id+'\')" style="font-size:11px;">✏️</button>'
+        +'<button class="btn btn-danger btn-sm" onclick="delCrew(\''+t.id+'\')" style="font-size:11px;">🗑</button>'
         +'</div></div>';
     }).join('');
     return '<div style="margin-bottom:20px;">'
@@ -5037,6 +5038,200 @@ function crewBancoOpen(){
   crewBancoRender();
   var el=document.getElementById('banco-crew-panel');
   if(el)el.style.display=el.style.display==='none'?'block':'none';
+}
+
+
+// ═══════════════════════════════════════════════════
+// RELATÓRIO SEMANAL — renderSem (função central)
+// ═══════════════════════════════════════════════════
+function renderSem(week){
+  curWeek=week;
+  const body=document.getElementById('rpt-sem');if(!body)return;
+  const regs=(S.regs||[]).filter(r=>r.s===week).sort((a,b)=>(a.d||'').localeCompare(b.d||''));
+  const ofic=(S.oficina||[]).filter(o=>o.s===week);
+  const desv=(S.desvios||[]).filter(d=>d.s===week);
+  const cfg=getCfg();const v=cfg.vessel||{};
+  if(!regs.length&&!ofic.length&&!desv.length){
+    body.innerHTML='<div class="empty-state"><div class="ico">📅</div><p>Sem registros na semana SEM '+week+'</p></div>';return;
+  }
+  const dates=regs.map(r=>r.d||'').filter(Boolean).sort();
+  const dtStr=dates.length?(fd(dates[0])+(dates.length>1?' a '+fd(dates[dates.length-1]):'')):'SEM '+week;
+  let h='<div style="background:linear-gradient(135deg,#0a1e45,#143068);color:#fff;padding:18px 20px;border-radius:12px;margin-bottom:16px;">'
+    +'<div style="font-size:10px;opacity:.7;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Relatório Semanal · SEM '+week+'</div>'
+    +'<div style="font-size:18px;font-weight:800;margin-bottom:2px;">'+escHtml(v.name||'M/V LOG-IN Jacarandá')+'</div>'
+    +'<div style="font-size:12px;opacity:.8;">'+dtStr+' · '+regs.length+' atividade(s)</div></div>';
+  const byDept={};
+  regs.forEach(r=>{byDept[r.dp]=byDept[r.dp]||[];byDept[r.dp].push(r);});
+  Object.entries(byDept).forEach(([dept,rlist])=>{
+    h+='<div style="margin-bottom:18px;">'
+      +'<div style="background:var(--login-blue);color:#fff;padding:7px 14px;border-radius:8px 8px 0 0;font-weight:700;font-size:12px;text-transform:uppercase;">'
+      +escHtml(dept)+' <span style="opacity:.7;font-weight:400;">('+rlist.length+')</span></div>'
+      +'<div style="border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;overflow:hidden;">';
+    rlist.forEach((r,i)=>{
+      const fotos=r.fotos||[];
+      const stCol=r.st==='Concluído'?'#16a34a':r.st==='Em andamento'?'#d97706':'#dc2626';
+      h+='<div style="padding:11px 14px;'+(i>0?'border-top:1px solid var(--border)':'')
+        +';background:'+(i%2===0?'#fff':'#f9fafb')+'">'
+        +'<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+        +'<div style="flex:1;min-width:180px;">'
+        +'<div style="font-weight:700;font-size:13px;margin-bottom:2px;">'+escHtml(r.a||r.titulo||'—')+'</div>'
+        +'<div style="font-size:11px;color:var(--text-dim);">'+fd(r.d||'')+' · Qtd: '+escHtml(r.q||'—')
+        +' · <span style="color:'+stCol+';font-weight:600;">'+escHtml(r.st||'—')+'</span></div>'
+        +(r.ob?'<div style="font-size:12px;margin-top:4px;background:#f8fafc;padding:5px 8px;border-radius:5px;border-left:3px solid var(--border2);">'+escHtml(r.ob)+'</div>':'')
+        +'</div></div>'
+        +(fotos.length?'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">'
+          +fotos.slice(0,6).map((u,fi)=>'<img src="'+u+'" onclick="viewP(\''+u+'\')" '
+            +'style="width:72px;height:72px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border);" '
+            +'loading="lazy" onerror="this.style.display=\'none\'" alt="foto '+(fi+1)+'">').join('')
+          +(fotos.length>6?'<div style="width:72px;height:72px;background:var(--surface2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-dim);">+'+(fotos.length-6)+'</div>':'')
+          +'</div>':'')
+        +'</div>';
+    });
+    h+='</div></div>';
+  });
+  if(ofic.length){
+    h+='<div style="margin-bottom:18px;"><div style="background:#7c3aed;color:#fff;padding:7px 14px;border-radius:8px 8px 0 0;font-weight:700;font-size:12px;text-transform:uppercase;">Blocos/Oficina ('+ofic.length+')</div>'
+      +'<div style="border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;">'
+      +ofic.map((o,i)=>'<div style="padding:9px 14px;'+(i>0?'border-top:1px solid var(--border)':'')+';">'
+        +'<div style="font-weight:700;font-size:12px;">'+escHtml(o.item||o.lb||'—')+'</div>'
+        +'<div style="font-size:11px;color:var(--text-dim);">'+fd(o.d||'')+' · '+escHtml(o.dep||'')+' · '+escHtml(o.st||'')+'</div>'
+        +(o.work?'<div style="font-size:12px;margin-top:3px;">'+escHtml(o.work)+'</div>':'')+'</div>').join('')
+      +'</div></div>';
+  }
+  if(desv.length){
+    h+='<div><div style="background:#dc2626;color:#fff;padding:7px 14px;border-radius:8px 8px 0 0;font-weight:700;font-size:12px;text-transform:uppercase;">Desvios ('+desv.length+')</div>'
+      +'<div style="border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;">'
+      +desv.map((d,i)=>'<div style="padding:9px 14px;'+(i>0?'border-top:1px solid var(--border)':'')+';">'
+        +'<div style="font-weight:700;font-size:12px;">'+escHtml(d.tipo||'—')+' — <span style="color:#dc2626;">'+escHtml(d.st||'Aberto')+'</span></div>'
+        +'<div style="font-size:12px;">'+escHtml(d.desc||'')+'</div></div>').join('')
+      +'</div></div>';
+  }
+  body.innerHTML=h;
+}
+
+function initSemanal(){ renderSemTabs(); }
+
+// ═══════════════════════════════════════════════════
+// CREW LIST IMO — modelo de tripulantes a bordo
+// ═══════════════════════════════════════════════════
+function renderCrewListIMO(){
+  const body=document.getElementById('crew-imo-body');if(!body)return;
+  const crew=(S.crew||[]).filter(t=>t.em&&!t.de).sort((a,b)=>{
+    const rank={'Comandante':0,'Imediato':1,'2o Oficial':2,'3o Oficial':3,'Chefe de Maquinas':4,'1o Maquinista':5,'2o Maquinista':6,'3o Maquinista':7};
+    const ra=rank[a.fn]??99,rb=rank[b.fn]??99;
+    return ra!==rb?ra-rb:(a.nm||'').localeCompare(b.nm||'');
+  });
+  const cfg=getCfg();const v=cfg.vessel||{};
+  const hoje=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  body.innerHTML=
+    '<div style="text-align:center;border:2px solid #000;padding:12px;background:#fff;">'
+    +'<div style="font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:1px;">LISTA DE TRIPULANTES A BORDO</div>'
+    +'<div style="font-size:10px;color:#555;margin-top:2px;">CREW LIST — IMO FAL Form 5</div>'
+    +'</div>'
+    +'<div style="border:1px solid #000;border-top:none;padding:8px 12px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:#fff;">'
+    +'<div><div style="font-size:8px;text-transform:uppercase;color:#666;font-weight:700;">Nome do Navio</div><div style="font-size:12px;font-weight:700;">'+escHtml(v.name||'M/V LOG-IN Jacarandá')+'</div></div>'
+    +'<div><div style="font-size:8px;text-transform:uppercase;color:#666;font-weight:700;">IMO Number</div><div style="font-size:12px;font-weight:700;">'+escHtml(v.imo||'9471886')+'</div></div>'
+    +'<div><div style="font-size:8px;text-transform:uppercase;color:#666;font-weight:700;">Bandeira</div><div style="font-size:12px;font-weight:700;">'+escHtml(v.bandeira||'Brasil')+'</div></div>'
+    +'<div><div style="font-size:8px;text-transform:uppercase;color:#666;font-weight:700;">Porto</div><div style="font-size:12px;font-weight:700;">'+escHtml(v.porto||'—')+'</div></div>'
+    +'<div><div style="font-size:8px;text-transform:uppercase;color:#666;font-weight:700;">Data</div><div style="font-size:12px;font-weight:700;">'+hoje+'</div></div>'
+    +'<div><div style="font-size:8px;text-transform:uppercase;color:#666;font-weight:700;">Total a bordo</div><div style="font-size:12px;font-weight:700;color:#0a1e45;">'+crew.length+' tripulante(s)</div></div>'
+    +'</div>'
+    +'<div style="border:1px solid #000;border-top:none;overflow-x:auto;background:#fff;">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+    +'<thead><tr style="background:#0a1e45;color:#fff;">'
+    +'<th style="padding:5px 7px;border:1px solid #1a3060;text-align:center;width:28px;">Nº</th>'
+    +'<th style="padding:5px 7px;border:1px solid #1a3060;text-align:left;">Nome / Full Name</th>'
+    +'<th style="padding:5px 7px;border:1px solid #1a3060;text-align:left;">Função / Rank</th>'
+    +'<th style="padding:5px 7px;border:1px solid #1a3060;text-align:center;">Matrícula</th>'
+    +'<th style="padding:5px 7px;border:1px solid #1a3060;text-align:center;">Nac.</th>'
+    +'<th style="padding:5px 7px;border:1px solid #1a3060;text-align:center;">Embarque</th>'
+    +'<th style="padding:5px 7px;border:1px solid #1a3060;text-align:center;">Porto Emb.</th>'
+    +'<th style="padding:5px 7px;border:1px solid #1a3060;text-align:center;">Dias</th>'
+    +'</tr></thead><tbody>'
+    +(crew.length?crew.map((t,i)=>{
+      const dias=t.em?Math.ceil((Date.now()-new Date(t.em+'T12:00').getTime())/864e5):'—';
+      return '<tr style="background:'+(i%2===0?'#fff':'#f8fafc')+';border-bottom:1px solid #ddd;">'
+        +'<td style="padding:5px 7px;border:1px solid #ddd;text-align:center;font-weight:700;">'+(i+1)+'</td>'
+        +'<td style="padding:5px 7px;border:1px solid #ddd;font-weight:600;">'+escHtml(t.nm||'—')+'</td>'
+        +'<td style="padding:5px 7px;border:1px solid #ddd;">'+escHtml(t.fn||'—')+'</td>'
+        +'<td style="padding:5px 7px;border:1px solid #ddd;text-align:center;font-family:monospace;">'+escHtml(t.mat||'—')+'</td>'
+        +'<td style="padding:5px 7px;border:1px solid #ddd;text-align:center;">'+escHtml(t.nat||'BR')+'</td>'
+        +'<td style="padding:5px 7px;border:1px solid #ddd;text-align:center;">'+(t.em?fd(t.em):'—')+'</td>'
+        +'<td style="padding:5px 7px;border:1px solid #ddd;text-align:center;">'+escHtml(t.porto||'—')+'</td>'
+        +'<td style="padding:5px 7px;border:1px solid #ddd;text-align:center;font-weight:700;color:#0a1e45;">'+dias+'</td></tr>';
+    }).join('')
+    :'<tr><td colspan="8" style="padding:14px;text-align:center;color:#666;">Nenhum tripulante a bordo cadastrado.</td></tr>')
+    +'</tbody></table></div>'
+    +'<div style="border:1px solid #000;border-top:none;padding:10px 12px;background:#fff;display:grid;grid-template-columns:1fr 1fr;gap:20px;">'
+    +'<div><div style="font-size:8px;text-transform:uppercase;color:#666;font-weight:700;margin-bottom:18px;">Assinatura do Comandante / Master Signature</div>'
+    +'<div style="border-top:1px solid #000;padding-top:3px;font-size:11px;">'+escHtml(v.cmte||'Comandante')+'</div></div>'
+    +'<div><div style="font-size:8px;text-transform:uppercase;color:#666;font-weight:700;margin-bottom:18px;">Carimbo / Stamp</div>'
+    +'<div style="border:1px solid #ccc;height:46px;border-radius:4px;"></div></div></div>';
+}
+
+function crewListIMOOpen(){
+  var ov=document.getElementById('modal-crew-imo');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='modal-crew-imo';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9997;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;';
+    ov.onclick=function(e){if(e.target===ov)ov.remove();};
+    var panel=document.createElement('div');
+    panel.style.cssText='background:#fff;border-radius:12px;max-width:820px;width:100%;margin:auto;box-shadow:0 24px 80px rgba(0,0,0,.35);';
+    panel.innerHTML='<div style="background:linear-gradient(135deg,#0a1e45,#143068);color:#fff;padding:14px 18px;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:10px;">'
+      +'<span style="font-size:15px;font-weight:800;flex:1;">🚢 Crew List IMO — Tripulantes a bordo</span>'
+      +'<button onclick="window.print()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:11px;">🖨 Imprimir</button>'
+      +'<button onclick="document.getElementById(\'modal-crew-imo\').remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:18px;margin-left:4px;">x</button>'
+      +'</div><div style="padding:14px;" id="crew-imo-body"></div>';
+    ov.appendChild(panel);document.body.appendChild(ov);
+  } else { ov.style.display='flex'; }
+  renderCrewListIMO();
+}
+
+function crewVincularHistorico(crewId){
+  var t=(S.crew||[]).find(function(c){return c.id===crewId;});
+  if(!t){toast('Tripulante não encontrado','err');return;}
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  var panel=document.createElement('div');
+  panel.style.cssText='background:#fff;border-radius:14px;max-width:420px;width:100%;';
+  var vn=(getCfg().vessel||{}).name||'M/V LOG-IN Jacarandá';
+  panel.innerHTML='<div style="background:linear-gradient(135deg,#0a1e45,#143068);color:#fff;padding:13px 16px;border-radius:14px 14px 0 0;">'
+    +'<div style="font-weight:800;font-size:14px;">Registrar Embarque</div>'
+    +'<div style="font-size:11px;opacity:.85;">'+escHtml(t.nm)+' — '+escHtml(t.fn||'')+'</div></div>'
+    +'<div style="padding:14px;">'
+    +'<div class="form-row" style="gap:8px;">'
+    +'<div class="form-group"><label style="font-size:11px;font-weight:700;">Embarque *</label>'
+    +'<input type="date" class="form-control" id="vinc-em" value="'+(t.em||new Date().toISOString().slice(0,10))+'"></div>'
+    +'<div class="form-group"><label style="font-size:11px;font-weight:700;">Desembarque</label>'
+    +'<input type="date" class="form-control" id="vinc-de" value="'+(t.de||'')+'"></div></div>'
+    +'<div class="form-group"><label style="font-size:11px;font-weight:700;">Porto</label>'
+    +'<input type="text" class="form-control" id="vinc-porto" value="'+(t.porto||'')+'" placeholder="Santos, Manaus..."></div>'
+    +'<div class="form-group"><label style="font-size:11px;font-weight:700;">Navio</label>'
+    +'<input type="text" class="form-control" id="vinc-vessel" value="'+vn+'"></div>'
+    +'<div style="display:flex;gap:8px;">'
+    +'<button class="btn btn-primary" style="flex:1;" onclick="crewVincularSalvar(\''+crewId+'\')">Salvar embarque</button>'
+    +'<button class="btn btn-ghost" onclick="this.closest(\'div\').parentElement.parentElement.remove()">Cancelar</button>'
+    +'</div></div>';
+  ov.appendChild(panel);document.body.appendChild(ov);
+}
+
+function crewVincularSalvar(crewId){
+  var t=(S.crew||[]).find(function(c){return c.id===crewId;});if(!t)return;
+  var em=(document.getElementById('vinc-em')||{}).value||'';
+  var de=(document.getElementById('vinc-de')||{}).value||'';
+  var porto=(document.getElementById('vinc-porto')||{}).value||'';
+  var vessel=(document.getElementById('vinc-vessel')||{}).value||'';
+  if(!em){toast('Data de embarque obrigatória','warn');return;}
+  t.em=em;if(de)t.de=de;if(porto)t.porto=porto;
+  if(!S.embHistory)S.embHistory=[];
+  var existe=S.embHistory.find(function(h){return h.crewId===crewId&&h.em===em;});
+  if(existe){existe.de=de||existe.de;existe.porto=porto||existe.porto;}
+  else{S.embHistory.push({id:gid(),crewId:crewId,em:em,de:de||null,porto:porto,vessel:vessel,ts:Date.now()});}
+  saveData(true);renderCrew();
+  toast('Embarque de '+t.nm+' registrado','ok');
+  document.querySelectorAll('div[style*="z-index:9999"]').forEach(function(el){el.remove();});
 }
 
 
