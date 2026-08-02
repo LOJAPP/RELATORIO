@@ -7228,6 +7228,7 @@ function jacCarregarMesAcumulativo(dados){
   saveData(true);
   if(typeof kpis==='function') kpis();
   if(typeof renderDash==='function') renderDash();
+  if(typeof renderCrew==='function') renderCrew();
   var adicionados = {
     regs:      (S.regs||[]).length      - antes.regs,
     oficina:   (S.oficina||[]).length   - antes.oficina,
@@ -7796,6 +7797,7 @@ async function gdriveCarregarArquivo(token,fileId,fileName){
     if(!confirm('Carregar "'+fileName+'"?\n'+(ehParcial?'Modo ACUMULATIVO (não apaga dados existentes)':'SUBSTITUI todos os dados locais')+'\n\nContinuar?')) return;
     if(ehParcial){ jacCarregarMesAcumulativo(data); }
     else if(typeof applyImport==='function'){ applyImport(data); toast('✅ Backup carregado!','ok'); }
+    if(typeof renderCrew==='function') renderCrew();
     else{
       Object.assign(S,{regs:data.regs||[],crew:data.crew||[],fotos:data.fotos||[],
         empresas:data.empresas||[],oficina:data.oficina||[],desvios:data.desvios||[],inspecoes:data.inspecoes||[]});
@@ -9341,8 +9343,10 @@ async function loadFromFolder(){
     const newest=files[0];
     if(!confirm('Carregar: '+newest.name+'\n\nOs dados atuais serão substituídos.'))return;
     const d=JSON.parse(await(await newest.handle.getFile()).text());
-    S.regs=d.regs||[];S.crew=d.crew||[];S.fotos=d.fotos||[];S.empresas=d.empresas||[];S.oficina=d.oficina||[];S.desvios=d.desvios||[];
-    saveData(true);kpis();renderDash();toast('Dados carregados: '+newest.name,'ok');
+    S.regs=d.regs||[];S.crew=d.crew||[];S.fotos=d.fotos||[];S.empresas=d.empresas||[];S.oficina=d.oficina||[];S.desvios=d.desvios||[];S.inspecoes=d.inspecoes||[];S.embHistory=d.embHistory||[];
+    saveData(true);kpis();renderDash();
+    if(typeof renderCrew==='function') renderCrew();
+    toast('✅ '+S.crew.length+' tripulante(s) e '+S.regs.length+' registro(s) carregados: '+newest.name,'ok');
   }catch(e){toast('Erro: '+e.message,'err');}
 }
 function exportJSON(){
@@ -14188,7 +14192,7 @@ function previewBackup(data, fname){
 
   const actions = document.getElementById('import-actions');
   actions.innerHTML = `
-    <button class="btn btn-primary" onclick="applyBackup()">✅ Importar ${newRegs.length} registro(s)</button>
+    <button class="btn btn-primary" onclick="applyBackup()">✅ Importar ${newRegs.length} reg. + ${newCrew.length} tripulante(s)</button>
     <button class="btn btn-ghost" onclick="cancelImport()">✕ Cancelar</button>
   `;
 
@@ -14199,26 +14203,58 @@ function previewBackup(data, fname){
 function applyBackup(){
   if(!_importPending||_importPending.type!=='backup') return;
   const data = _importPending.data;
-  let cnt = {regs:0,crew:0,desv:0,insp:0,ofic:0,empr:0};
+  const isGeral = !data.scope || data.scope==='GERAL';
 
-  const merge = (target, incoming, key='id') => {
-    const existing = new Set(target.map(i=>i[key]));
-    const added = incoming.filter(i=>!existing.has(i[key]));
+  const mergeById = (target, incoming) => {
+    const existing = new Set(target.map(i=>i.id));
+    const added = incoming.filter(i=>i.id&&!existing.has(i.id));
     added.forEach(i=>target.push(i));
     return added.length;
   };
+  const mergeByNm = (target, incoming) => {
+    // Para crew: mesclar por nome normalizado (evitar seeds duplicados)
+    const existNm = new Set(target.map(c=>(c.nm||'').toLowerCase().trim()));
+    const added = incoming.filter(c=>c.nm&&!existNm.has((c.nm||'').toLowerCase().trim()));
+    added.forEach(c=>target.push(c));
+    return added.length;
+  };
 
-  cnt.regs = merge(S.regs, data.regs||[]);
-  cnt.crew = merge(S.crew, data.crew||[]);
-  cnt.desv = merge(S.desvios, data.desvios||[]);
-  cnt.insp = merge(S.inspecoes, data.inspecoes||[]);
-  cnt.ofic = merge(S.oficina, data.oficina||[]);
-  cnt.empr = merge(S.empresas, data.empresas||[]);
+  let cnt = {regs:0,crew:0,desv:0,insp:0,ofic:0,empr:0,hist:0};
+
+  cnt.regs = mergeById(S.regs,   data.regs||[]);
+  cnt.desv = mergeById(S.desvios, data.desvios||[]);
+  cnt.insp = mergeById(S.inspecoes, data.inspecoes||[]);
+  cnt.ofic = mergeById(S.oficina, data.oficina||[]);
+  cnt.empr = mergeById(S.empresas, data.empresas||[]);
+  cnt.hist = mergeById(S.embHistory, data.embHistory||[]);
+
+  if(isGeral && (data.crew||[]).length > 0){
+    // Backup geral: substituir crew completamente para eliminar seeds falsos
+    // Manter sugestões e histórico dos que já existem por nome
+    var crewEntrada = data.crew||[];
+    // Preservar sugestoes dos existentes (por nome)
+    var oldByNm = {};
+    (S.crew||[]).forEach(function(c){ oldByNm[(c.nm||'').toLowerCase().trim()]=c; });
+    crewEntrada.forEach(function(c){
+      var old = oldByNm[(c.nm||'').toLowerCase().trim()];
+      if(old && old.sugestoes && old.sugestoes.length && !(c.sugestoes||[]).length){
+        c.sugestoes = old.sugestoes;
+      }
+    });
+    S.crew = crewEntrada;
+    cnt.crew = S.crew.length;
+  } else {
+    cnt.crew = mergeByNm(S.crew, data.crew||[]);
+  }
+
+  // Fotos: substituir se backup geral (arquivo grande)
+  if(isGeral && (data.fotos||[]).length > 0) S.fotos = data.fotos;
 
   saveData(true); kpis(); renderDash();
   cancelImport();
+  if(typeof renderCrew==='function') renderCrew();
 
-  const msg = `✅ Importado: ${cnt.regs} registros · ${cnt.crew} tripulantes · ${cnt.desv} desvios · ${cnt.insp} inspeções`;
+  const msg = '✅ Importado: '+cnt.regs+' registros · '+cnt.crew+' tripulante(s) · '+cnt.desv+' desvios · '+cnt.insp+' inspeções · '+cnt.hist+' embarques no histórico';
   addImportLog(msg,'ok');
   toast(msg,'ok');
 }
