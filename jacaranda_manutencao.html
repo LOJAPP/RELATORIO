@@ -4200,6 +4200,550 @@ var _novoTab = 'atividade';
 // ═══════════════════════════════════════════════════════════
 // FUNÇÕES UTILITÁRIAS ESSENCIAIS
 // ═══════════════════════════════════════════════════════════
+
+// ═══ FUNÇÕES RESTAURADAS DO UPLOAD ═══
+
+function switchNovoTab(tab){
+  _novoTab = tab;
+  ['atividade','bloco','relatorio'].forEach(t=>{
+    const btn = document.getElementById('ntab-'+t);
+    const pnl = document.getElementById('npanel-'+t);
+    if(btn) btn.className = 'btn btn-sm '+(t===tab?'btn-primary':'btn-ghost');
+    if(pnl) pnl.style.display = t===tab?'':'none';
+  });
+  if(tab==='relatorio') initNovoRelatorio();
+}
+
+function saveNovoRelatorio(){
+  const data   = document.getElementById('r2-data')?.value;
+  const titulo = document.getElementById('r2-titulo')?.value.trim();
+  const autorId= document.getElementById('r2-autor')?.value;
+  if(!data || !titulo){ toast('⚠️ Preencha a data e o título','warn'); return; }
+  if(!autorId){ toast('⚠️ Selecione quem registra','warn'); return; }
+  const autor = S.crew.find(c=>c.id===autorId);
+  const abbr  = autor?(autor.abbr||(ROLE_ABBR[autor.fn]||autor.fn.slice(0,3).toUpperCase())):'';
+  if(!S.relatorios) S.relatorios = [];
+  S.relatorios.push({
+    id: gid(), data,
+    autorId, autorNm: autor?`[${abbr}] ${autor.nm}`:'—',
+    dept:    document.getElementById('r2-dept')?.value||'',
+    projeto: document.getElementById('r2-projeto')?.value.trim()||'',
+    area:    document.getElementById('r2-area')?.value.trim()||'',
+    titulo,
+    desc:    document.getElementById('r2-desc')?.value.trim()||'',
+    planos:  document.getElementById('r2-planos')?.value.trim()||'',
+    items:   JSON.parse(JSON.stringify(_r2Items)),
+    s: String(wn()).padStart(2,'0'),
+    ts: Date.now()
+  });
+  saveData(true);
+  // Clear form
+  ['r2-titulo','r2-desc','r2-projeto','r2-area','r2-planos'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  _r2Items = [];
+  renderR2Items();
+  renderR2Saved();
+  toast('✅ Relatório salvo!','ok');
+}
+
+function saveNovoBloco(){
+  const titulo = document.getElementById('novo-bloco-titulo')?.value.trim();
+  if(!titulo){ toast('⚠️ Preencha o título do serviço','warn'); return; }
+  const semVal = document.getElementById('r-sem')?.value || String(wn()).padStart(2,'0');
+  const empId  = document.getElementById('novo-bloco-emp')?.value||'';
+  const emp    = S.empresas.find(e=>e.id===empId);
+  const respId = document.getElementById('novo-bloco-resp')?.value||'';
+  const resp   = S.crew.find(c=>c.id===respId);
+  const abbr   = resp?(resp.abbr||(ROLE_ABBR[resp.fn]||resp.fn.slice(0,3).toUpperCase())):'';
+  S.oficina.push({
+    id:gid(), s:semVal, d:document.getElementById('r-data')?.value||new Date().toISOString().slice(0,10),
+    titulo, desc:document.getElementById('novo-bloco-desc')?.value||'',
+    empId, empNm:emp?.nm||'—', empTipo:emp?.tipo||'Terceirizada',
+    local:document.getElementById('novo-bloco-local')?.value||'',
+    st:document.getElementById('novo-bloco-st')?.value||'Em Andamento',
+    respId, respNm:resp?`[${abbr}] ${resp.nm.split(' ')[0]}`:'—',
+    valor:parseFloat(document.getElementById('novo-bloco-valor')?.value)||0,
+    os:document.getElementById('novo-bloco-os')?.value||'',
+    fotos:[], ts:Date.now()
+  });
+  saveData(true);
+  // Clear form
+  ['novo-bloco-titulo','novo-bloco-desc','novo-bloco-local','novo-bloco-os','novo-bloco-valor'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  toast('✅ Serviço Bloco/Oficina registrado!','ok');
+  switchNovoTab('atividade');
+}
+
+function addR2Item(){
+  _r2Items.push({desc:'', fotos:[], fotosDesc:[]});
+  renderR2Items();
+}
+
+function novoAddEmpresa(){
+  const inp = document.getElementById('novo-emp-nm');
+  const nm = inp?inp.value.trim():'';
+  if(!nm){ toast('⚠️ Nome da empresa obrigatório','warn'); return; }
+  const tipo = document.getElementById('novo-emp-tipo')?.value||'Terceirizada';
+  const id = gid();
+  S.empresas.push({id, nm, tipo, ts:Date.now()});
+  saveData(true);
+  toast('✅ Empresa '+nm+' adicionada!','ok');
+  if(inp) inp.value='';
+  // Refresh empresa select in bloco panel
+  const sel = document.getElementById('novo-bloco-emp');
+  if(sel){
+    sel.innerHTML = '<option value="">— Selecionar empresa —</option>' + S.empresas.map(e=>`<option value="${e.id}">${escHtml(e.nm)}</option>`).join('');
+    sel.value = id;
+  }
+}
+
+function setDept(d,el){
+  activeDept=d;
+  document.querySelectorAll('.dept-pill').forEach(p=>{p.className='dept-pill';});
+  if(el){const cls={Todos:'pa',Convés:'pc',Máquinas:'pm','MC Reefer':'pr',Bloco:'pbl'};el.classList.add(cls[d]||'pa');}
+  renderHistorico();
+}
+
+function renderHistorico(){
+  const q=(document.getElementById('hist-q')?.value||'').toLowerCase();
+  let regs=[...S.regs].sort((a,b)=>b.s.localeCompare(a.s)||b.ts-a.ts);
+  if(activeDept!=='Todos')regs=regs.filter(r=>r.dp===activeDept);
+  if(q)regs=regs.filter(r=>r.a.toLowerCase().includes(q)||r.q.toLowerCase().includes(q)||(r.l||'').toLowerCase().includes(q));
+  const tl=document.getElementById('tl-content');
+  if(!regs.length){tl.innerHTML='<div class="empty-state"><div class="ico">🔍</div><p>Nenhum resultado</p></div>';return;}
+  const byW={};regs.forEach(r=>{byW[r.s]=byW[r.s]||[];byW[r.s].push(r);});
+  tl.innerHTML=Object.entries(byW).sort((a,b)=>b[0].localeCompare(a[0])).map(([sem,rs])=>`
+    <div style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:6px 0;border-bottom:2px solid var(--border);">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--login-blue);">📅 SEMANA ${sem}</span>
+        <span style="font-size:11px;color:var(--text-dim);">${rs[0]?.lb||''}</span>
+        <span style="margin-left:auto;background:var(--login-blue);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">${rs.length}</span>
+      </div>
+      ${rs.map((r,i)=>renderActCard(r,i,true)).join('')}
+    </div>`).join('');
+}
+
+function renderMensal(){
+  const mes=document.getElementById('mes-sel').value;if(!mes)return;
+  const [yr,mo]=mes.split('-').map(Number);
+  const allRegs=S.regs.filter(r=>{const d=new Date(r.d+'T12:00:00');return d.getFullYear()===yr&&(d.getMonth()+1)===mo;});
+  const allOf  =S.oficina.filter(o=>{const d=new Date((o.d||'2000-01-01')+'T12:00:00');return d.getFullYear()===yr&&(d.getMonth()+1)===mo;});
+  const allInsp=S.inspecoes.filter(i=>{const d=new Date((i.data||'2000-01-01')+'T12:00:00');return d.getFullYear()===yr&&(d.getMonth()+1)===mo;});
+  const div=document.getElementById('rpt-mes');
+  const mName=new Date(yr,mo-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const vcfg=(getCfg().vessel)||{};
+
+  if(!allRegs.length&&!allOf.length&&!allInsp.length){
+    div.innerHTML=`<div class="empty-state"><div class="ico">📆</div><p>Nenhum dado em ${mName}</p></div>`;return;
+  }
+
+  const sems   =[...new Set([...allRegs.map(r=>r.s),...allOf.map(o=>o.s),...allInsp.map(i=>i.semana)])].filter(Boolean).sort();
+  const concl  =allRegs.filter(r=>r.st==='Concluído').length;
+  const inspConf=allInsp.filter(i=>i.result==='Conforme').length;
+
+  // KPI bar — same style as semanal
+  const kpi=(n,l,c)=>`<div style="background:#fff;border:1px solid var(--border);border-top:3px solid ${c};border-radius:8px;padding:10px 12px;text-align:center;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:${c};">${n}</div>
+    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);">${l}</div>
+  </div>`;
+  const kpis=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin-bottom:14px;">
+    ${kpi(allRegs.length,'Atividades','var(--login-blue)')}
+    ${kpi(concl,'Concluídas','#16a34a')}
+    ${kpi(allRegs.length-concl,'Pendentes','#d97706')}
+    ${kpi(allOf.length,'Bloco/Oficina','#059669')}
+    ${kpi(allInsp.length,'Inspeções','#7c3aed')}
+    ${kpi(inspConf,'Conformes','#16a34a')}
+  </div>`;
+
+  // Build each week — same pattern as semanal
+  const weeksHtml=sems.map(sem=>{
+    const regs=allRegs.filter(r=>r.s===sem);
+    const ofW =allOf.filter(o=>o.s===sem);
+    const inspW=allInsp.filter(i=>i.semana===sem);
+    const byD={};regs.forEach(r=>{byD[r.dp]=byD[r.dp]||[];byD[r.dp].push(r);});
+    const deptsHtml=Object.entries(byD).map(([dp,drs])=>`
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:0 0 5px;border-bottom:2px solid var(--border);">
+          <span style="font-size:13px;font-weight:800;color:var(--login-blue);">${dtg(dp)} ${dp.toUpperCase()}</span>
+          <span style="background:var(--login-blue);color:#fff;font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;">${drs.length}</span>
+        </div>
+        ${drs.map((r,i)=>renderActCard(r,i,true)).join('')}
+      </div>`).join('');
+
+    return `<div style="margin-bottom:20px;">
+      <!-- Week header — same as semanal rpt-header -->
+      <div class="rpt-header" style="border-radius:8px 8px 0 0;">
+        <div class="rpt-logo"><span>log</span><span class="gi">in</span><span class="dot">.</span></div>
+        <div style="flex:1;padding-left:16px;border-left:2px solid rgba(255,255,255,.3);">
+          <div class="rpt-title">Semana ${sem} — ${mName.toUpperCase()}</div>
+          <div class="rpt-sub">${vcfg.vessel||'LOG-IN JACARANDÁ'} &nbsp;·&nbsp; ${regs.length} atividades · ${ofW.length} bloco · ${inspW.length} inspeções</div>
+        </div>
+        <div style="text-align:right;font-size:11px;opacity:.8;">${regs.filter(r=>r.st==='Concluído').length} concluídas</div>
+      </div>
+      <!-- Atividades -->
+      <div class="panel" style="border-radius:0 0 8px 8px;border-top:none;margin-top:0;margin-bottom:10px;">
+        <div style="padding:12px 14px;">
+          ${deptsHtml||'<div style="color:var(--muted);font-size:12px;font-style:italic;">Sem atividades</div>'}
+          ${ofW.length?`
+            <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:8px;">
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#059669;margin-bottom:8px;">🏭 Bloco/Oficina (${ofW.length})</div>
+              ${ofW.map((o,i)=>`<div class="act-card" style="border-left:3px solid #059669;">
+                <div class="act-card-head"><span class="act-num" style="background:#059669;">${String(i+1).padStart(2,'0')}</span>
+                  <div class="act-title-block"><div class="act-title">${escHtml(o.titulo||o.desc||'—')}</div><div style="font-size:10px;color:#059669;">🏢 ${escHtml(o.empNm||'—')}</div></div>
+                  <span class="tag tok">${o.st}</span>
+                </div>
+                <div class="act-meta">${o.local?`<span class="act-meta-item">📍 ${escHtml(o.local)}</span>`:''}<span class="act-meta-item">👷 ${escHtml(o.respNm||'—')}</span><span class="act-meta-item" style="margin-left:auto;font-size:10px;color:var(--muted);">${fd(o.d)}</span></div>
+              </div>`).join('')}
+            </div>`:''}
+          ${inspW.length?`
+            <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:8px;">
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#7c3aed;margin-bottom:8px;">🔍 Inspeções (${inspW.length})</div>
+              ${inspW.map((ins,i)=>renderInspCard(ins,i,true)).join('')}
+            </div>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  div.innerHTML=`
+    ${kpis}
+    <div class="rpt-header" style="border-radius:8px;margin-bottom:14px;">
+      <div class="rpt-logo"><span>log</span><span class="gi">in</span><span class="dot">.</span></div>
+      <div style="flex:1;padding-left:16px;border-left:2px solid rgba(255,255,255,.3);">
+        <div class="rpt-title">Relatório Mensal — ${mName.toUpperCase()}</div>
+        <div class="rpt-sub">${vcfg.vessel||'LOG-IN JACARANDÁ'} &nbsp;·&nbsp; Cmte. ${vcfg.cmte||'Jose Moncada'} &nbsp;·&nbsp; ${sems.length} semana(s)</div>
+      </div>
+      <div style="text-align:right;font-size:11px;opacity:.8;">${allRegs.length} atividades<br>${concl} concluídas</div>
+    </div>
+    ${weeksHtml}
+    <div style="padding:12px 16px;background:#fff;border:1px solid var(--border);border-radius:8px;font-size:12px;border-top:3px solid var(--login-blue);display:flex;flex-wrap:wrap;gap:16px;">
+      <span><strong style="color:var(--login-blue)">Cmte.:</strong> ${vcfg.cmte||'Jose Moncada'}</span>
+      <span><strong style="color:var(--login-blue)">Imediato:</strong> ${vcfg.imo||'Robson Freitas'}</span>
+      <span><strong style="color:var(--login-blue)">Ch. Máq.:</strong> ${vcfg.cmaq||'Jorge Murrieta'}</span>
+      <span><strong style="color:var(--login-blue)">Sub-Ch.:</strong> ${vcfg.scmaq||'Cesar Diaz'}</span>
+    </div>`;
+}
+
+function openCrew(id){
+  const t=id?S.crew.find(x=>x.id===id):null;
+  document.getElementById('mcrew-id').value=id||'';
+  document.getElementById('mcrew-title').textContent=id?'✏️ Editar Tripulante':'👤 Novo Tripulante';
+  fillRoleSelect('mc-fn');fillDeptSelect('mc-dp');fillEmpresaSelect();
+  // Basic text fields
+  ['nm','mat','co','ob'].forEach(f=>{const el=document.getElementById('mc-'+f);if(el)el.value=t?t[f]||'':'';});
+  ['em','de'].forEach(f=>{const el=document.getElementById('mc-'+f);if(el)el.value=t?t[f]||'':'';});
+  // Selects
+  ['dp','tu','nat'].forEach(f=>{
+    const el=document.getElementById('mc-'+f);if(!el)return;
+    const v=t?t[f]||'':'';
+    for(let o of el.options){if(o.value===v){el.value=v;break;}}
+  });
+  // Function: check if custom
+  const fnSel=document.getElementById('mc-fn');
+  const fnCustom=document.getElementById('mc-fn-custom');
+  const abbrEl=document.getElementById('mc-abbr');
+  const fn=t?t.fn||'':'';
+  const isCustom=fn&&![...fnSel.options].some(o=>o.value===fn);
+  if(isCustom){fnSel.value='__custom__';fnCustom.style.display='block';fnCustom.value=fn;}
+  else{fnSel.value=fn;if(fnCustom)fnCustom.style.display='none';}
+  if(abbrEl)abbrEl.value=t?t.abbr||(ROLE_ABBR[fn]||fn.slice(0,3).toUpperCase()):'';
+  // Porto
+  const portoSel=document.getElementById('mc-porto-sel');
+  const portoInp=document.getElementById('mc-porto');
+  const porto=t?t.porto||'':'';
+  const isCustomPorto=porto&&![...portoSel.options].some(o=>o.value===porto);
+  if(isCustomPorto){portoSel.value='__custom__';portoInp.style.display='block';portoInp.value=porto;}
+  else{portoSel.value=porto;if(portoInp){portoInp.style.display='none';portoInp.value=porto;}}
+  // Empresa
+  const empSel=document.getElementById('mc-empresa-sel');
+  const empInp=document.getElementById('mc-empresa');
+  const empresa=t?t.empresa||'Log-In Logística':'Log-In Logística';
+  if(empSel){
+    let found=false;
+    for(let o of empSel.options){if(o.value===empresa){empSel.value=empresa;found=true;break;}}
+    if(!found){empSel.value='__custom__';if(empInp){empInp.style.display='block';empInp.value=empresa;}}
+    else if(empInp)empInp.style.display='none';
+  }
+  openModal('modal-crew');
+}
+
+function renderCrew(){
+  const q=(document.getElementById('crew-q')?.value||'').toLowerCase();
+  let crew=S.crew.filter(t=>!q||t.nm.toLowerCase().includes(q)||t.fn.toLowerCase().includes(q)||(t.mat||'').includes(q));
+  const list=document.getElementById('crew-list');
+  if(!crew.length){ list.innerHTML='<div class="empty-state"><div class="ico">👤</div><p>Nenhum tripulante</p></div>'; return; }
+  // Group by dept
+  const byDept={};
+  crew.forEach(t=>{ byDept[t.dp]=byDept[t.dp]||[]; byDept[t.dp].push(t); });
+  list.innerHTML=Object.entries(byDept).map(([dept,members])=>`
+    <div style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">
+        <span style="font-size:13px;font-weight:700;text-transform:uppercase;color:var(--text-dim);">${dtg(dept)} ${dept}</span>
+        <span style="background:var(--login-blue);color:#fff;font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;">${members.length}</span>
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);margin-left:auto;cursor:pointer;">
+          <input type="checkbox" onchange="members.forEach(c=>{ this.checked?_crewSel.add(c.id):_crewSel.delete(c.id); }); renderCrew(); _updateCrewBulkBar();" ${members.every(c=>_crewSel.has(c.id))?'checked':''}>
+          Selec. todos
+        </label>
+      </div>
+      ${members.map(t=>{
+        const abbr=t.abbr||(ROLE_ABBR[t.fn]||t.fn.slice(0,3).toUpperCase());
+        const sel=_crewSel.has(t.id);
+        return `<div class="crew-card" style="border-left:4px solid ${sel?'var(--login-blue)':'transparent'};background:${sel?'var(--login-blue-xlt)':'#fff'};cursor:pointer;" onclick="toggleCrewSel('${t.id}')">
+          <div style="display:flex;align-items:center;gap:10px;width:100%;">
+            <input type="checkbox" ${sel?'checked':''} onchange="toggleCrewSel('${t.id}')" onclick="event.stopPropagation()" style="flex-shrink:0;width:16px;height:16px;">
+            <div class="crew-av" style="background:${deptColor(t.dp)}">${t.nm.split(' ').map(w=>w[0]).slice(0,2).join('')}</div>
+            <div style="flex:1;min-width:0;">
+              <div class="crew-name">${escHtml(t.nm)}</div>
+              <div class="crew-role">${escHtml(t.fn)} <span class="crew-tag-pill" style="font-size:9px;">${abbr}</span></div>
+              <div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap;">
+                ${t.em?`<span class="emb-b">⬆ ${fd(t.em)}</span>`:''}
+                ${t.de?`<span class="des-b">⬇ ${fd(t.de)}</span>`:t.em?'<span style="font-size:10px;font-weight:700;color:#16a34a;">✅ A bordo</span>':''}
+                ${t.porto?`<span style="font-size:10px;color:var(--text-dim);">🚢 ${escHtml(t.porto)}</span>`:''}
+              </div>
+            </div>
+            <div style="text-align:right;font-size:11px;color:var(--text-dim);flex-shrink:0;">
+              <div class="mono">#${t.mat||'—'}</div>
+              <div>${t.tu}</div>
+              <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end;" onclick="event.stopPropagation()">
+                <button class="btn btn-primary btn-sm" onclick="openCrew('${t.id}')">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="delCrew('${t.id}')">🗑</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+}
+
+function openBulkUpdate(){
+  const n = _crewSel.size;
+  if(!n){ toast('⚠️ Selecione tripulantes primeiro','warn'); return; }
+  let modal = document.getElementById('modal-crew-bulk');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'modal-crew-bulk';
+    modal.className = 'modal-overlay';
+    document.body.appendChild(modal);
+  }
+  const portoOpts = ['','Navegantes-SC','Santos-SP','Salvador-BA','Suape-PE','Vitória-ES','Pecém-CE','Manaus-AM','Belém-PA','Fortaleza-CE']
+    .map(p=>`<option value="${p}">${p||'— Manter atual —'}</option>`).join('');
+  const tuOpts = ['','Turma A','Turma B'].map(t=>`<option value="${t}">${t||'— Manter atual —'}</option>`).join('');
+  modal.innerHTML=`
+  <div style="background:#fff;border-radius:14px;max-width:480px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.35);">
+    <div style="background:linear-gradient(135deg,#07182e,#0e2540);color:#fff;padding:16px 20px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:12px;">
+      <div style="flex:1;"><div style="font-size:16px;font-weight:800;">⚡ Atualização em Lote</div>
+      <div style="font-size:11px;opacity:.7;margin-top:2px;">${n} tripulante(s) selecionado(s)</div></div>
+      <button onclick="closeBulkUpdate()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:18px 20px;">
+      <div style="font-size:12px;font-weight:700;color:var(--login-blue);background:var(--login-blue-xlt);border-radius:6px;padding:8px 12px;margin-bottom:14px;">
+        Preencha apenas os campos que deseja alterar — campos vazios manterão o valor atual de cada tripulante.
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>⬆ Data de Embarque</label>
+          <input type="date" class="form-control" id="bulk-em">
+        </div>
+        <div class="form-group">
+          <label>⬇ Data de Desembarque</label>
+          <input type="date" class="form-control" id="bulk-de">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>🚢 Porto de Embarque</label>
+        <select class="form-control" id="bulk-porto">${portoOpts}</select>
+      </div>
+      <div class="form-group">
+        <label>🔄 Turma</label>
+        <select class="form-control" id="bulk-tu">${tuOpts}</select>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="applyBulkUpdate()">⚡ Aplicar a ${n} tripulante(s)</button>
+        <button class="btn btn-ghost" onclick="closeBulkUpdate()">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+  modal.style.display='flex'; modal.style.alignItems='center'; modal.style.justifyContent='center';
+  modal.onclick = e=>{ if(e.target===modal) closeBulkUpdate(); };
+}
+
+function selectAllCrew(){
+  S.crew.forEach(c=>_crewSel.add(c.id));
+  renderCrew(); _updateCrewBulkBar();
+}
+
+function deselectAllCrew(){
+  _crewSel.clear();
+  renderCrew(); _updateCrewBulkBar();
+}
+
+// === FUNCOES RESTAURADAS ===
+
+function filterHistorico(){
+  var dept=(document.getElementById('histo-dept')||{}).value||'';
+  var q=((document.getElementById('histo-search')||{}).value||'').toLowerCase().trim();
+  var from=(document.getElementById('histo-from')||{}).value||'';
+  var to=(document.getElementById('histo-to')||{}).value||'';
+  window._histFilt={dept:dept,q:q,from:from,to:to};
+  renderHistorico();
+}
+
+function renderSemanal(){
+  var body=document.getElementById('semanal-content'); if(!body) return;
+  var regs=(S.regs||[]).slice().sort(function(a,b){return (b.d||'').localeCompare(a.d||'');});
+  if(!regs.length){body.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);">Nenhum registro.</div>';return;}
+  var weeks={};
+  regs.forEach(function(r){
+    var d=new Date(r.d||Date.now());var dow=d.getDay()||7;
+    var mon=new Date(d);mon.setDate(d.getDate()-dow+1);
+    var key=mon.toISOString().slice(0,10);
+    if(!weeks[key])weeks[key]=[];weeks[key].push(r);
+  });
+  body.innerHTML=Object.keys(weeks).sort().reverse().map(function(wk){
+    var end=new Date(wk);end.setDate(end.getDate()+6);
+    var rows=weeks[wk].map(function(r){
+      return '<tr style="border-bottom:1px solid var(--border);">'
+        +'<td style="padding:5px 8px;font-size:11px;">'+fd(r.d||'')+'</td>'
+        +'<td style="padding:5px 8px;font-size:11px;color:var(--text-dim);">'+escHtml(r.dp||'')+'</td>'
+        +'<td style="padding:5px 8px;font-size:12px;">'+escHtml(r.a||'')+'</td>'
+        +'<td style="padding:5px 8px;font-size:11px;">'+escHtml(r.q||'')+'</td>'
+        +'<td style="padding:5px 8px;font-size:11px;">'+escHtml(r.st||'')+'</td></tr>';
+    }).join('');
+    return '<div style="margin-bottom:14px;">'
+      +'<div style="font-weight:700;font-size:12px;color:var(--login-blue);border-bottom:2px solid var(--login-blue);padding-bottom:4px;margin-bottom:6px;">'+fd(wk)+' — '+fd(end.toISOString().slice(0,10))+' ('+weeks[wk].length+' reg.)</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:var(--surface2);">'
+      +'<th style="padding:4px 8px;text-align:left;">Data</th><th style="padding:4px 8px;text-align:left;">Dep.</th>'
+      +'<th style="padding:4px 8px;text-align:left;">Atividade</th><th style="padding:4px 8px;text-align:left;">Qtd.</th>'
+      +'<th style="padding:4px 8px;text-align:left;">Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }).join('');
+}
+
+function saveSemanal(){
+  renderSemanal();
+  setTimeout(function(){exportPDF();},300);
+  toast('PDF do relatório semanal sendo gerado...','ok');
+}
+
+function jacLimparCrewDuplicado(){
+  var antes=(S.crew||[]).length,seen={},uniq=[];
+  (S.crew||[]).forEach(function(c){var k=(c.nm||'').toLowerCase().trim();if(!seen[k]){seen[k]=true;uniq.push(c);}});
+  S.crew=uniq;saveData();
+  toast('Removidos '+(antes-uniq.length)+' duplicados','ok');
+  renderCrew();
+}
+
+function renderFotosPage(){
+  var body=document.getElementById('fotos-grid');if(!body)return;
+  var all=[];
+  (S.fotos||[]).forEach(function(f,i){all.push({src:f.url||f,cap:f.cap||'',t:'global',idx:i});});
+  (S.regs||[]).forEach(function(r){
+    (r.fotos||[]).forEach(function(f,i){
+      all.push({src:f.url||f,cap:(r.fotosCaptions&&r.fotosCaptions[i])||r.a||'',t:'reg',regId:r.id,idx:i});
+    });
+  });
+  if(!all.length){body.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);">Nenhuma foto salva.</div>';return;}
+  window._fotosPageData=all;
+  body.innerHTML=all.map(function(f,i){
+    return '<div style="position:relative;border-radius:8px;overflow:hidden;cursor:pointer;aspect-ratio:1;background:#000;" onclick="showFoto('+i+')">'
+      +'<img src="'+f.src+'" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.parentElement.style.display=\'none\'">'
+      +(f.cap?'<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:9px;padding:3px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(f.cap)+'</div>':'')
+      +'<button onclick="event.stopPropagation();deleteFoto(\''+f.t+'\',\''+(f.regId||'')+'\','+f.idx+')" style="position:absolute;top:4px;right:4px;background:rgba(220,38,38,.85);border:none;color:#fff;border-radius:4px;width:20px;height:20px;cursor:pointer;font-size:11px;">x</button>'
+      +'</div>';
+  }).join('');
+}
+
+function showFoto(idx){
+  var arr=window._fotosPageData||[];if(!arr[idx])return;
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  var img=document.createElement('img');img.src=arr[idx].src;
+  img.style.cssText='max-width:95vw;max-height:80vh;border-radius:8px;object-fit:contain;';
+  var cap=document.createElement('div');cap.style.cssText='color:#fff;font-size:13px;opacity:.8;max-width:90vw;text-align:center;';
+  cap.textContent=arr[idx].cap||'';
+  var close=document.createElement('button');close.textContent='Fechar';
+  close.style.cssText='background:rgba(255,255,255,.15);border:none;color:#fff;padding:8px 20px;border-radius:8px;cursor:pointer;';
+  close.onclick=function(){ov.remove();};
+  ov.appendChild(img);ov.appendChild(cap);ov.appendChild(close);
+  document.body.appendChild(ov);
+}
+
+function deleteFoto(srcType,regId,idx){
+  if(!confirm('Excluir esta foto?'))return;
+  if(srcType==='global'){(S.fotos||[]).splice(idx,1);}
+  else{var r=(S.regs||[]).find(function(x){return x.id===regId;});if(r&&r.fotos){r.fotos.splice(idx,1);if(r.fotosCaptions)r.fotosCaptions.splice(idx,1);}}
+  saveData(true);renderFotosPage();toast('Foto excluida','ok');
+}
+
+function openOficina(id){
+  var o=id?(S.oficina||[]).find(function(x){return x.id===id;}):null;
+  ['of-id','of-d','of-dep','of-item','of-work','of-mat','of-obs','of-st','of-rm','of-nv'].forEach(function(fid){
+    var el=document.getElementById(fid);if(!el)return;
+    var key=fid.replace('of-','');
+    el.value=o?(o[key]||''):(key==='d'?new Date().toISOString().slice(0,10):'');
+  });
+  if(!o){var e2=document.getElementById('of-id');if(e2)e2.value=gid();}
+  try{fillDeptSelect('of-dep');}catch(e){}
+  showPage('oficina');
+}
+
+function addDesvio(){
+  var tipo=(document.getElementById('dev-tipo')||{}).value||'';
+  var desc=(document.getElementById('dev-desc')||{}).value||'';
+  var loc=(document.getElementById('dev-loc')||{}).value||'';
+  var d=(document.getElementById('dev-d')||{}).value||new Date().toISOString().slice(0,10);
+  var st=(document.getElementById('dev-st')||{}).value||'Aberto';
+  if(!tipo||!desc){toast('Preencha tipo e descricao','warn');return;}
+  if(!S.desvios)S.desvios=[];
+  S.desvios.unshift({id:gid(),tipo:tipo,desc:desc,loc:loc,d:d,st:st,ts:Date.now()});
+  saveData(true);renderDesvios();
+  ['dev-tipo','dev-desc','dev-loc'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  toast('Desvio registrado','ok');
+}
+
+function openInspecao(id){
+  var o=id?(S.inspecoes||[]).find(function(x){return x.id===id;}):null;
+  ['ins-id','ins-d','ins-it','ins-loc','ins-obs','ins-resp','ins-st','ins-nv'].forEach(function(fid){
+    var el=document.getElementById(fid);if(!el)return;
+    var key=fid.replace('ins-','');
+    el.value=o?(o[key]||''):(key==='d'?new Date().toISOString().slice(0,10):'');
+  });
+  if(!o){var e2=document.getElementById('ins-id');if(e2)e2.value=gid();}
+  var grid=document.getElementById('ins-fotos-grid');
+  if(grid)grid.innerHTML=(o&&o.fotos||[]).map(function(src,i){
+    return '<div style="position:relative;display:inline-block;margin:4px;">'
+      +'<img src="'+src+'" style="width:80px;height:80px;object-fit:cover;border-radius:6px;cursor:pointer;" onclick="showFoto('+i+')">'
+      +'</div>';
+  }).join('');
+  showPage('inspecao');
+}
+
+function addFotoInspecao(input){
+  var id=(document.getElementById('ins-id')||{}).value;
+  var o=id?(S.inspecoes||[]).find(function(x){return x.id===id;}):null;
+  if(!o){toast('Salve a inspecao primeiro','warn');return;}
+  var files=input.files;if(!files||!files.length)return;
+  Array.from(files).forEach(function(file){
+    var r=new FileReader();
+    r.onload=function(ev){
+      compressDataURL(ev.target.result,function(url){
+        if(!o.fotos)o.fotos=[];
+        o.fotos.push(url);saveData(true);
+        var grid=document.getElementById('ins-fotos-grid');
+        if(grid)grid.innerHTML=(o.fotos||[]).map(function(s,i){
+          return '<div style="position:relative;display:inline-block;margin:4px;">'
+            +'<img src="'+s+'" style="width:80px;height:80px;object-fit:cover;border-radius:6px;cursor:pointer;" onclick="showFoto('+i+')">'
+            +'</div>';
+        }).join('');
+      });
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function modalAdminErr(msg){ var el=document.getElementById('modal-admin-err'); if(el) el.textContent=msg; }
 function modalAdminClose(){ var el=document.getElementById('modal-admin'); if(el){ el.classList.remove('open'); el.style.display='none'; } }
