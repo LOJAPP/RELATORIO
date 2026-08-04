@@ -1113,7 +1113,12 @@
             <div style="color:var(--muted);font-size:12px;font-style:italic;padding:8px 0;">Nenhum item — clique em ➕ Adicionar Item</div>
           </div>
           <div class="sep"></div>
-          <button class="btn btn-primary" onclick="saveNovoRelatorio()" style="width:100%;padding:14px;font-size:15px;font-weight:700;background:#7c3aed;border-color:#6d28d9;">💾 Salvar Relatório</button>
+          <!-- Ações principais -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <button class="btn btn-primary" onclick="saveNovoRelatorio()" style="padding:13px;font-size:14px;font-weight:700;background:#7c3aed;border-color:#6d28d9;grid-column:1/-1;">💾 Salvar Relatório Técnico</button>
+            <button class="btn btn-ghost btn-sm" onclick="r2PrintAtual()" style="font-size:12px;">🖨 Pré-visualizar / PDF</button>
+            <button class="btn btn-ghost btn-sm" onclick="saveNovoRelatorio();saveTecNaPasta()" style="font-size:12px;">📁 Salvar + enviar para pasta</button>
+          </div>
           <div style="margin-top:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;">
             <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">📁 Pasta do navio — Relatório Técnico (subpasta "Relatorio Tecnico")</div>
             <div class="form-row" style="margin-bottom:8px;">
@@ -4296,12 +4301,16 @@ var _novoTab = 'atividade';
 // ═══ FUNÇÕES RESTAURADAS DO UPLOAD ═══
 
 function initNovoRelatorio(){
-  // Popular "Registrado por" e "Departamento" ao abrir aba Relatório
-  try{ popR2Autor(); }catch(e){}
   try{ fillDeptSelectFull('r2-dept'); }catch(e){}
-  // Data padrão = hoje
+  try{ popR2AutorList(); }catch(e){}  // popula o datalist do input
   var d=document.getElementById('r2-data');
   if(d && !d.value) d.value=new Date().toISOString().slice(0,10);
+  // Pré-preencher autor com Comandante se vazio
+  var cfg=getCfg(); var v=cfg.vessel||{};
+  var elR2=document.getElementById('r2-autor');
+  if(elR2 && !elR2.value && v.cmte) elR2.value=v.cmte;
+  // Mostrar relatórios salvos
+  try{ renderR2Saved(); }catch(e){}
 }
 
 
@@ -4493,8 +4502,26 @@ function r2CarregarForm(id){
   if(panel)panel.scrollIntoView({behavior:'smooth'});
 }
 
+// PDF do relatório que está sendo editado (sem precisar salvar antes)
+function r2PrintAtual(){
+  var data   = (document.getElementById('r2-data')||{}).value||'';
+  var titulo = ((document.getElementById('r2-titulo')||{}).value||'').trim();
+  var autorNm= ((document.getElementById('r2-autor')||{}).value||'').trim();
+  var dept   = (document.getElementById('r2-dept')||{}).value||'';
+  var projeto= ((document.getElementById('r2-projeto')||{}).value||'').trim();
+  var area   = ((document.getElementById('r2-area')||{}).value||'').trim();
+  var desc   = ((document.getElementById('r2-desc')||{}).value||'').trim();
+  var planos = ((document.getElementById('r2-planos')||{}).value||'').trim();
+  if(!titulo){toast('⚠️ Preencha o título antes de gerar o PDF','warn');return;}
+  var r={id:'preview',data:data,titulo:titulo,autorNm:autorNm||'—',
+    dept:dept,projeto:projeto,area:area,desc:desc,planos:planos,
+    items:JSON.parse(JSON.stringify(_r2Items))};
+  r2PrintPDF(null, r);
+}
+
 function r2PrintPDF(id){
-  var r=(S.relatorios||[]).find(function(x){return x.id===id;});
+  // Aceitar objeto direto ou buscar por ID
+  var r=id?(S.relatorios||[]).find(function(x){return x.id===id;}):arguments[1];
   if(!r){toast('Relatório não encontrado','err');return;}
   var cfg=getCfg();var v=cfg.vessel||{};
   var now=new Date().toLocaleString('pt-BR');
@@ -12077,7 +12104,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.4.3';
+const APP_VERSION = '3.4.4';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
