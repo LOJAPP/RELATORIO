@@ -3402,10 +3402,10 @@ function rtPopFunc(){
 }
 function rtAutorChange(){
   rtPopFunc();
-  var autorId=(document.getElementById('r2-autor')||{}).value;
+  var autorNmVal=((document.getElementById('r2-autor')||{}).value||'').trim();
   var sel=document.getElementById('rt-func');
-  if(!autorId||!sel) return;
-  var autor=(S.crew||[]).find(function(c){return c.id===autorId;});
+  if(!autorNmVal||!sel) return;
+  var autor=(S.crew||[]).find(function(c){return (c.nm||'').toLowerCase().includes(autorNmVal.toLowerCase());});
   if(autor){
     var a=autor.abbr||(ROLE_ABBR[autor.fn]||String(autor.fn||'').slice(0,3).toUpperCase());
     sel.value=jacFuncOfAbbr(a);
@@ -3414,16 +3414,16 @@ function rtAutorChange(){
 async function saveTecNaPasta(){
   var data=(document.getElementById('r2-data')||{}).value;
   var titulo=(document.getElementById('r2-titulo')||{}).value.trim();
-  var autorId=(document.getElementById('r2-autor')||{}).value;
+  var autorNm2=((document.getElementById('r2-autor')||{}).value||'').trim();
   if(!data||!titulo){ toast('⚠️ Preencha a data e o título','warn'); return; }
-  if(!autorId){ toast('⚠️ Selecione quem registra','warn'); return; }
-  var autor=S.crew.find(function(c){return c.id===autorId;});
-  var abbr=autor?(autor.abbr||(ROLE_ABBR[autor.fn]||autor.fn.slice(0,3).toUpperCase())):'';
+  if(!autorNm2){ toast('⚠️ Informe quem registra','warn'); return; }
+  var autor=(S.crew||[]).find(function(c){return (c.nm||'').toLowerCase().includes(autorNm2.toLowerCase());});
+  var abbr=autor?(autor.abbr||(ROLE_ABBR[autor.fn]||String(autor.fn||'').slice(0,3).toUpperCase())):'CMT';
   rtPopFunc();
-  var func=(document.getElementById('rt-func')||{}).value||jacFuncOfAbbr(abbr);
+  var func=(document.getElementById('rt-func')||{}).value||'GERAL';
   var rel={
     id:gid(), data:data,
-    autorId:autorId, autorNm:autor?('['+abbr+'] '+autor.nm):'—',
+    autorNm2:autorNm2, autorNm:autor?('['+abbr+'] '+autor.nm):autorNm2,
     dept:(document.getElementById('r2-dept')||{}).value||'',
     projeto:(document.getElementById('r2-projeto')||{}).value.trim()||'',
     area:(document.getElementById('r2-area')||{}).value.trim()||'',
@@ -4327,7 +4327,7 @@ function saveNovoRelatorio(){
   if(!S.relatorios) S.relatorios = [];
   S.relatorios.push({
     id: gid(), data,
-    autorNm, autorNm: autor?`[${abbr}] ${autor.nm}`:'—',
+    autorNm: autor?('['+abbr+'] '+autor.nm):(autorNm||'—'),
     dept:    document.getElementById('r2-dept')?.value||'',
     projeto: document.getElementById('r2-projeto')?.value.trim()||'',
     area:    document.getElementById('r2-area')?.value.trim()||'',
@@ -4446,6 +4446,113 @@ function addFotoR2Item(itemIdx, files){
       renderR2Items();
     });
   });
+}
+
+
+function renderR2Saved(){
+  var list=document.getElementById('r2-saved-list');if(!list)return;
+  var cnt=document.getElementById('r2-saved-count');
+  var rels=(S.relatorios||[]).slice().sort(function(a,b){return (b.ts||0)-(a.ts||0);});
+  if(cnt)cnt.textContent=rels.length;
+  if(!rels.length){list.innerHTML='<div style="color:var(--muted);font-size:12px;font-style:italic;">Nenhum relatório salvo ainda.</div>';return;}
+  list.innerHTML=rels.map(function(r){
+    return '<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid #7c3aed;">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escHtml(r.titulo||'Sem título')+'</div>'
+      +'<div style="font-size:11px;color:var(--text-dim);">'+fd(r.data||'')+(r.dept?' · '+escHtml(r.dept):'')+(r.autorNm?' · '+escHtml(r.autorNm):'')+'</div>'
+      +(r.projeto?'<div style="font-size:10px;color:#7c3aed;">'+escHtml(r.projeto)+'</div>':'')
+      +'</div>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0;">'
+      +'<button class="btn btn-ghost btn-sm" onclick="r2PrintPDF(\''+r.id+'\')" style="font-size:11px;">PDF</button>'
+      +'<button class="btn btn-ghost btn-sm" onclick="r2CarregarForm(\''+r.id+'\')" style="font-size:11px;">Editar</button>'
+      +'<button class="btn btn-danger btn-sm" onclick="r2Excluir(\''+r.id+'\')" style="font-size:11px;">Del</button>'
+      +'</div></div>'
+      +(r.items&&r.items.length?'<div style="font-size:10px;color:var(--text-dim);margin-top:5px;">'+r.items.length+' item(s)</div>':'')
+      +'</div>';
+  }).join('');
+}
+
+function r2Excluir(id){
+  if(!confirm('Excluir este relatório?'))return;
+  S.relatorios=(S.relatorios||[]).filter(function(r){return r.id!==id;});
+  saveData(true);renderR2Saved();toast('Relatório excluído','ok');
+}
+
+function r2CarregarForm(id){
+  var r=(S.relatorios||[]).find(function(x){return x.id===id;});if(!r)return;
+  var set=function(elId,v){var el=document.getElementById(elId);if(el)el.value=v||'';};
+  set('r2-data',r.data);set('r2-dept',r.dept);set('r2-projeto',r.projeto);
+  set('r2-area',r.area);set('r2-titulo',r.titulo);set('r2-desc',r.desc);set('r2-planos',r.planos);
+  var elAutor=document.getElementById('r2-autor');
+  if(elAutor)elAutor.value=r.autorNm||'';
+  _r2Items=JSON.parse(JSON.stringify(r.items||[]));
+  renderR2Items();
+  toast('Relatório carregado — edite e salve nova versão','ok');
+  var panel=document.getElementById('npanel-relatorio');
+  if(panel)panel.scrollIntoView({behavior:'smooth'});
+}
+
+function r2PrintPDF(id){
+  var r=(S.relatorios||[]).find(function(x){return x.id===id;});
+  if(!r){toast('Relatório não encontrado','err');return;}
+  var cfg=getCfg();var v=cfg.vessel||{};
+  var now=new Date().toLocaleString('pt-BR');
+  var esc=escHtml;
+  var itemsHtml=(r.items||[]).map(function(item,i){
+    var fotos=(item.fotos||[]).map(function(u,fi){
+      var cap=(item.fotosDesc&&item.fotosDesc[fi])||'';
+      return '<div style="display:inline-block;margin:4px;vertical-align:top;width:130px;">'
+        +'<img src="'+u+'" style="width:130px;height:100px;object-fit:cover;border-radius:6px;border:1px solid #ddd;-webkit-print-color-adjust:exact;">'
+        +(cap?'<div style="font-size:9px;color:#666;text-align:center;padding:2px;">'+esc(cap)+'</div>':'')
+        +'</div>';
+    }).join('');
+    return '<div style="border:1px solid #e5e7eb;border-radius:8px;margin-bottom:12px;border-left:4px solid #7c3aed;">'
+      +'<div style="background:#f5f3ff;padding:8px 12px;display:flex;align-items:center;gap:8px;">'
+      +'<span style="background:#7c3aed;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;">Item '+(i+1)+'</span>'
+      +'<span style="font-size:13px;font-weight:700;">'+esc(item.desc||'Sem descrição')+'</span></div>'
+      +(item.obs?'<div style="padding:8px 12px;font-size:12px;white-space:pre-wrap;border-bottom:1px solid #f3f4f6;">'+esc(item.obs)+'</div>':'')
+      +(fotos?'<div style="padding:8px 12px;background:#fafafa;">'+fotos+'</div>':'')
+      +'</div>';
+  }).join('');
+  var meta=[['Registrado por',r.autorNm||'—'],['Projeto',r.projeto||'—'],['Area / Local',r.area||'—'],['Referencias',r.planos||'—']].map(function(item){
+    return '<div style="background:#fff;padding:10px 14px;"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:3px;">'+item[0]+'</div>'
+      +'<div style="font-size:12px;font-weight:600;">'+esc(item[1])+'</div></div>';
+  }).join('');
+  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
+    +'<title>Relatório Técnico — '+esc(r.titulo||'')+'</title>'
+    +'<style>*{box-sizing:border-box;margin:0;padding:0;}@page{margin:12mm 14mm;size:A4;}'
+    +'body{font-family:Arial,sans-serif;font-size:12px;color:#111827;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    +'@media print{.no-print{display:none!important}}</style></head><body>'
+    +'<div class="no-print" style="background:#07182e;padding:10px 20px;display:flex;gap:8px;align-items:center;justify-content:space-between;position:sticky;top:0;">'
+    +'<span style="color:#fff;font-size:13px;font-weight:700;">Relatório Técnico — '+esc(r.titulo||'')+'</span>'
+    +'<div><button onclick="window.print()" style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;margin-right:8px;">Imprimir / PDF</button>'
+    +'<button onclick="window.close()" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:8px 14px;cursor:pointer;">Fechar</button></div></div>'
+    +'<div style="background:linear-gradient(135deg,#07182e,#2d3748);color:#fff;padding:20px 24px;-webkit-print-color-adjust:exact;">'
+    +'<div style="font-size:11px;opacity:.7;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Relatório Técnico</div>'
+    +'<div style="font-size:20px;font-weight:800;margin-bottom:4px;">'+esc(r.titulo||'—')+'</div>'
+    +'<div style="font-size:12px;opacity:.8;">'+esc(v.name||'M/V Jacarandá')+' · '+fd(r.data||'')+(r.dept?' · '+esc(r.dept):'')+'</div>'
+    +'<div style="font-size:10px;opacity:.6;margin-top:4px;">Gerado: '+now+'</div></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:#e5e7eb;border:1px solid #e5e7eb;">'+meta+'</div>'
+    +(r.desc?'<div style="padding:14px 24px;background:#f9fafb;border-bottom:1px solid #f3f4f6;">'
+      +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:6px;">Descrição Geral</div>'
+      +'<div style="font-size:12px;white-space:pre-wrap;line-height:1.6;">'+esc(r.desc)+'</div></div>':'')
+    +'<div style="padding:14px 24px;">'
+    +'<div style="font-size:13px;font-weight:700;color:#7c3aed;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #7c3aed;">'
+    +'Itens do Relatório ('+(r.items||[]).length+')</div>'
+    +(itemsHtml||'<div style="color:#9ca3af;font-size:12px;font-style:italic;">Nenhum item.</div>')
+    +'</div>'
+    +'<div style="padding:16px 24px;border-top:2px solid #e5e7eb;display:flex;justify-content:space-around;gap:16px;flex-wrap:wrap;">'
+    +[{nm:v.cmte||'Comandante',rl:'Comandante'},{nm:r.autorNm||'Responsável',rl:'Responsável'}].map(function(s){
+      return '<div style="text-align:center;flex:1;min-width:120px;max-width:200px;">'
+        +'<div style="border-bottom:1.5px solid #374151;height:44px;margin-bottom:5px;"></div>'
+        +'<div style="font-size:12px;font-weight:700;">'+esc(s.nm)+'</div>'
+        +'<div style="font-size:10px;color:#9ca3af;">'+s.rl+'</div></div>';
+    }).join('')+'</div></body></html>';
+  var w=window.open('','_blank','width=900,height=1100');
+  if(!w){toast('Permita pop-ups para abrir o PDF','warn');return;}
+  w.document.write(html);w.document.close();
+  toast('Relatório aberto — use Imprimir para salvar como PDF','ok');
 }
 
 
@@ -11970,7 +12077,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.4.2';
+const APP_VERSION = '3.4.3';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
