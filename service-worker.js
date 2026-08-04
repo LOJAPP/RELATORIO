@@ -1,4 +1,4 @@
-const CACHE='jac-20260804_1200';
+const CACHE='jac-20260804_1400';
 const ASSETS=['./','./index.html','./jacaranda_manutencao.html'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});

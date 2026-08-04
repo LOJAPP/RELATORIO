@@ -954,7 +954,15 @@
           <div class="sep"></div>
           <div class="section-title">📷 Fotos da Atividade</div>
           <div class="compress-info">⚡ Fotos comprimidas automaticamente (máx. 1024px / JPEG 70%). Reduz 3–5MB para ~150KB.</div>
-          <label class="photo-drop-zone" for="foto-reg">📷 Clique para tirar foto ou selecionar arquivo<br><small>Múltiplos arquivos aceitos — adicione legenda opcional em cada foto</small></label>
+          <div class="photo-drop-zone" 
+            onclick="document.getElementById('foto-reg').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--login-blue)';this.style.background='#dbeafe'"
+            ondragleave="this.style.borderColor='';this.style.background=''"
+            ondrop="event.preventDefault();this.style.borderColor='';this.style.background='';addPhotosWithCaption(event.dataTransfer.files,'reg')"
+            style="cursor:pointer;">
+            📷 Clique para tirar foto ou selecionar<br>
+            <small>Arraste ou clique · múltiplos arquivos · legenda opcional em cada foto</small>
+          </div>
           <input type="file" id="foto-reg" accept="image/*" multiple style="display:none" onchange="addPhotosWithCaption(this.files,'reg')">
           <div class="photo-grid" id="pg-reg" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
           <div class="sep"></div>
@@ -2832,6 +2840,7 @@ ou qualquer formato com horas e alturas..." style="width:100%;font-size:11px;fon
 // ── STATE ──
 let S={regs:[],crew:[],fotos:[],empresas:[],oficina:[],desvios:[],inspecoes:[],embHistory:[],relatorios:[],rioCfg:{},tp:{reg:[],av:[],of:[],insp:[]}};
 let activeDept='Todos', curWeek=null;
+var _r2Items = [];  // itens do relatório técnico
 
 // ── TRIPULANTES SEED (Lista Completa do Excel) ──
 const CREW_SEED=[
@@ -4368,6 +4377,77 @@ function saveNovoBloco(){
   toast('✅ Serviço Bloco/Oficina registrado!','ok');
   switchNovoTab('atividade');
 }
+
+// ═══ RELATÓRIO TÉCNICO — itens com foto e descrição ═══
+function renderR2Items(){
+  var list = document.getElementById('r2-items-list'); if(!list) return;
+  var cnt  = document.getElementById('r2-items-count');
+  if(cnt) cnt.textContent = _r2Items.length;
+
+  if(!_r2Items.length){
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;border:2px dashed var(--border);border-radius:10px;">Clique em ➕ Adicionar Item para incluir atividades com fotos</div>';
+    return;
+  }
+
+  list.innerHTML = _r2Items.map(function(item, i){
+    var fotosHtml = (item.fotos||[]).map(function(u, fi){
+      var desc = (item.fotosDesc||[])[fi]||'';
+      return '<div style="display:flex;flex-direction:column;gap:4px;align-items:center;width:100px;">'
+        +'<div style="position:relative;">'
+        +'<img src="'+u+'" onclick="viewP(\''+u+'\')" '
+        +'style="width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer;" loading="lazy">'
+        +'<button onclick="_r2Items['+i+'].fotos.splice('+fi+',1);(_r2Items['+i+'].fotosDesc||[]).splice('+fi+',1);renderR2Items();" '
+        +'style="position:absolute;top:-5px;right:-5px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;font-weight:700;line-height:18px;text-align:center;">x</button>'
+        +'</div>'
+        +'<input type="text" value="'+escHtml(desc)+'" placeholder="Legenda..." '
+        +'oninput="if(!_r2Items['+i+'].fotosDesc)_r2Items['+i+'].fotosDesc=[];_r2Items['+i+'].fotosDesc['+fi+']=this.value;" '
+        +'style="width:100%;font-size:10px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;text-align:center;">'
+        +'</div>';
+    }).join('');
+
+    return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;">'
+      // Cabeçalho do item
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
+      +'<span style="background:var(--login-blue);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;flex-shrink:0;">Item '+(i+1)+'</span>'
+      +'<input type="text" value="'+escHtml(item.desc||'')+'" placeholder="Descrição do serviço realizado..." '
+      +'oninput="_r2Items['+i+'].desc=this.value;" '
+      +'style="flex:1;font-size:13px;font-weight:600;border:1.5px solid var(--border);border-radius:7px;padding:6px 10px;background:#fff;">'
+      +'<button onclick="_r2Items.splice('+i+',1);renderR2Items();" '
+      +'style="background:var(--danger);color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;flex-shrink:0;">✕</button>'
+      +'</div>'
+      // Área de observações
+      +'<textarea placeholder="Observações técnicas (materiais, método, resultado...)" '
+      +'oninput="_r2Items['+i+'].obs=this.value;" '
+      +'style="width:100%;font-size:12px;border:1px solid var(--border);border-radius:7px;padding:8px;margin-bottom:10px;resize:vertical;min-height:60px;font-family:inherit;box-sizing:border-box;">'+escHtml(item.obs||'')+'</textarea>'
+      // Fotos do item
+      +'<div style="margin-bottom:8px;">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">📷 Fotos do item '+(i+1)+'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;">'
+      +fotosHtml
+      // Botão adicionar foto do item
+      +'<label style="width:100px;height:100px;border:2px dashed var(--border);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:4px;color:var(--text-dim);font-size:11px;background:#fff;">'
+      +'<span style="font-size:24px;">📷</span><span>Adicionar foto</span>'
+      +'<input type="file" accept="image/*" multiple style="display:none" '
+      +'onchange="addFotoR2Item('+i+',this.files);this.value=\'\'">'
+      +'</label>'
+      +'</div></div>'
+      +'</div>';
+  }).join('');
+}
+
+function addFotoR2Item(itemIdx, files){
+  if(!_r2Items[itemIdx]) return;
+  Array.from(files).forEach(function(f){
+    compress(f, function(u){
+      if(!_r2Items[itemIdx].fotos) _r2Items[itemIdx].fotos=[];
+      if(!_r2Items[itemIdx].fotosDesc) _r2Items[itemIdx].fotosDesc=[];
+      _r2Items[itemIdx].fotos.push(u);
+      _r2Items[itemIdx].fotosDesc.push('');
+      renderR2Items();
+    });
+  });
+}
+
 
 function addR2Item(){
   _r2Items.push({desc:'', fotos:[], fotosDesc:[]});
@@ -11890,7 +11970,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.4.1';
+const APP_VERSION = '3.4.2';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
