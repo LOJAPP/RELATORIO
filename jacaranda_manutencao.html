@@ -907,7 +907,16 @@
             <div class="form-group"><label>Data</label><input type="date" class="form-control" id="r-data"></div>
             <div class="form-group"><label>Departamento</label>
               <select class="form-control" id="r-dept" onchange="filterCrewByDept('novo')">
-                <option>Convés</option>
+                <option value="Convés">Convés</option>
+                <option value="Máquinas">Máquinas</option>
+                <option value="MC Reefer">MC Reefer</option>
+                <option value="Bloco">Bloco</option>
+                <option value="Elétrica">Elétrica</option>
+                <option value="Caldaderia">Caldaderia</option>
+                <option value="Hotelaria">Hotelaria</option>
+                <option value="Segurança">Segurança</option>
+                <option value="Administrativo">Administrativo</option>
+                <option value="Outro">Outro</option>
               </select>
             </div>
           </div>
@@ -948,7 +957,7 @@
             <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">📁 Salvar também na pasta do navio (subpasta "Novo Relatorio")</div>
             <div class="form-row" style="margin-bottom:8px;">
               <div class="form-group"><label style="font-size:10px;">Oficial que está fazendo o relatório</label>
-                <select class="form-control" id="np-oficial" onfocus="npPopulate()" onchange="npOficialChange()"></select>
+                <select class="form-control" id="np-oficial" onfocus="npPopulate()" onchange="npOficialChange()"><option value="">— selecione o oficial —</option></select>
               </div>
               <div class="form-group"><label style="font-size:10px;">Pasta pessoal (função)</label>
                 <select class="form-control" id="np-func"></select>
@@ -1044,8 +1053,20 @@
         <div style="padding:16px;">
           <div class="form-row">
             <div class="form-group" style="max-width:170px;"><label>📅 Data *</label><input type="date" class="form-control" id="r2-data"></div>
-            <div class="form-group"><label>✍️ Registrado por *</label><select class="form-control" id="r2-autor" onchange="rtAutorChange()"></select></div>
-            <div class="form-group"><label>🏢 Departamento</label><select class="form-control" id="r2-dept"></select></div>
+            <div class="form-group"><label>✍️ Registrado por *</label><select class="form-control" id="r2-autor" onchange="rtAutorChange()" onfocus="popR2Autor()"><option value="">— selecione —</option></select></div>
+            <div class="form-group"><label>🏢 Departamento</label><select class="form-control" id="r2-dept">
+                <option value="Convés">Convés</option>
+                <option value="Máquinas">Máquinas</option>
+                <option value="MC Reefer">MC Reefer</option>
+                <option value="Bloco">Bloco</option>
+                <option value="Elétrica">Elétrica</option>
+                <option value="Caldaderia">Caldaderia</option>
+                <option value="Hotelaria">Hotelaria</option>
+                <option value="Segurança">Segurança</option>
+                <option value="Ponte">Ponte</option>
+                <option value="Praça de Máquinas">Praça de Máquinas</option>
+                <option value="Outro">Outro</option>
+              </select></div>
           </div>
           <div class="form-row">
             <div class="form-group"><label>📁 Nome do Projeto</label><input type="text" class="form-control" id="r2-projeto" placeholder="Ex: Docagem 2026 / Retrofit Reefer"></div>
@@ -2991,7 +3012,20 @@ function _goPage(id){
   if(id==='embarque'){renderEmbarque();}
   if(id==='semanal'){renderSemTabs();}
   if(id==='fotos'){renderGallery();fillFotoAssoc();}
-  if(id==='novo'){fillWeekSel();buildCrewCheckList('novo');fillDeptSelect('r-dept');initNovoBlocoSelects();switchNovoTab('atividade');}
+  if(id==='novo'){
+    fillWeekSel();
+    buildCrewCheckList('novo');
+    fillDeptSelectFull('r-dept');
+    fillDeptSelectFull('r2-dept');
+    initNovoBlocoSelects();
+    switchNovoTab('atividade');
+    // Popular selects de pessoa com delay para garantir S.crew carregado
+    setTimeout(function(){
+      try{popR2Autor();}catch(e){}
+      try{npPopulate();}catch(e){}
+      try{popLoadFunc('np-load-func');}catch(e){}
+    },100);
+  }
   if(id==='storage'){storStatus();renderDriveLinks();renderModulosStatus();renderNetConfigFields();updateDriveConnStatus();updateStorageKpis();renderImportPage();if(typeof gdriveInit==='function')gdriveInit();setTimeout(function(){
       if(typeof jacAtualizarTamanho==='function')jacAtualizarTamanho();
       // Preencher o mês atual automaticamente
@@ -3151,7 +3185,6 @@ function oficialFuncAuto(oficialId, funcId){
   var opt=selO.options[selO.selectedIndex];
   if(opt && opt.dataset.abbr){ selF.value = jacFuncOfAbbr(opt.dataset.abbr); }
 }
-function npPopulate(){ popOficiais('np-oficial','np-func'); }
 function npOficialChange(){ oficialFuncAuto('np-oficial','np-func'); }
 async function saveRegNaPasta(){
   var s=document.getElementById('r-sem').value;
@@ -4235,6 +4268,16 @@ var _novoTab = 'atividade';
 
 // ═══ FUNÇÕES RESTAURADAS DO UPLOAD ═══
 
+function initNovoRelatorio(){
+  // Popular "Registrado por" e "Departamento" ao abrir aba Relatório
+  try{ popR2Autor(); }catch(e){}
+  try{ fillDeptSelectFull('r2-dept'); }catch(e){}
+  // Data padrão = hoje
+  var d=document.getElementById('r2-data');
+  if(d && !d.value) d.value=new Date().toISOString().slice(0,10);
+}
+
+
 function switchNovoTab(tab){
   _novoTab = tab;
   ['atividade','bloco','relatorio'].forEach(t=>{
@@ -5041,8 +5084,92 @@ function crewBancoOpen(){
 }
 
 
-// ═══════════════════════════════════════════════════
-// RELATÓRIO SEMANAL — renderSem (função central)
+
+// ═══ POPULAÇÃO DE SELECTS DO FORMULÁRIO NOVO REGISTRO ═══
+
+// Popula "Registrado por" com tripulantes + opção manual
+function popR2Autor(){
+  var sel=document.getElementById('r2-autor'); if(!sel) return;
+  var cur=sel.value;
+  var crew=S.crew||[];
+  var html='<option value="">— selecione —</option>';
+  // Tripulantes da tripulação atual
+  if(crew.length){
+    html+='<optgroup label="Tripulação a bordo">';
+    crew.filter(function(c){return c.em&&!c.de;}).forEach(function(c){
+      var abbr=c.abbr||(ROLE_ABBR[c.fn]||String(c.fn||'').slice(0,3).toUpperCase());
+      html+='<option value="'+escHtml(c.id)+'">['+escHtml(abbr)+'] '+escHtml(c.nm)+'</option>';
+    });
+    html+='</optgroup>';
+    html+='<optgroup label="Toda a tripulação">';
+    crew.filter(function(c){return !(c.em&&!c.de);}).forEach(function(c){
+      var abbr=c.abbr||(ROLE_ABBR[c.fn]||String(c.fn||'').slice(0,3).toUpperCase());
+      html+='<option value="'+escHtml(c.id)+'">['+escHtml(abbr)+'] '+escHtml(c.nm)+'</option>';
+    });
+    html+='</optgroup>';
+  }
+  html+='<option value="__manual__">✏️ Digitar manualmente...</option>';
+  sel.innerHTML=html;
+  if(cur) sel.value=cur;
+  // Listener para opção manual
+  sel.onchange=function(){
+    if(sel.value==='__manual__'){
+      var nome=prompt('Nome do responsável:','');
+      if(nome){
+        var op=document.createElement('option');
+        op.value='manual:'+nome; op.textContent='✍️ '+nome; op.selected=true;
+        sel.insertBefore(op,sel.querySelector('option[value="__manual__"]'));
+        sel.value=op.value;
+      } else { sel.value=cur; }
+    }
+    rtAutorChange();
+  };
+}
+
+// Popula np-oficial com S.crew + nome manual
+function npPopulate(){
+  var selO=document.getElementById('np-oficial');
+  var selF=document.getElementById('np-func');
+  var crew=S.crew||[];
+  if(selO){
+    var cur=selO.value;
+    var h='<option value="">— selecione o oficial —</option>';
+    if(crew.length){
+      h+='<optgroup label="Tripulação">';
+      crew.forEach(function(c){
+        var a=c.abbr||(ROLE_ABBR[c.fn]||String(c.fn||'').slice(0,3).toUpperCase());
+        h+='<option value="'+escHtml(c.id)+'" data-abbr="'+escHtml(a)+'">['+escHtml(a)+'] '+escHtml(c.nm)+'</option>';
+      });
+      h+='</optgroup>';
+    }
+    h+='<option value="__manual__">✏️ Digitar nome...</option>';
+    selO.innerHTML=h;
+    if(cur) selO.value=cur;
+    selO.onchange=function(){
+      if(selO.value==='__manual__'){
+        var nm=prompt('Nome:','');
+        if(nm){var op=document.createElement('option');op.value='m:'+nm;op.textContent=nm;op.selected=true;selO.insertBefore(op,selO.querySelector('[value="__manual__"]'));selO.value=op.value;}
+      }
+      npOficialChange();
+    };
+  }
+  if(selF && !selF.options.length){
+    selF.innerHTML=JAC_FUNCS.map(function(c){return '<option value="'+c+'">'+c+' — '+JAC_FUNC_LABELS[c]+'</option>';}).join('');
+  }
+}
+
+// Melhora fillDeptSelect para incluir DEFAULT_DEPTS + opção Outro
+function fillDeptSelectFull(elId){
+  var sel=document.getElementById(elId); if(!sel) return;
+  var cur=sel.value;
+  var depts=getDepts();
+  sel.innerHTML=depts.map(function(d){
+    return '<option value="'+escHtml(d)+'">'+escHtml(d)+'</option>';
+  }).join('')+'<option value="Outro">Outro</option>';
+  if(cur) sel.value=cur;
+}
+
+
 // ═══════════════════════════════════════════════════
 function renderSem(week){
   curWeek=week;
