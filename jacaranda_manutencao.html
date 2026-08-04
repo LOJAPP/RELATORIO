@@ -905,6 +905,12 @@
           <div class="form-row">
             <div class="form-group"><label>Semana</label><select class="form-control" id="r-sem"></select></div>
             <div class="form-group"><label>Data</label><input type="date" class="form-control" id="r-data"></div>
+            <div class="form-group"><label>✍️ Registrado por</label>
+              <input type="text" class="form-control" id="r-autor" list="r-autor-list"
+                placeholder="Nome ou função..." autocomplete="off"
+                oninput="popRAutorList()">
+              <datalist id="r-autor-list"></datalist>
+            </div>
             <div class="form-group"><label>Departamento</label>
               <select class="form-control" id="r-dept" onchange="filterCrewByDept('novo')">
                 <option value="Convés">Convés</option>
@@ -1053,7 +1059,12 @@
         <div style="padding:16px;">
           <div class="form-row">
             <div class="form-group" style="max-width:170px;"><label>📅 Data *</label><input type="date" class="form-control" id="r2-data"></div>
-            <div class="form-group"><label>✍️ Registrado por *</label><select class="form-control" id="r2-autor" onchange="rtAutorChange()" onfocus="popR2Autor()"><option value="">— selecione —</option></select></div>
+            <div class="form-group"><label>✍️ Registrado por *</label>
+              <input type="text" class="form-control" id="r2-autor" list="r2-autor-list"
+                placeholder="Nome ou função..." autocomplete="off"
+                oninput="popR2AutorList()">
+              <datalist id="r2-autor-list"></datalist>
+            </div>
             <div class="form-group"><label>🏢 Departamento</label><select class="form-control" id="r2-dept">
                 <option value="Convés">Convés</option>
                 <option value="Máquinas">Máquinas</option>
@@ -3020,6 +3031,12 @@ function _goPage(id){
     initNovoBlocoSelects();
     switchNovoTab('atividade');
     // Popular selects de pessoa com delay para garantir S.crew carregado
+    // Pré-popular autor com Comandante configurado
+    var _cfgV=(getCfg().vessel||{});
+    var _elAutor=document.getElementById('r-autor');
+    if(_elAutor && !_elAutor.value && _cfgV.cmte) _elAutor.value=_cfgV.cmte;
+    var _elR2=document.getElementById('r2-autor');
+    if(_elR2 && !_elR2.value && _cfgV.cmte) _elR2.value=_cfgV.cmte;
     setTimeout(function(){
       try{popR2Autor();}catch(e){}
       try{npPopulate();}catch(e){}
@@ -3149,7 +3166,8 @@ function saveReg(){
   // Save photos with captions
   const fotosData = (S.tp.reg||[]);
   var rNv=(document.getElementById('r-nviagem')||{}).value||'';
-  S.regs.push({id:gid(),s,lb:`SEM ${s}`,d:document.getElementById('r-data').value,
+  S.regs.push({id:gid(),
+    autor:((document.getElementById('r-autor')||{}).value||'').trim()||undefined,s,lb:`SEM ${s}`,d:document.getElementById('r-data').value,
     dp:document.getElementById('r-dept').value,
     titulo, a:desc, q:eq,
     st:document.getElementById('r-st').value,
@@ -4292,15 +4310,15 @@ function switchNovoTab(tab){
 function saveNovoRelatorio(){
   const data   = document.getElementById('r2-data')?.value;
   const titulo = document.getElementById('r2-titulo')?.value.trim();
-  const autorId= document.getElementById('r2-autor')?.value;
+  const autorNm= (document.getElementById('r2-autor')?.value||'').trim();
   if(!data || !titulo){ toast('⚠️ Preencha a data e o título','warn'); return; }
-  if(!autorId){ toast('⚠️ Selecione quem registra','warn'); return; }
-  const autor = S.crew.find(c=>c.id===autorId);
-  const abbr  = autor?(autor.abbr||(ROLE_ABBR[autor.fn]||autor.fn.slice(0,3).toUpperCase())):'';
+  if(!autorNm){ toast('⚠️ Informe quem está registrando','warn'); return; }
+  const autor = (S.crew||[]).find(c=>(c.nm||'').toLowerCase().includes(autorNm.toLowerCase()));
+  const abbr  = autor?(autor.abbr||(ROLE_ABBR[autor.fn]||String(autor.fn||'').slice(0,3).toUpperCase())):'';
   if(!S.relatorios) S.relatorios = [];
   S.relatorios.push({
     id: gid(), data,
-    autorId, autorNm: autor?`[${abbr}] ${autor.nm}`:'—',
+    autorNm, autorNm: autor?`[${abbr}] ${autor.nm}`:'—',
     dept:    document.getElementById('r2-dept')?.value||'',
     projeto: document.getElementById('r2-projeto')?.value.trim()||'',
     area:    document.getElementById('r2-area')?.value.trim()||'',
@@ -5361,6 +5379,41 @@ function crewVincularSalvar(crewId){
   document.querySelectorAll('div[style*="z-index:9999"]').forEach(function(el){el.remove();});
 }
 
+
+function popR2AutorList(){
+  var dl=document.getElementById('r2-autor-list'); if(!dl) return;
+  var crew=S.crew||[];
+  var cfg=getCfg(); var v=cfg.vessel||{};
+  var opts=[];
+  // Tripulantes a bordo primeiro
+  crew.filter(function(c){return c.em&&!c.de;}).forEach(function(c){
+    opts.push('<option value="'+escHtml(c.nm)+'" label="'+(c.fn||'')+' (a bordo)">');
+  });
+  // Restante da tripulação
+  crew.filter(function(c){return !(c.em&&!c.de);}).forEach(function(c){
+    opts.push('<option value="'+escHtml(c.nm)+'" label="'+escHtml(c.fn||'')+'">');
+  });
+  // Comandante configurado
+  if(v.cmte && !crew.find(function(c){return c.nm===v.cmte;})){
+    opts.unshift('<option value="'+escHtml(v.cmte)+'" label="Comandante">');
+  }
+  dl.innerHTML=opts.join('');
+}
+
+function popRAutorList(){
+  var dl=document.getElementById('r-autor-list'); if(!dl) return;
+  var crew=S.crew||[];
+  var cfg=getCfg(); var v=cfg.vessel||{};
+  var opts=[];
+  crew.filter(function(c){return c.em&&!c.de;}).forEach(function(c){
+    opts.push('<option value="'+escHtml(c.nm)+'" label="'+escHtml(c.fn||'')+' (a bordo)">');
+  });
+  crew.filter(function(c){return !(c.em&&!c.de);}).forEach(function(c){
+    opts.push('<option value="'+escHtml(c.nm)+'" label="'+escHtml(c.fn||'')+'">');
+  });
+  if(v.cmte) opts.unshift('<option value="'+escHtml(v.cmte)+'" label="Comandante">');
+  dl.innerHTML=opts.join('');
+}
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function modalAdminErr(msg){ var el=document.getElementById('modal-admin-err'); if(el) el.textContent=msg; }
@@ -11837,7 +11890,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.4.0';
+const APP_VERSION = '3.4.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
