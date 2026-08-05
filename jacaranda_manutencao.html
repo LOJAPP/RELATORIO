@@ -933,7 +933,7 @@
           </div>
           <div class="form-group" style="margin-bottom:12px;">
             <label>📝 Descrição Detalhada</label>
-            <textarea class="form-control" id="r-atv" placeholder="Descreva detalhadamente:&#10;- Materiais utilizados&#10;- Procedimentos executados&#10;- Observações relevantes&#10;- Próximos passos..." style="min-height:110px;white-space:pre-wrap;line-height:1.6;"></textarea>
+            <div id="r-atv-tb"></div><textarea class="form-control" id="r-atv" placeholder="Descreva detalhadamente:&#10;- Materiais utilizados&#10;- Procedimentos executados&#10;- Observações relevantes&#10;- Próximos passos..." style="min-height:110px;white-space:pre-wrap;line-height:1.6;" oninput="jacAutoGrow(this)"></textarea>
             <div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Use Enter para separar itens — a formatação é preservada no relatório</div>
           </div>
           <div class="form-row">
@@ -1004,7 +1004,7 @@
           </div>
           <div class="form-group" style="margin-bottom:10px;">
             <label>📝 Descrição</label>
-            <textarea class="form-control" id="novo-bloco-desc" placeholder="Descreva o serviço realizado..." style="min-height:70px;"></textarea>
+            <div id="novo-bloco-desc-tb"></div><textarea class="form-control" id="novo-bloco-desc" placeholder="Descreva o serviço realizado..." style="min-height:70px;" oninput="jacAutoGrow(this)"></textarea>
           </div>
           <div class="form-row" style="margin-bottom:10px;">
             <div class="form-group">
@@ -1097,7 +1097,7 @@
           </div>
           <div class="form-group" style="margin-bottom:12px;">
             <label>📝 Descrição Geral</label>
-            <textarea class="form-control" id="r2-desc" placeholder="Contexto, objetivo e resumo do relatório..." style="min-height:80px;white-space:pre-wrap;line-height:1.6;"></textarea>
+            <div id="r2-desc-tb"></div><textarea class="form-control" style="border-radius:0 0 8px 8px;overflow:hidden;" oninput="jacAutoGrow(this)" id="r2-desc" placeholder="Contexto, objetivo e resumo do relatório..." style="min-height:80px;white-space:pre-wrap;line-height:1.6;"></textarea>
           </div>
           <div class="form-group" style="margin-bottom:14px;">
             <label>📐 Referência de Planos / Desenhos</label>
@@ -1113,6 +1113,15 @@
             <div style="color:var(--muted);font-size:12px;font-style:italic;padding:8px 0;">Nenhum item — clique em ➕ Adicionar Item</div>
           </div>
           <div class="sep"></div>
+          <!-- Assinaturas do relatório -->
+          <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <span style="font-size:12px;font-weight:700;">✍️ Assinaturas do relatório</span>
+              <button class="btn btn-ghost btn-sm" onclick="r2SigAdd()" style="margin-left:auto;font-size:11px;">➕ Adicionar</button>
+            </div>
+            <div id="r2-sigs-list"></div>
+            <div style="font-size:10px;color:var(--text-dim);margin-top:6px;">Quem vai assinar o relatório impresso — também editável na pré-visualização</div>
+          </div>
           <!-- Ações principais do relatório técnico -->
           <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px;">
             <button class="btn btn-primary" onclick="saveNovoRelatorio()"
@@ -1219,7 +1228,7 @@
           </div>
           <div class="form-group" style="margin-bottom:12px;">
             <label>📝 Descrição / Observação</label>
-            <textarea class="form-control" id="dv-desc" style="min-height:90px;white-space:pre-wrap;" placeholder="Descreva o desvio:&#10;- Local exato&#10;- Condição encontrada&#10;- Risco potencial&#10;- Ação imediata tomada"></textarea>
+            <div id="dv-desc-tb"></div><textarea class="form-control" id="dv-desc" style="min-height:90px;white-space:pre-wrap;" placeholder="Descreva o desvio:&#10;- Local exato&#10;- Condição encontrada&#10;- Risco potencial&#10;- Ação imediata tomada" oninput="jacAutoGrow(this)"></textarea>
           </div>
           <div class="form-row">
             <div class="form-group"><label>Local / Bay</label><input type="text" class="form-control" id="dv-local" placeholder="Praça de Máquinas / Bay 10"></div>
@@ -2187,8 +2196,8 @@ ou qualquer formato com horas e alturas..." style="width:100%;font-size:11px;fon
             </div>
             <div class="form-group" style="margin-bottom:0;">
               <label>📝 Observações Gerais</label>
-              <textarea class="form-control" id="insp-desc" style="min-height:70px;white-space:pre-wrap;"
-                placeholder="Observações gerais da inspeção..."></textarea>
+              <div id="insp-desc-tb"></div><textarea class="form-control" id="insp-desc" style="min-height:70px;white-space:pre-wrap;"
+                placeholder="Observações gerais da inspeção..." oninput="jacAutoGrow(this)"></textarea>
             </div>
           </div>
 
@@ -3061,9 +3070,10 @@ function _goPage(id){
     var _elR2=document.getElementById('r2-autor');
     if(_elR2 && !_elR2.value && _cfgV.cmte) _elR2.value=_cfgV.cmte;
     setTimeout(function(){
-      try{popR2Autor();}catch(e){}
+      try{popR2AutorList();}catch(e){}
       try{npPopulate();}catch(e){}
       try{popLoadFunc('np-load-func');}catch(e){}
+      try{jacInitAutoGrow();}catch(e){}
     },100);
   }
   if(id==='storage'){storStatus();renderDriveLinks();renderModulosStatus();renderNetConfigFields();updateDriveConnStatus();updateStorageKpis();renderImportPage();if(typeof gdriveInit==='function')gdriveInit();setTimeout(function(){
@@ -3427,7 +3437,7 @@ function rtAutorChange(){
 }
 async function saveTecNaPasta(){
   var data=(document.getElementById('r2-data')||{}).value;
-  var titulo=(document.getElementById('r2-titulo')||{}).value.trim();
+  var titulo=((document.getElementById('r2-titulo')||{}).value||'').trim();
   var autorNm2=((document.getElementById('r2-autor')||{}).value||'').trim();
   if(!data||!titulo){ toast('⚠️ Preencha a data e o título','warn'); return; }
   autorNm2 = autorNm2 || (getCfg().vessel||{}).cmte || 'Comandante';
@@ -3439,12 +3449,13 @@ async function saveTecNaPasta(){
     id:gid(), data:data,
     autorNm2:autorNm2, autorNm:autor?('['+abbr+'] '+autor.nm):autorNm2,
     dept:(document.getElementById('r2-dept')||{}).value||'',
-    projeto:(document.getElementById('r2-projeto')||{}).value.trim()||'',
-    area:(document.getElementById('r2-area')||{}).value.trim()||'',
+    projeto:((document.getElementById('r2-projeto')||{}).value||'').trim(),
+    area:((document.getElementById('r2-area')||{}).value||'').trim(),
     titulo:titulo,
-    desc:(document.getElementById('r2-desc')||{}).value.trim()||'',
-    planos:(document.getElementById('r2-planos')||{}).value.trim()||'',
+    desc:((document.getElementById('r2-desc')||{}).value||'').trim(),
+    planos:((document.getElementById('r2-planos')||{}).value||'').trim(),
     items:JSON.parse(JSON.stringify(_r2Items)),
+    assinaturas:JSON.parse(JSON.stringify(_r2Sigs.filter(function(s){return s.nm;}))),
     s:String(wn()).padStart(2,'0'),
     funcPasta:func,
     ts:Date.now()
@@ -4320,6 +4331,9 @@ function initNovoRelatorio(){
   if(elR2 && !elR2.value && v.cmte) elR2.value=v.cmte;
   // Mostrar relatórios salvos
   try{ renderR2Saved(); }catch(e){}
+  try{ renderR2Sigs(); }catch(e){}
+  // Barra de ferramentas + auto-resize
+  setTimeout(function(){ try{jacInitAutoGrow();}catch(e){} }, 50);
 }
 
 
@@ -4332,6 +4346,7 @@ function switchNovoTab(tab){
     if(pnl) pnl.style.display = t===tab?'':'none';
   });
   if(tab==='relatorio') initNovoRelatorio();
+  setTimeout(function(){ try{jacInitAutoGrow();}catch(e){} }, 50);
 }
 
 function saveNovoRelatorio(){
@@ -4348,12 +4363,13 @@ function saveNovoRelatorio(){
     id: gid(), data,
     autorNm: autor?('['+abbr+'] '+autor.nm):_autorNm,
     dept:    document.getElementById('r2-dept')?.value||'',
-    projeto: document.getElementById('r2-projeto')?.value.trim()||'',
-    area:    document.getElementById('r2-area')?.value.trim()||'',
+    projeto: (document.getElementById('r2-projeto')?.value||'').trim(),
+    area:    (document.getElementById('r2-area')?.value||'').trim(),
     titulo,
-    desc:    document.getElementById('r2-desc')?.value.trim()||'',
-    planos:  document.getElementById('r2-planos')?.value.trim()||'',
+    desc:    (document.getElementById('r2-desc')?.value||'').trim(),
+    planos:  (document.getElementById('r2-planos')?.value||'').trim(),
     items:   JSON.parse(JSON.stringify(_r2Items)),
+    assinaturas: JSON.parse(JSON.stringify(_r2Sigs.filter(function(s){return s.nm;}))),
     s: String(wn()).padStart(2,'0'),
     ts: Date.now()
   });
@@ -4363,7 +4379,9 @@ function saveNovoRelatorio(){
     const el=document.getElementById(id); if(el) el.value='';
   });
   _r2Items = [];
+  _r2Sigs = r2SigDefaults();
   renderR2Items();
+  renderR2Sigs();
   renderR2Saved();
   toast('✅ Relatório salvo!','ok');
 }
@@ -4398,60 +4416,110 @@ function saveNovoBloco(){
 }
 
 // ═══ RELATÓRIO TÉCNICO — itens com foto e descrição ═══
+// ═══ ASSINATURAS DO RELATÓRIO TÉCNICO ═══
+var _r2Sigs = [];
+
+function r2SigDefaults(){
+  var v = getCfg().vessel || {};
+  var autorEl = document.getElementById('r2-autor');
+  return [
+    {nm: v.cmte || 'Comandante', rl: 'Comandante'},
+    {nm: (autorEl && autorEl.value) || 'Responsável', rl: 'Responsável Técnico'}
+  ];
+}
+
+function r2SigAdd(){
+  _r2Sigs.push({nm:'', rl:''});
+  renderR2Sigs();
+}
+
+function renderR2Sigs(){
+  var box = document.getElementById('r2-sigs-list'); if(!box) return;
+  if(!_r2Sigs.length) _r2Sigs = r2SigDefaults();
+  var crew = S.crew || [];
+  var dlOpts = crew.map(function(c){
+    return '<option value="' + escHtml(c.nm) + '" label="' + escHtml(c.fn||'') + '">';
+  }).join('');
+  box.innerHTML =
+    '<datalist id="r2-sig-names">' + dlOpts + '</datalist>'
+    + _r2Sigs.map(function(sg, i){
+      return '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">'
+        + '<span style="font-size:10px;color:var(--text-dim);width:14px;flex-shrink:0;">' + (i+1) + '.</span>'
+        + '<input type="text" class="form-control" list="r2-sig-names" value="' + escHtml(sg.nm||'') + '" '
+        + 'placeholder="Nome de quem assina" oninput="_r2Sigs[' + i + '].nm=this.value" '
+        + 'style="flex:2;font-size:12px;padding:5px 8px;">'
+        + '<input type="text" class="form-control" value="' + escHtml(sg.rl||'') + '" '
+        + 'placeholder="Cargo / função" oninput="_r2Sigs[' + i + '].rl=this.value" '
+        + 'style="flex:1.4;font-size:12px;padding:5px 8px;">'
+        + (_r2Sigs.length > 1
+          ? '<button onclick="_r2Sigs.splice(' + i + ',1);renderR2Sigs();" title="Remover" '
+            + 'style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;border-radius:5px;padding:4px 9px;cursor:pointer;font-size:11px;flex-shrink:0;">✕</button>'
+          : '')
+        + '</div>';
+    }).join('');
+}
+
 function renderR2Items(){
   var list = document.getElementById('r2-items-list'); if(!list) return;
   var cnt  = document.getElementById('r2-items-count');
   if(cnt) cnt.textContent = _r2Items.length;
 
   if(!_r2Items.length){
-    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;border:2px dashed var(--border);border-radius:10px;">Clique em ➕ Adicionar Item para incluir atividades com fotos</div>';
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;border:2px dashed var(--border);border-radius:10px;">Clique em <strong>➕ Adicionar Item</strong> para incluir atividades com fotos</div>';
     return;
   }
 
   list.innerHTML = _r2Items.map(function(item, i){
-    var fotosHtml = (item.fotos||[]).map(function(u, fi){
-      var desc = (item.fotosDesc||[])[fi]||'';
-      return '<div style="display:flex;flex-direction:column;gap:4px;align-items:center;width:100px;">'
-        +'<div style="position:relative;">'
-        +'<img src="'+u+'" onclick="viewP(\''+u+'\')" '
-        +'style="width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer;" loading="lazy">'
-        +'<button onclick="_r2Items['+i+'].fotos.splice('+fi+',1);(_r2Items['+i+'].fotosDesc||[]).splice('+fi+',1);renderR2Items();" '
-        +'style="position:absolute;top:-5px;right:-5px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;font-weight:700;line-height:18px;text-align:center;">x</button>'
-        +'</div>'
-        +'<input type="text" value="'+escHtml(desc)+'" placeholder="Legenda..." '
-        +'oninput="if(!_r2Items['+i+'].fotosDesc)_r2Items['+i+'].fotosDesc=[];_r2Items['+i+'].fotosDesc['+fi+']=this.value;" '
-        +'style="width:100%;font-size:10px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;text-align:center;">'
-        +'</div>';
-    }).join('');
-
-    return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;">'
-      // Cabeçalho do item
-      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
-      +'<span style="background:var(--login-blue);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;flex-shrink:0;">Item '+(i+1)+'</span>'
-      +'<input type="text" value="'+escHtml(item.desc||'')+'" placeholder="Descrição do serviço realizado..." '
-      +'oninput="_r2Items['+i+'].desc=this.value;" '
-      +'style="flex:1;font-size:13px;font-weight:600;border:1.5px solid var(--border);border-radius:7px;padding:6px 10px;background:#fff;">'
-      +'<button onclick="_r2Items.splice('+i+',1);renderR2Items();" '
-      +'style="background:var(--danger);color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;flex-shrink:0;">✕</button>'
-      +'</div>'
-      // Área de observações
-      +'<textarea placeholder="Observações técnicas (materiais, método, resultado...)" '
-      +'oninput="_r2Items['+i+'].obs=this.value;" '
-      +'style="width:100%;font-size:12px;border:1px solid var(--border);border-radius:7px;padding:8px;margin-bottom:10px;resize:vertical;min-height:60px;font-family:inherit;box-sizing:border-box;">'+escHtml(item.obs||'')+'</textarea>'
-      // Fotos do item
-      +'<div style="margin-bottom:8px;">'
-      +'<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">📷 Fotos do item '+(i+1)+'</div>'
-      +'<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;">'
-      +fotosHtml
-      // Botão adicionar foto do item
-      +'<label style="width:100px;height:100px;border:2px dashed var(--border);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:4px;color:var(--text-dim);font-size:11px;background:#fff;">'
-      +'<span style="font-size:24px;">📷</span><span>Adicionar foto</span>'
-      +'<input type="file" accept="image/*" multiple style="display:none" '
-      +'onchange="addFotoR2Item('+i+',this.files);this.value=\'\'">'
-      +'</label>'
-      +'</div></div>'
-      +'</div>';
+    var tid = 'r2it-obs-' + i;
+    return '<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;border-left:4px solid #7c3aed;box-shadow:0 1px 3px rgba(0,0,0,.05);">'
+      // Cabeçalho: ordem + título + mover + remover
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
+      + '<span style="background:#7c3aed;color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;flex-shrink:0;">' + (i+1) + '</span>'
+      + '<input type="text" value="' + escHtml(item.desc||'') + '" placeholder="Título do serviço realizado..." '
+      + 'oninput="_r2Items[' + i + '].desc=this.value;" '
+      + 'style="flex:1;font-size:13px;font-weight:700;border:1.5px solid var(--border);border-radius:8px;padding:7px 11px;">'
+      + '<button onclick="r2ItemMove(' + i + ',-1)" ' + (i===0?'disabled':'') + ' title="Subir" style="border:1px solid var(--border);background:' + (i===0?'#f1f5f9':'#fff') + ';border-radius:6px;padding:5px 8px;cursor:' + (i===0?'default':'pointer') + ';font-size:11px;">▲</button>'
+      + '<button onclick="r2ItemMove(' + i + ',1)" ' + (i===_r2Items.length-1?'disabled':'') + ' title="Descer" style="border:1px solid var(--border);background:' + (i===_r2Items.length-1?'#f1f5f9':'#fff') + ';border-radius:6px;padding:5px 8px;cursor:' + (i===_r2Items.length-1?'default':'pointer') + ';font-size:11px;">▼</button>'
+      + '<button onclick="if(confirm(\'Remover item ' + (i+1) + '?\')){_r2Items.splice(' + i + ',1);renderR2Items();}" title="Remover item" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;padding:5px 9px;cursor:pointer;font-size:12px;">✕</button>'
+      + '</div>'
+      // Observações com toolbar
+      + jacTextToolbar(tid)
+      + '<textarea id="' + tid + '" placeholder="Observações técnicas — materiais, método, resultado..." '
+      + 'oninput="_r2Items[' + i + '].obs=this.value;jacAutoGrow(this);" '
+      + 'style="width:100%;font-size:12px;border:1px solid var(--border);border-radius:0 0 8px 8px;padding:9px;resize:vertical;min-height:70px;font-family:inherit;box-sizing:border-box;overflow:hidden;">' + escHtml(item.obs||'') + '</textarea>'
+      // Fotos do item — grade 4 por linha
+      + '<div style="margin-top:12px;">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
+      + '<span style="font-size:11px;font-weight:700;color:var(--text-dim);">📷 Fotos do item ' + (i+1) + '</span>'
+      + '<span style="font-size:10px;color:var(--muted);">' + ((item.fotos||[]).length) + ' foto(s)</span>'
+      + '<label style="margin-left:auto;background:var(--login-blue);color:#fff;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:11px;font-weight:600;">'
+      + '➕ Adicionar fotos'
+      + '<input type="file" accept="image/*" multiple style="display:none" onchange="addFotoR2Item(' + i + ',this.files);this.value=\'\'">'
+      + '</label></div>'
+      + jacFotoGrid(item.fotos||[], item.fotosDesc||[], {
+          onMove:   'r2FotoMove(' + i + ',',
+          onRemove: 'r2FotoRemove(' + i + ',',
+          onCap:    'r2FotoCap(' + i + ',',
+          onEdit:   'r2FotoEdit(' + i + ',',
+          curried:  true
+        })
+      + '</div></div>';
   }).join('');
+
+  // Ativar auto-grow nas textareas dos itens
+  setTimeout(function(){
+    _r2Items.forEach(function(_, i){
+      var el = document.getElementById('r2it-obs-' + i);
+      if(el) jacAutoGrow(el);
+    });
+  }, 30);
+}
+
+function r2ItemMove(i, dir){
+  var j = i + dir;
+  if(j < 0 || j >= _r2Items.length) return;
+  var t = _r2Items[i]; _r2Items[i] = _r2Items[j]; _r2Items[j] = t;
+  renderR2Items();
 }
 
 function addFotoR2Item(itemIdx, files){
@@ -4506,7 +4574,9 @@ function r2CarregarForm(id){
   var elAutor=document.getElementById('r2-autor');
   if(elAutor)elAutor.value=r.autorNm||'';
   _r2Items=JSON.parse(JSON.stringify(r.items||[]));
-  renderR2Items();
+  _r2Sigs=JSON.parse(JSON.stringify(r.assinaturas||[]));
+  if(!_r2Sigs.length) _r2Sigs=r2SigDefaults();
+  renderR2Items(); renderR2Sigs();
   toast('Relatório carregado — edite e salve nova versão','ok');
   var panel=document.getElementById('npanel-relatorio');
   if(panel)panel.scrollIntoView({behavior:'smooth'});
@@ -4525,73 +4595,161 @@ function r2PrintAtual(){
   if(!titulo){toast('⚠️ Preencha o título antes de gerar o PDF','warn');return;}
   var r={id:'preview',data:data,titulo:titulo,autorNm:autorNm||'—',
     dept:dept,projeto:projeto,area:area,desc:desc,planos:planos,
+    assinaturas:_r2Sigs.filter(function(s){return s.nm;}),
     items:JSON.parse(JSON.stringify(_r2Items))};
   r2PrintPDF(null, r);
 }
 
 function r2PrintPDF(id, rObj){
-  // Aceitar objeto direto (rObj) ou buscar por ID
-  var r=rObj||(id?(S.relatorios||[]).find(function(x){return x.id===id;}):null);
-  if(!r){toast('Relatório não encontrado','err');return;}
-  var cfg=getCfg();var v=cfg.vessel||{};
-  var now=new Date().toLocaleString('pt-BR');
-  var esc=escHtml;
-  var itemsHtml=(r.items||[]).map(function(item,i){
-    var fotos=(item.fotos||[]).map(function(u,fi){
-      var cap=(item.fotosDesc&&item.fotosDesc[fi])||'';
-      return '<div style="display:inline-block;margin:4px;vertical-align:top;width:130px;">'
-        +'<img src="'+u+'" style="width:130px;height:100px;object-fit:cover;border-radius:6px;border:1px solid #ddd;-webkit-print-color-adjust:exact;">'
-        +(cap?'<div style="font-size:9px;color:#666;text-align:center;padding:2px;">'+esc(cap)+'</div>':'')
-        +'</div>';
-    }).join('');
-    return '<div style="border:1px solid #e5e7eb;border-radius:8px;margin-bottom:12px;border-left:4px solid #7c3aed;">'
-      +'<div style="background:#f5f3ff;padding:8px 12px;display:flex;align-items:center;gap:8px;">'
-      +'<span style="background:#7c3aed;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;">Item '+(i+1)+'</span>'
-      +'<span style="font-size:13px;font-weight:700;">'+esc(item.desc||'Sem descrição')+'</span></div>'
-      +(item.obs?'<div style="padding:8px 12px;font-size:12px;white-space:pre-wrap;border-bottom:1px solid #f3f4f6;">'+esc(item.obs)+'</div>':'')
-      +(fotos?'<div style="padding:8px 12px;background:#fafafa;">'+fotos+'</div>':'')
-      +'</div>';
-  }).join('');
-  var meta=[['Registrado por',r.autorNm||'—'],['Projeto',r.projeto||'—'],['Area / Local',r.area||'—'],['Referencias',r.planos||'—']].map(function(item){
-    return '<div style="background:#fff;padding:10px 14px;"><div style="font-size:9px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:3px;">'+item[0]+'</div>'
-      +'<div style="font-size:12px;font-weight:600;">'+esc(item[1])+'</div></div>';
-  }).join('');
-  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
-    +'<title>Relatório Técnico — '+esc(r.titulo||'')+'</title>'
-    +'<style>*{box-sizing:border-box;margin:0;padding:0;}@page{margin:12mm 14mm;size:A4;}'
-    +'body{font-family:Arial,sans-serif;font-size:12px;color:#111827;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
-    +'@media print{.no-print{display:none!important}}</style></head><body>'
-    +'<div class="no-print" style="background:#07182e;padding:10px 20px;display:flex;gap:8px;align-items:center;justify-content:space-between;position:sticky;top:0;">'
-    +'<span style="color:#fff;font-size:13px;font-weight:700;">Relatório Técnico — '+esc(r.titulo||'')+'</span>'
-    +'<div><button onclick="window.print()" style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;margin-right:8px;">Imprimir / PDF</button>'
-    +'<button onclick="window.close()" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:8px 14px;cursor:pointer;">Fechar</button></div></div>'
-    +'<div style="background:linear-gradient(135deg,#07182e,#2d3748);color:#fff;padding:20px 24px;-webkit-print-color-adjust:exact;">'
-    +'<div style="font-size:11px;opacity:.7;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Relatório Técnico</div>'
-    +'<div style="font-size:20px;font-weight:800;margin-bottom:4px;">'+esc(r.titulo||'—')+'</div>'
-    +'<div style="font-size:12px;opacity:.8;">'+esc(v.name||'M/V Jacarandá')+' · '+fd(r.data||'')+(r.dept?' · '+esc(r.dept):'')+'</div>'
-    +'<div style="font-size:10px;opacity:.6;margin-top:4px;">Gerado: '+now+'</div></div>'
-    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:#e5e7eb;border:1px solid #e5e7eb;">'+meta+'</div>'
-    +(r.desc?'<div style="padding:14px 24px;background:#f9fafb;border-bottom:1px solid #f3f4f6;">'
-      +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:6px;">Descrição Geral</div>'
-      +'<div style="font-size:12px;white-space:pre-wrap;line-height:1.6;">'+esc(r.desc)+'</div></div>':'')
-    +'<div style="padding:14px 24px;">'
-    +'<div style="font-size:13px;font-weight:700;color:#7c3aed;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #7c3aed;">'
-    +'Itens do Relatório ('+(r.items||[]).length+')</div>'
-    +(itemsHtml||'<div style="color:#9ca3af;font-size:12px;font-style:italic;">Nenhum item.</div>')
-    +'</div>'
-    +'<div style="padding:16px 24px;border-top:2px solid #e5e7eb;display:flex;justify-content:space-around;gap:16px;flex-wrap:wrap;">'
-    +[{nm:v.cmte||'Comandante',rl:'Comandante'},{nm:r.autorNm||'Responsável',rl:'Responsável'}].map(function(s){
-      return '<div style="text-align:center;flex:1;min-width:120px;max-width:200px;">'
-        +'<div style="border-bottom:1.5px solid #374151;height:44px;margin-bottom:5px;"></div>'
-        +'<div style="font-size:12px;font-weight:700;">'+esc(s.nm)+'</div>'
-        +'<div style="font-size:10px;color:#9ca3af;">'+s.rl+'</div></div>';
-    }).join('')+'</div></body></html>';
-  var w=window.open('','_blank','width=900,height=1100');
-  if(!w){toast('Permita pop-ups para abrir o PDF','warn');return;}
-  w.document.write(html);w.document.close();
-  toast('Relatório aberto — use Imprimir para salvar como PDF','ok');
-}
+  var r = rObj || (id ? (S.relatorios||[]).find(function(x){return x.id===id;}) : null);
+  if(!r){ toast('Relatório não encontrado','err'); return; }
+  var cfg = getCfg(); var v = cfg.vessel||{};
+  var esc = escHtml;
+  var now = new Date().toLocaleString('pt-BR');
+  var navio = v.name || v.vessel || 'M/V LOG-IN JACARANDÁ';
 
+  // Assinaturas — padrão editável
+  var sigs = r.assinaturas || [
+    {nm: v.cmte || 'Comandante', rl: 'Comandante'},
+    {nm: r.autorNm || 'Responsável', rl: 'Responsável Técnico'}
+  ];
+
+  // Formatar texto simples (negrito/itálico do editor)
+  var fmt = function(t){
+    return esc(t||'')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/_(.+?)_/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
+  };
+
+  var itemsHtml = (r.items||[]).map(function(item, i){
+    var fotos = (item.fotos||[]);
+    var fotosHtml = fotos.length
+      ? '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 14px;background:#fafafa;">'
+        + fotos.map(function(u, fi){
+            var cap = (item.fotosDesc && item.fotosDesc[fi]) || '';
+            return '<figure style="margin:0;break-inside:avoid;">'
+              + '<img src="' + u + '" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid #ddd;display:block;-webkit-print-color-adjust:exact;">'
+              + '<figcaption style="font-size:9px;color:#555;text-align:center;padding:3px 2px 0;line-height:1.3;">'
+              + (cap ? esc(cap) : 'Foto ' + (fi+1)) + '</figcaption></figure>';
+          }).join('')
+        + '</div>'
+      : '';
+    return '<div style="border:1px solid #e5e7eb;border-radius:8px;margin-bottom:14px;border-left:4px solid #7c3aed;break-inside:avoid;overflow:hidden;">'
+      + '<div style="background:#f5f3ff;padding:9px 14px;display:flex;align-items:center;gap:9px;-webkit-print-color-adjust:exact;">'
+      + '<span style="background:#7c3aed;color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:5px;-webkit-print-color-adjust:exact;">' + (i+1) + '</span>'
+      + '<span style="font-size:13px;font-weight:700;color:#111827;">' + esc(item.desc||'Sem descrição') + '</span>'
+      + '<span style="margin-left:auto;font-size:10px;color:#7c3aed;">' + fotos.length + ' foto(s)</span>'
+      + '</div>'
+      + (item.obs ? '<div style="padding:10px 14px;font-size:12px;line-height:1.6;color:#374151;">' + fmt(item.obs) + '</div>' : '')
+      + fotosHtml
+      + '</div>';
+  }).join('');
+
+  var metaItems = [
+    ['Registrado por', r.autorNm||'—'],
+    ['Departamento',   r.dept||'—'],
+    ['Projeto',        r.projeto||'—'],
+    ['Área / Local',   r.area||'—'],
+    ['Referências',    r.planos||'—'],
+    ['Data',           r.data ? fd(r.data) : '—']
+  ];
+  var metaHtml = metaItems.map(function(m){
+    return '<div style="background:#fff;padding:9px 13px;">'
+      + '<div style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#9ca3af;margin-bottom:3px;">' + m[0] + '</div>'
+      + '<div style="font-size:12px;font-weight:600;color:#111827;">' + esc(m[1]) + '</div></div>';
+  }).join('');
+
+  var sigHtml = sigs.map(function(sg, si){
+    return '<div style="text-align:center;flex:1;min-width:150px;max-width:230px;">'
+      + '<div style="border-bottom:1.5px solid #374151;height:46px;margin-bottom:6px;"></div>'
+      + '<div class="sig-nm" contenteditable="true" data-si="' + si + '" '
+      + 'style="font-size:12px;font-weight:700;color:#374151;outline:none;padding:1px 4px;border-radius:3px;">' + esc(sg.nm) + '</div>'
+      + '<div class="sig-rl" contenteditable="true" data-si="' + si + '" '
+      + 'style="font-size:10px;color:#9ca3af;margin-top:2px;outline:none;padding:1px 4px;border-radius:3px;">' + esc(sg.rl) + '</div>'
+      + '</div>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<title>Relatório Técnico — ' + esc(r.titulo||'') + '</title>'
+    + '<style>'
+    + '*{box-sizing:border-box;margin:0;padding:0;}'
+    + '@page{margin:11mm 12mm;size:A4;}'
+    + 'body{font-family:"Segoe UI",system-ui,Arial,sans-serif;font-size:12px;color:#111827;background:#f1f5f9;'
+    + '-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.sheet{max-width:210mm;margin:0 auto;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.12);}'
+    + '.sig-nm:focus,.sig-rl:focus{background:#fef9c3;}'
+    + '@media print{body{background:#fff;}.no-print{display:none!important}.sheet{box-shadow:none;max-width:none;}}'
+    + '</style></head><body>'
+    // Barra de ações (não imprime)
+    + '<div class="no-print" style="background:#07182e;padding:11px 18px;display:flex;gap:8px;align-items:center;'
+    + 'justify-content:space-between;flex-wrap:wrap;position:sticky;top:0;z-index:10;">'
+    + '<span style="color:#fff;font-size:13px;font-weight:700;">📄 ' + esc(r.titulo||'Relatório Técnico') + '</span>'
+    + '<div style="display:flex;gap:8px;">'
+    + '<button onclick="window.print()" style="background:#3b82f6;color:#fff;border:none;border-radius:7px;'
+    + 'padding:9px 18px;font-weight:700;cursor:pointer;font-size:13px;">🖨 Imprimir</button>'
+    + '<button onclick="alert(\'No diálogo de impressão, escolha \\u201cSalvar como PDF\\u201d como destino.\');window.print()" '
+    + 'style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-weight:700;cursor:pointer;font-size:13px;">📄 Salvar PDF</button>'
+    + '<button onclick="window.close()" style="background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.22);'
+    + 'border-radius:7px;padding:9px 15px;cursor:pointer;font-size:13px;">✕ Fechar</button>'
+    + '</div></div>'
+    + '<div class="no-print" style="background:#fef9c3;color:#854d0e;padding:7px 18px;font-size:11px;text-align:center;">'
+    + '✏️ Os nomes nas assinaturas são editáveis — clique para alterar antes de imprimir</div>'
+    + '<div class="sheet">'
+    // Cabeçalho com logo + navio
+    + '<div style="background:linear-gradient(135deg,#07182e 0%,#143068 55%,#1a4080 100%);color:#fff;padding:20px 24px;-webkit-print-color-adjust:exact;">'
+    + '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
+    // Logo login.
+    + '<div style="flex-shrink:0;">'
+    + '<div style="font-family:\'Barlow Condensed\',Arial,sans-serif;font-size:30px;font-weight:800;line-height:1;letter-spacing:-1px;">'
+    + '<span style="color:#fff;">log</span><span style="color:#6DB847;">in</span><span style="color:#F5A800;">.</span></div>'
+    + '<div style="font-size:8px;opacity:.65;letter-spacing:1.4px;text-transform:uppercase;margin-top:2px;">logística intermodal</div>'
+    + '</div>'
+    + '<div style="width:1px;height:44px;background:rgba(255,255,255,.2);"></div>'
+    + '<div style="flex:1;min-width:180px;">'
+    + '<div style="font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:4px;">Relatório Técnico</div>'
+    + '<div style="font-size:19px;font-weight:800;line-height:1.2;margin-bottom:3px;">' + esc(r.titulo||'—') + '</div>'
+    + '<div style="font-size:12px;opacity:.85;">⚓ ' + esc(navio) + '</div>'
+    + '</div>'
+    + '<div style="text-align:right;font-size:10px;opacity:.75;line-height:1.7;flex-shrink:0;">'
+    + '<div>IMO ' + esc(v.imo||'9471886') + '</div>'
+    + '<div>' + esc(v.armador||'LOG-IN Logística Intermodal') + '</div>'
+    + '<div>' + (r.data?fd(r.data):'') + '</div>'
+    + '</div></div></div>'
+    // Metadados
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:#e5e7eb;border-bottom:1px solid #e5e7eb;">'
+    + metaHtml + '</div>'
+    // Descrição
+    + (r.desc ? '<div style="padding:14px 24px;background:#f9fafb;border-bottom:1px solid #f3f4f6;">'
+      + '<div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#9ca3af;margin-bottom:7px;">📝 Descrição Geral</div>'
+      + '<div style="font-size:12px;line-height:1.7;color:#374151;">' + fmt(r.desc) + '</div></div>' : '')
+    // Itens
+    + '<div style="padding:16px 24px;">'
+    + '<div style="display:flex;align-items:center;gap:9px;margin-bottom:14px;padding-bottom:9px;border-bottom:2px solid #7c3aed;">'
+    + '<span style="font-size:13px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.5px;">Itens do Relatório</span>'
+    + '<span style="background:#7c3aed;color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;-webkit-print-color-adjust:exact;">'
+    + (r.items||[]).length + '</span></div>'
+    + (itemsHtml || '<div style="color:#9ca3af;font-size:12px;font-style:italic;padding:14px;text-align:center;">Nenhum item registrado.</div>')
+    + '</div>'
+    // Assinaturas
+    + '<div style="padding:20px 24px 24px;border-top:2px solid #e5e7eb;break-inside:avoid;">'
+    + '<div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#9ca3af;margin-bottom:16px;text-align:center;">Assinaturas</div>'
+    + '<div style="display:flex;justify-content:space-around;gap:24px;flex-wrap:wrap;">' + sigHtml + '</div>'
+    + '</div>'
+    // Rodapé
+    + '<div style="background:#f9fafb;padding:9px 24px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;'
+    + 'font-size:9px;color:#9ca3af;flex-wrap:wrap;gap:8px;">'
+    + '<span>' + esc(navio) + ' · IMO ' + esc(v.imo||'9471886') + '</span>'
+    + '<span>Gerado em ' + now + '</span></div>'
+    + '</div></body></html>';
+
+  var w = window.open('', '_blank', 'width=940,height=1100');
+  if(!w){ toast('⚠️ Permita pop-ups para abrir o relatório','warn'); return; }
+  w.document.write(html);
+  w.document.close();
+  toast('📄 Relatório aberto — 🖨 Imprimir ou 📄 Salvar PDF','ok');
+}
 
 function addR2Item(){
   _r2Items.push({desc:'', fotos:[], fotosDesc:[]});
@@ -5637,6 +5795,186 @@ function popRAutorList(){
   });
   if(v.cmte) opts.unshift('<option value="'+escHtml(v.cmte)+'" label="Comandante">');
   dl.innerHTML=opts.join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GALERIA DE FOTOS — 4 por linha, mover, editar, legenda
+// ═══════════════════════════════════════════════════════════════
+
+// Renderiza grade de fotos com controles de mover/editar/remover
+function jacFotoGrid(fotos, caps, opts){
+  opts = opts || {};
+  var onMove   = opts.onMove   || '';
+  var onRemove = opts.onRemove || '';
+  var onCap    = opts.onCap    || '';
+  var onEdit   = opts.onEdit   || '';
+  var cur      = !!opts.curried;
+  if(!fotos || !fotos.length) return '';
+  return '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px;">'
+    + fotos.map(function(u, i){
+      var cap = (caps && caps[i]) || '';
+      return '<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff;">'
+        // Imagem
+        + '<div style="position:relative;aspect-ratio:4/3;background:#0f172a;cursor:zoom-in;" onclick="viewP(\'' + u + '\')">'
+        + '<img src="' + u + '" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy">'
+        + '<span style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.65);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;">' + (i+1) + '</span>'
+        + '</div>'
+        // Controles
+        + '<div style="display:flex;gap:2px;padding:4px;background:var(--surface2);justify-content:center;" onclick="event.stopPropagation()">'
+        + (onMove ? '<button title="Mover para esquerda" onclick="' + onMove + (cur?'':'(') + i + ',-1)" ' + (i===0?'disabled':'') + ' style="flex:1;border:none;background:' + (i===0?'#e5e7eb':'#fff') + ';border-radius:4px;padding:3px;cursor:' + (i===0?'default':'pointer') + ';font-size:12px;">◀</button>' : '')
+        + (onEdit ? '<button title="Girar imagem" onclick="' + onEdit + (cur?'':'(') + i + ')" style="flex:1;border:none;background:#fff;border-radius:4px;padding:3px;cursor:pointer;font-size:12px;">↻</button>' : '')
+        + (onRemove ? '<button title="Remover" onclick="' + onRemove + (cur?'':'(') + i + ')" style="flex:1;border:none;background:#fee2e2;color:#dc2626;border-radius:4px;padding:3px;cursor:pointer;font-size:12px;">✕</button>' : '')
+        + (onMove ? '<button title="Mover para direita" onclick="' + onMove + (cur?'':'(') + i + ',1)" ' + (i===fotos.length-1?'disabled':'') + ' style="flex:1;border:none;background:' + (i===fotos.length-1?'#e5e7eb':'#fff') + ';border-radius:4px;padding:3px;cursor:' + (i===fotos.length-1?'default':'pointer') + ';font-size:12px;">▶</button>' : '')
+        + '</div>'
+        // Legenda
+        + (onCap ? '<input type="text" value="' + escHtml(cap) + '" placeholder="Legenda..." oninput="' + onCap + (cur?'':'(') + i + ',this.value)" onclick="event.stopPropagation()" style="width:100%;border:none;border-top:1px solid var(--border);padding:5px 7px;font-size:10px;text-align:center;background:#fff;box-sizing:border-box;">' : '')
+        + '</div>';
+    }).join('')
+    + '</div>';
+}
+
+// Girar imagem 90 graus
+function jacGirarFoto(dataUrl, cb){
+  var img = new Image();
+  img.onload = function(){
+    var c = document.createElement('canvas');
+    c.width = img.height; c.height = img.width;
+    var ctx = c.getContext('2d');
+    ctx.translate(c.width/2, c.height/2);
+    ctx.rotate(Math.PI/2);
+    ctx.drawImage(img, -img.width/2, -img.height/2);
+    cb(c.toDataURL('image/jpeg', 0.8));
+  };
+  img.src = dataUrl;
+}
+
+// ── Handlers das fotos do REGISTRO (aba Atividade) ──
+function regFotoMove(i, dir){
+  var arr = S.tp.reg || []; var j = i + dir;
+  if(j < 0 || j >= arr.length) return;
+  var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  renderTPWithCaption('reg');
+}
+function regFotoRemove(i){
+  (S.tp.reg||[]).splice(i,1);
+  renderTPWithCaption('reg');
+}
+function regFotoCap(i, v){
+  if(S.tp.reg && S.tp.reg[i]) S.tp.reg[i].caption = v;
+}
+function regFotoEdit(i){
+  var arr = S.tp.reg || []; if(!arr[i]) return;
+  jacGirarFoto(arr[i].u, function(u2){ arr[i].u = u2; renderTPWithCaption('reg'); });
+}
+
+// Substitui renderTPWithCaption pela grade nova
+function renderTPWithCaption(ctx){
+  var grid = document.getElementById('pg-' + ctx);
+  if(!grid) return;
+  var items = S.tp[ctx] || [];
+  if(!items.length){ grid.innerHTML = ''; return; }
+  grid.style.cssText = '';
+  var pfx = ctx === 'reg' ? 'regFoto' : 'tpFoto';
+  grid.innerHTML =
+    '<div style="font-size:11px;color:var(--text-dim);margin:8px 0 4px;">'
+    + items.length + ' foto(s) — use ◀ ▶ para reordenar, ↻ para girar</div>'
+    + jacFotoGrid(items.map(function(p){return p.u;}), items.map(function(p){return p.caption||'';}), {
+        onMove:   pfx + 'Move',
+        onRemove: pfx + 'Remove',
+        onCap:    pfx + 'Cap',
+        onEdit:   pfx + 'Edit'
+      });
+}
+// Handlers genéricos p/ outros contextos (av, of, insp)
+function tpFotoMove(i, dir){
+  var c = window._tpCtx || 'av'; var arr = S.tp[c] || []; var j = i + dir;
+  if(j < 0 || j >= arr.length) return;
+  var t = arr[i]; arr[i] = arr[j]; arr[j] = t; renderTPWithCaption(c);
+}
+function tpFotoRemove(i){ var c = window._tpCtx||'av'; (S.tp[c]||[]).splice(i,1); renderTPWithCaption(c); }
+function tpFotoCap(i,v){ var c = window._tpCtx||'av'; if(S.tp[c]&&S.tp[c][i]) S.tp[c][i].caption=v; }
+function tpFotoEdit(i){
+  var c = window._tpCtx||'av'; var arr=S.tp[c]||[]; if(!arr[i])return;
+  jacGirarFoto(arr[i].u, function(u2){ arr[i].u=u2; renderTPWithCaption(c); });
+}
+
+// ── Handlers das fotos dos ITENS do relatório técnico ──
+function r2FotoMove(itemIdx, i, dir){
+  var it = _r2Items[itemIdx]; if(!it || !it.fotos) return;
+  var j = i + dir; if(j < 0 || j >= it.fotos.length) return;
+  var t = it.fotos[i]; it.fotos[i] = it.fotos[j]; it.fotos[j] = t;
+  if(it.fotosDesc){ var d = it.fotosDesc[i]; it.fotosDesc[i] = it.fotosDesc[j]; it.fotosDesc[j] = d; }
+  renderR2Items();
+}
+function r2FotoRemove(itemIdx, i){
+  var it = _r2Items[itemIdx]; if(!it) return;
+  (it.fotos||[]).splice(i,1); (it.fotosDesc||[]).splice(i,1);
+  renderR2Items();
+}
+function r2FotoCap(itemIdx, i, v){
+  var it = _r2Items[itemIdx]; if(!it) return;
+  if(!it.fotosDesc) it.fotosDesc = [];
+  it.fotosDesc[i] = v;
+}
+function r2FotoEdit(itemIdx, i){
+  var it = _r2Items[itemIdx]; if(!it||!it.fotos||!it.fotos[i]) return;
+  jacGirarFoto(it.fotos[i], function(u2){ it.fotos[i] = u2; renderR2Items(); });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EDITOR DE TEXTO — barra de ferramentas + auto-resize
+// ═══════════════════════════════════════════════════════════════
+function jacTextToolbar(targetId){
+  return '<div style="display:flex;gap:3px;flex-wrap:wrap;background:var(--surface2);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;padding:5px;">'
+    + [['**','B','Negrito','font-weight:800;'],
+       ['_','I','Itálico','font-style:italic;'],
+       ['• ','•','Lista','']].map(function(b){
+        return '<button type="button" onclick="jacTxtWrap(\'' + targetId + '\',\'' + b[0] + '\')" title="' + b[2] + '" '
+          + 'style="min-width:28px;border:1px solid var(--border);background:#fff;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;' + b[3] + '">' + b[1] + '</button>';
+      }).join('')
+    + '<button type="button" onclick="jacTxtInsert(\'' + targetId + '\',\'\\n— \')" title="Novo tópico" style="border:1px solid var(--border);background:#fff;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;">—</button>'
+    + '<button type="button" onclick="jacTxtInsert(\'' + targetId + '\',new Date().toLocaleDateString(\'pt-BR\')+\' \')" title="Inserir data" style="border:1px solid var(--border);background:#fff;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:12px;">📅</button>'
+    + '<span style="flex:1"></span>'
+    + '<span id="' + targetId + '-count" style="font-size:10px;color:var(--text-dim);align-self:center;padding-right:4px;">0 car.</span>'
+    + '</div>';
+}
+function jacTxtWrap(id, mark){
+  var el = document.getElementById(id); if(!el) return;
+  var s = el.selectionStart, e = el.selectionEnd;
+  var sel = el.value.slice(s,e) || 'texto';
+  el.value = el.value.slice(0,s) + mark + sel + mark + el.value.slice(e);
+  el.focus(); el.setSelectionRange(s+mark.length, s+mark.length+sel.length);
+  jacAutoGrow(el);
+}
+function jacTxtInsert(id, txt){
+  var el = document.getElementById(id); if(!el) return;
+  var s = el.selectionStart;
+  el.value = el.value.slice(0,s) + txt + el.value.slice(s);
+  el.focus(); el.setSelectionRange(s+txt.length, s+txt.length);
+  jacAutoGrow(el);
+}
+function jacAutoGrow(el){
+  if(!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.max(80, el.scrollHeight + 4) + 'px';
+  var c = document.getElementById(el.id + '-count');
+  if(c) c.textContent = (el.value||'').length + ' car.';
+}
+function jacInitAutoGrow(){
+  ['r2-desc','r-atv','novo-bloco-desc','insp-desc','dv-desc'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    // Injetar barra de ferramentas uma vez
+    var tb = document.getElementById(id + '-tb');
+    if(tb && !tb.innerHTML) tb.innerHTML = jacTextToolbar(id);
+    if(!el._agInit){
+      el._agInit = true;
+      el.style.borderRadius = '0 0 8px 8px';
+      el.style.overflow = 'hidden';
+      el.addEventListener('input', function(){ jacAutoGrow(el); });
+    }
+    jacAutoGrow(el);
+  });
 }
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -11058,26 +11396,6 @@ function addPhotosWithCaption(files, ctx){
   });
 }
 
-function renderTPWithCaption(ctx){
-  const grid = document.getElementById('pg-'+ctx);
-  if(!grid) return;
-  const items = S.tp[ctx]||[];
-  if(!items.length){ grid.innerHTML=''; return; }
-  grid.style.cssText='display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;';
-  grid.innerHTML = items.map((p,i)=>`
-    <div style="display:flex;flex-direction:column;align-items:center;gap:5px;width:110px;">
-      <div style="position:relative;width:110px;height:110px;">
-        <img src="${p.u}" onclick="viewP('${p.u}')" 
-          style="width:110px;height:110px;object-fit:cover;border-radius:10px;border:2px solid var(--border);cursor:pointer;display:block;box-shadow:var(--shadow-sm);">
-        <button onclick="S.tp['${ctx}'].splice(${i},1);renderTPWithCaption('${ctx}')" 
-          style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;font-weight:700;line-height:1;box-shadow:var(--shadow-sm);">✕</button>
-      </div>
-      <input type="text" value="${escHtml(p.caption||'')}" placeholder="Legenda opcional..." 
-        oninput="S.tp['${ctx}'][${i}].caption=this.value"
-        style="width:110px;font-size:10px;border:1.5px solid var(--border);border-radius:6px;padding:4px 7px;font-family:inherit;text-align:center;background:#fff;color:var(--text);"
-        onfocus="this.style.borderColor='var(--login-blue)'" onblur="this.style.borderColor='var(--border)'">
-    </div>`).join('');
-}
 
 function toggleCustomPorto(){
   const sel=document.getElementById('mc-porto-sel');
@@ -12114,7 +12432,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.4.5';
+const APP_VERSION = '3.5.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
