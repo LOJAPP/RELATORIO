@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reset — LOG-IN Jacarandá</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,Segoe UI,sans-serif;background:#0a1e45;color:#fff;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;color:#111827;border-radius:16px;max-width:520px;width:100%;
+  box-shadow:0 24px 80px rgba(0,0,0,.4);overflow:hidden}
+.hd{background:linear-gradient(135deg,#07182e,#1a4080);color:#fff;padding:20px 24px}
+.hd h1{font-size:20px;font-weight:800;margin-bottom:4px}
+.hd p{font-size:12px;opacity:.8}
+.bd{padding:22px 24px}
+.bd p{font-size:14px;line-height:1.65;margin-bottom:14px}
+button{width:100%;padding:14px;border:none;border-radius:10px;font-size:15px;
+  font-weight:700;cursor:pointer;margin-bottom:10px}
+.b1{background:#dc2626;color:#fff}
+.b2{background:#0a1e45;color:#fff}
+#log{background:#0f172a;color:#6DB847;font-family:monospace;font-size:11px;
+  padding:12px;border-radius:8px;margin-top:14px;min-height:70px;line-height:1.8;display:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="hd">
+    <h1>🔄 Reset do Aplicativo</h1>
+    <p>Remove o cache antigo e carrega a versão mais recente</p>
+  </div>
+  <div class="bd">
+    <p><strong>Seus dados salvos não serão apagados.</strong> Isso limpa apenas os arquivos
+    do programa que o navegador guardou, forçando o download da versão nova.</p>
+    <button class="b1" onclick="limpar()">🧹 Limpar cache e recarregar o app</button>
+    <button class="b2" onclick="location.href='jacaranda_manutencao.html?v='+Date.now()">
+      ➡️ Abrir o app sem limpar</button>
+    <div id="log"></div>
+  </div>
+</div>
+<script>
+function L(t){var l=document.getElementById('log');l.style.display='block';l.innerHTML+=t+'<br>';}
+async function limpar(){
+  L('Iniciando...');
+  try{
+    if('serviceWorker' in navigator){
+      var rs=await navigator.serviceWorker.getRegistrations();
+      for(var r of rs){ await r.unregister(); }
+      L('✔ '+rs.length+' service worker(s) removido(s)');
+    }
+  }catch(e){ L('! SW: '+e.message); }
+  try{
+    if('caches' in window){
+      var ks=await caches.keys();
+      for(var k of ks){ await caches.delete(k); }
+      L('✔ '+ks.length+' cache(s) apagado(s)');
+    }
+  }catch(e){ L('! cache: '+e.message); }
+  L('✔ Dados do app preservados');
+  L('Recarregando em 2s...');
+  setTimeout(function(){
+    location.href='jacaranda_manutencao.html?v='+Date.now();
+  },2000);
+}
+</script>
+</body>
+</html>

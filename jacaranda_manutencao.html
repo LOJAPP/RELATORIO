@@ -1136,6 +1136,9 @@
                 📁 Salvar na pasta
               </button>
             </div>
+            <button class="btn btn-ghost btn-sm" onclick="saveNovoRelatorio(true)" style="font-size:11px;width:100%;">
+              🔍 Salvar com diagnóstico (mostra onde falha)
+            </button>
           </div>
           <div style="margin-top:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;">
             <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">📁 Pasta do navio — Relatório Técnico (subpasta "Relatorio Tecnico")</div>
@@ -4472,41 +4475,127 @@ function switchNovoTab(tab){
   setTimeout(function(){ try{jacInitAutoGrow();}catch(e){} }, 50);
 }
 
-function saveNovoRelatorio(){
-  const data   = document.getElementById('r2-data')?.value;
-  const titulo = document.getElementById('r2-titulo')?.value.trim();
-  const autorNm= (document.getElementById('r2-autor')?.value||'').trim();
-  if(!data || !titulo){ toast('⚠️ Preencha a data e o título','warn'); return; }
-  // autor não obrigatório — usar 'Comandante' como fallback
-  var _autorNm = autorNm || (getCfg().vessel||{}).cmte || 'Comandante';
-  const autor = (S.crew||[]).find(c=>(c.nm||'').toLowerCase().includes(_autorNm.toLowerCase()));
-  const abbr  = autor?(autor.abbr||(ROLE_ABBR[autor.fn]||String(autor.fn||'').slice(0,3).toUpperCase())):'CMD';
-  if(!S.relatorios) S.relatorios = [];
-  S.relatorios.push({
-    id: gid(), data,
-    autorNm: autor?('['+abbr+'] '+autor.nm):_autorNm,
-    dept:    document.getElementById('r2-dept')?.value||'',
-    projeto: (document.getElementById('r2-projeto')?.value||'').trim(),
-    area:    (document.getElementById('r2-area')?.value||'').trim(),
-    titulo,
-    desc:    (document.getElementById('r2-desc')?.value||'').trim(),
-    planos:  (document.getElementById('r2-planos')?.value||'').trim(),
-    items:   JSON.parse(JSON.stringify(_r2Items)),
-    assinaturas: JSON.parse(JSON.stringify(_r2Sigs.filter(function(s){return s.nm;}))),
-    s: String(wn()).padStart(2,'0'),
-    ts: Date.now()
-  });
-  saveData(true);
-  // Clear form
-  ['r2-titulo','r2-desc','r2-projeto','r2-area','r2-planos'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.value='';
-  });
-  _r2Items = [];
-  _r2Sigs = r2SigDefaults();
-  renderR2Items();
-  renderR2Sigs();
-  renderR2Saved();
-  toast('✅ Relatório salvo!','ok');
+// Painel de diagnóstico visível
+function jacDiagBox(linhas, titulo){
+  var old = document.getElementById('jac-diag'); if(old) old.remove();
+  var ov = document.createElement('div');
+  ov.id = 'jac-diag';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  var p = document.createElement('div');
+  p.style.cssText='background:#fff;border-radius:14px;max-width:520px;width:100%;max-height:82vh;overflow-y:auto;';
+  p.innerHTML =
+    '<div style="background:#07182e;color:#fff;padding:14px 18px;font-weight:800;font-size:15px;">'
+    + (titulo||'🔍 Diagnóstico') + '</div>'
+    + '<div style="padding:16px;font-family:monospace;font-size:12px;line-height:1.9;">'
+    + linhas.map(function(l){ return '<div>' + l + '</div>'; }).join('')
+    + '</div>'
+    + '<div style="padding:0 16px 16px;"><button class="btn btn-primary" style="width:100%;" '
+    + 'onclick="document.getElementById(\'jac-diag\').remove()">Fechar</button></div>';
+  ov.appendChild(p); document.body.appendChild(ov);
+}
+
+function saveNovoRelatorio(diag){
+  var log = [];
+  var L = function(ok, txt){ log.push((ok?'✅ ':'❌ ') + txt); };
+
+  try{
+    // 1. Ler campos
+    var elData = document.getElementById('r2-data');
+    var elTit  = document.getElementById('r2-titulo');
+    var elAut  = document.getElementById('r2-autor');
+    L(!!elData, 'campo data: ' + (elData ? '"'+(elData.value||'(vazio)')+'"' : 'AUSENTE'));
+    L(!!elTit,  'campo título: ' + (elTit ? '"'+(elTit.value||'(vazio)')+'"' : 'AUSENTE'));
+    L(!!elAut,  'campo autor: ' + (elAut ? '"'+(elAut.value||'(vazio)')+'"' : 'AUSENTE'));
+
+    var data   = elData ? elData.value : '';
+    var titulo = elTit ? (elTit.value||'').trim() : '';
+    var autorNm= elAut ? (elAut.value||'').trim() : '';
+
+    if(!data){
+      L(false, 'PAROU: data em branco');
+      toast('⚠️ Preencha a DATA do relatório','warn');
+      if(diag) jacDiagBox(log, '❌ Não salvou'); 
+      if(elData) elData.focus();
+      return false;
+    }
+    if(!titulo){
+      L(false, 'PAROU: título em branco');
+      toast('⚠️ Preencha o TÍTULO do relatório','warn');
+      if(diag) jacDiagBox(log, '❌ Não salvou');
+      if(elTit) elTit.focus();
+      return false;
+    }
+    L(true, 'validação passou');
+
+    // 2. Montar objeto
+    var _autorNm = autorNm || (getCfg().vessel||{}).cmte || 'Comandante';
+    var autor = (S.crew||[]).find(function(c){
+      return (c.nm||'').toLowerCase().indexOf(_autorNm.toLowerCase()) >= 0;
+    });
+    var abbr = autor ? (autor.abbr || (ROLE_ABBR[autor.fn] || String(autor.fn||'').slice(0,3).toUpperCase())) : 'CMD';
+
+    if(!S.relatorios) S.relatorios = [];
+    var antes = S.relatorios.length;
+    L(true, 'relatórios antes: ' + antes);
+
+    var g = function(id){ var el=document.getElementById(id); return el ? (el.value||'').trim() : ''; };
+
+    var rel = {
+      id: gid(),
+      data: data,
+      autorNm: autor ? ('['+abbr+'] '+autor.nm) : _autorNm,
+      dept:    g('r2-dept'),
+      projeto: g('r2-projeto'),
+      area:    g('r2-area'),
+      titulo:  titulo,
+      desc:    g('r2-desc'),
+      planos:  g('r2-planos'),
+      items:   JSON.parse(JSON.stringify(_r2Items||[])),
+      assinaturas: JSON.parse(JSON.stringify((_r2Sigs||[]).filter(function(x){return x.nm;}))),
+      s: String(typeof wn==='function'?wn():0).padStart(2,'0'),
+      ts: Date.now()
+    };
+    L(true, 'objeto montado — ' + rel.items.length + ' item(s), ' + rel.assinaturas.length + ' assinatura(s)');
+
+    S.relatorios.push(rel);
+    L(true, 'adicionado à memória: ' + S.relatorios.length);
+
+    // 3. Persistir
+    var ok = saveData(true);
+    L(ok, 'gravado no navegador: ' + (ok ? 'SIM' : 'NÃO — armazenamento cheio?'));
+
+    if(!ok){
+      if(diag) jacDiagBox(log, '⚠️ Salvou na memória mas não gravou');
+      return false;
+    }
+
+    // 4. Confirmar leitura de volta
+    var check = 0;
+    try{ check = (JSON.parse(localStorage.getItem('jac_v5')||'{}').relatorios||[]).length; }catch(e){}
+    L(check > antes, 'confirmado no armazenamento: ' + check + ' relatório(s)');
+
+    // 5. Limpar e renderizar
+    _r2Items = [];
+    _r2Sigs  = (typeof r2SigDefaults==='function') ? r2SigDefaults() : [];
+    try{ renderR2Items(); }catch(e){ L(false,'renderR2Items: '+e.message); }
+    try{ renderR2Sigs(); }catch(e){ L(false,'renderR2Sigs: '+e.message); }
+    try{ renderR2Saved(); L(true,'lista atualizada'); }catch(e){ L(false,'renderR2Saved: '+e.message); }
+
+    // Limpar campos do formulário
+    ['r2-titulo','r2-projeto','r2-area','r2-desc','r2-planos'].forEach(function(id){
+      var el=document.getElementById(id); if(el) el.value='';
+    });
+
+    toast('✅ Relatório "'+titulo+'" salvo! ('+check+' no total)','ok');
+    if(diag) jacDiagBox(log, '✅ Salvou com sucesso');
+    return true;
+
+  }catch(err){
+    L(false, 'ERRO: ' + err.message);
+    console.error('saveNovoRelatorio:', err);
+    jacDiagBox(log.concat(['', '<span style="color:#dc2626">' + err.stack.split('\n').slice(0,3).join('<br>') + '</span>']), '❌ Erro inesperado');
+    return false;
+  }
 }
 
 function saveNovoBloco(){
@@ -6363,7 +6452,7 @@ async function buildBackupDataFull(scope){
 // ═══════════════════════════════════════════════════════════
 // CONTROLE DE VERSÃO E ATUALIZAÇÃO FORÇADA
 // ═══════════════════════════════════════════════════════════
-var JAC_BUILD = '20260805-2200';
+var JAC_BUILD = '20260805-2330';
 
 // Mostra o build atual no canto da tela (clique = forçar atualização)
 function jacVersionBadge(){
@@ -13000,7 +13089,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.6.1';
+const APP_VERSION = '3.6.2';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
