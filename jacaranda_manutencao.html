@@ -2896,12 +2896,121 @@ function loadData(){
   if(!S.regs.length) seedRegs();
   storStatus();
 }
-function saveData(silent=false){
-  try{localStorage.setItem('jac_v5',JSON.stringify({regs:S.regs,crew:S.crew,fotos:S.fotos,empresas:S.empresas,oficina:S.oficina,desvios:S.desvios,inspecoes:S.inspecoes,embHistory:S.embHistory||[],relatorios:S.relatorios||[],rioCfg:S.rioCfg||{}}));
-    try{localStorage.setItem('jac_last_change',String(Date.now()));}catch(e){}
-    if(typeof scheduleDriveSync==='function')scheduleDriveSync();
-    if(!silent)toast('✅ Dados salvos!','ok');storStatus();}
-  catch(e){toast('⚠️ Erro ao salvar — faça backup JSON','warn');}
+function saveData(silent){
+  silent = silent || false;
+  var payload;
+  try{
+    payload = JSON.stringify({regs:S.regs,crew:S.crew,fotos:S.fotos,empresas:S.empresas,
+      oficina:S.oficina,desvios:S.desvios,inspecoes:S.inspecoes,
+      embHistory:S.embHistory||[],relatorios:S.relatorios||[],rioCfg:S.rioCfg||{}});
+  }catch(e){
+    toast('❌ Erro ao preparar dados: '+e.message,'err');
+    console.error('saveData/stringify:',e);
+    return false;
+  }
+
+  try{
+    localStorage.setItem('jac_v5', payload);
+    try{ localStorage.setItem('jac_last_change', String(Date.now())); }catch(e){}
+    if(typeof scheduleDriveSync==='function') scheduleDriveSync();
+    if(!silent) toast('✅ Dados salvos!','ok');
+    try{ storStatus(); }catch(e){}
+    return true;
+
+  }catch(e){
+    var isQuota = e && (e.name==='QuotaExceededError'
+      || e.name==='NS_ERROR_DOM_QUOTA_REACHED'
+      || e.code===22 || e.code===1014
+      || /quota|exceeded|storage/i.test(e.message||''));
+
+    if(isQuota){
+      var mb = (payload.length/1048576).toFixed(1);
+      console.error('saveData: QUOTA EXCEDIDA —', mb, 'MB');
+      // Salvamento de emergência: baixar backup automaticamente
+      jacEmergencyBackup(payload);
+      jacQuotaModal(mb);
+    } else {
+      toast('❌ Erro ao salvar: '+(e.message||e.name),'err');
+      console.error('saveData:',e);
+    }
+    return false;
+  }
+}
+
+// Baixa um backup automaticamente quando o armazenamento estoura
+function jacEmergencyBackup(payload){
+  try{
+    var blob = new Blob([payload], {type:'application/json'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'JAC_BACKUP_EMERGENCIA_' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'') + '.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  }catch(e){ console.error('backup emergência:',e); }
+}
+
+// Modal explicando o problema e oferecendo soluções
+function jacQuotaModal(mb){
+  if(document.getElementById('modal-quota')) return;
+  var ov = document.createElement('div');
+  ov.id = 'modal-quota';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  var p = document.createElement('div');
+  p.style.cssText = 'background:#fff;border-radius:14px;max-width:520px;width:100%;overflow:hidden;';
+  p.innerHTML =
+    '<div style="background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;padding:16px 20px;">'
+    + '<div style="font-size:16px;font-weight:800;">⚠️ Armazenamento do navegador cheio</div>'
+    + '<div style="font-size:12px;opacity:.9;margin-top:3px;">Seus dados ocupam ' + mb + ' MB — o limite é ~5 MB</div>'
+    + '</div>'
+    + '<div style="padding:18px 20px;font-size:13px;line-height:1.65;">'
+    + '<p style="margin-bottom:12px;"><strong>Um backup foi baixado automaticamente</strong> para não perder nada.</p>'
+    + '<p style="margin-bottom:12px;">As fotos ocupam quase todo o espaço. Escolha uma opção:</p>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;">'
+    + '<button class="btn btn-primary" onclick="jacMigrarFotosIDB()" style="justify-content:flex-start;text-align:left;padding:11px 14px;">'
+    + '📦 Mover fotos para o banco interno <span style="opacity:.8;font-weight:400;font-size:11px;">(recomendado — libera espaço)</span></button>'
+    + '<button class="btn btn-ghost" onclick="jacQuotaClose();showPage(\'storage\')" style="justify-content:flex-start;text-align:left;padding:11px 14px;">'
+    + '💾 Ir para Armazenamento <span style="opacity:.7;font-weight:400;font-size:11px;">(exportar e limpar)</span></button>'
+    + '<button class="btn btn-ghost" onclick="jacQuotaClose()" style="justify-content:center;">Fechar</button>'
+    + '</div></div>';
+  ov.appendChild(p);
+  document.body.appendChild(ov);
+}
+
+function jacQuotaClose(){ var m=document.getElementById('modal-quota'); if(m) m.remove(); }
+
+// Migra todas as fotos de base64 para IndexedDB
+async function jacMigrarFotosIDB(){
+  jacQuotaClose();
+  toast('⏳ Movendo fotos para o banco interno...','ok');
+  var movidas = 0;
+
+  async function migraArr(arr){
+    if(!arr) return arr;
+    for(var i=0;i<arr.length;i++){
+      if(typeof arr[i]==='string' && arr[i].indexOf('data:image')===0){
+        arr[i] = await jacFotoPut(arr[i]); movidas++;
+      } else if(arr[i] && arr[i].u && String(arr[i].u).indexOf('data:image')===0){
+        arr[i].u = await jacFotoPut(arr[i].u); movidas++;
+      }
+    }
+    return arr;
+  }
+
+  for(var r of (S.regs||[]))       { await migraArr(r.fotos); }
+  for(var i2 of (S.inspecoes||[])) { await migraArr(i2.fotos); }
+  for(var o of (S.oficina||[]))    { await migraArr(o.fotos); }
+  await migraArr(S.fotos);
+  for(var rel of (S.relatorios||[])){
+    for(var it of (rel.items||[])) { await migraArr(it.fotos); }
+  }
+
+  var ok = saveData(true);
+  if(ok){
+    var info = jacStorageInfo();
+    toast('✅ ' + movidas + ' foto(s) movidas — armazenamento agora em ' + info.mb.toFixed(1) + ' MB','ok');
+  } else {
+    toast('⚠️ Ainda cheio — exporte um backup e limpe registros antigos','warn');
+  }
 }
 function storStatus(){
   const el=document.getElementById('stor-status');if(!el)return;
@@ -3468,9 +3577,16 @@ async function saveTecNaPasta(){
   _r2Items=[]; renderR2Items(); renderR2Saved();
   // 2) grava o arquivo na estrutura
   var vcfg=(getCfg().vessel)||{};
+  // Resolver fotos do IndexedDB para o arquivo ficar completo
+  var relExp = JSON.parse(JSON.stringify(rel));
+  for(var _i=0;_i<(relExp.items||[]).length;_i++){
+    if(relExp.items[_i].fotos && relExp.items[_i].fotos.length){
+      relExp.items[_i].fotos = await jacFotosResolve(relExp.items[_i].fotos);
+    }
+  }
   var payload=JSON.stringify({tipo:'relatorio-tecnico', navio:vcfg.vessel||'M/V LOG-IN JACARANDÁ',
     oficial:{nome:autor?autor.nm:'', funcao:autor?autor.fn:'', pasta:func},
-    exp:new Date().toISOString(), rel:rel}, null, 2);
+    exp:new Date().toISOString(), rel:relExp}, null, 2);
   var fname='RELTEC_'+String(rel.dept||'GERAL').replace(/[^\w]+/g,'-').toUpperCase()+'_'+data.replace(/-/g,'')+'_'+String(rel.id).slice(0,6)+'.json';
   var ok=await jacSaveStructured(['Relatorio Tecnico', func], fname, payload, 'application/json');
   if(!ok){
@@ -4506,6 +4622,8 @@ function renderR2Items(){
       + '</div></div>';
   }).join('');
 
+  // Hidratar imagens do IndexedDB
+  try{ jacHydrateImgs(list); }catch(e){}
   // Ativar auto-grow nas textareas dos itens
   setTimeout(function(){
     _r2Items.forEach(function(_, i){
@@ -4526,11 +4644,14 @@ function addFotoR2Item(itemIdx, files){
   if(!_r2Items[itemIdx]) return;
   Array.from(files).forEach(function(f){
     compress(f, function(u){
-      if(!_r2Items[itemIdx].fotos) _r2Items[itemIdx].fotos=[];
-      if(!_r2Items[itemIdx].fotosDesc) _r2Items[itemIdx].fotosDesc=[];
-      _r2Items[itemIdx].fotos.push(u);
-      _r2Items[itemIdx].fotosDesc.push('');
-      renderR2Items();
+      jacFotoPut(u).then(function(ref){
+        if(!_r2Items[itemIdx]) return;
+        if(!_r2Items[itemIdx].fotos) _r2Items[itemIdx].fotos=[];
+        if(!_r2Items[itemIdx].fotosDesc) _r2Items[itemIdx].fotosDesc=[];
+        _r2Items[itemIdx].fotos.push(ref);
+        _r2Items[itemIdx].fotosDesc.push('');
+        renderR2Items();
+      });
     });
   });
 }
@@ -4597,12 +4718,19 @@ function r2PrintAtual(){
     dept:dept,projeto:projeto,area:area,desc:desc,planos:planos,
     assinaturas:_r2Sigs.filter(function(s){return s.nm;}),
     items:JSON.parse(JSON.stringify(_r2Items))};
-  r2PrintPDF(null, r);
+  r2PrintPDF(null, r);  // async — resolve fotos internamente
 }
 
-function r2PrintPDF(id, rObj){
+async function r2PrintPDF(id, rObj){
   var r = rObj || (id ? (S.relatorios||[]).find(function(x){return x.id===id;}) : null);
   if(!r){ toast('Relatório não encontrado','err'); return; }
+  // Resolver fotos do IndexedDB para base64 (necessário para imprimir)
+  r = JSON.parse(JSON.stringify(r));
+  for(var _i=0;_i<(r.items||[]).length;_i++){
+    if(r.items[_i].fotos && r.items[_i].fotos.length){
+      r.items[_i].fotos = await jacFotosResolve(r.items[_i].fotos);
+    }
+  }
   var cfg = getCfg(); var v = cfg.vessel||{};
   var esc = escHtml;
   var now = new Date().toLocaleString('pt-BR');
@@ -5815,8 +5943,8 @@ function jacFotoGrid(fotos, caps, opts){
       var cap = (caps && caps[i]) || '';
       return '<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff;">'
         // Imagem
-        + '<div style="position:relative;aspect-ratio:4/3;background:#0f172a;cursor:zoom-in;" onclick="viewP(\'' + u + '\')">'
-        + '<img src="' + u + '" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy">'
+        + '<div style="position:relative;aspect-ratio:4/3;background:#0f172a;cursor:zoom-in;" onclick="jacViewFoto(\'' + u + '\')">'
+        + '<img src="' + jacImgSrc(u) + '"' + jacImgAttr(u) + ' style="width:100%;height:100%;object-fit:cover;display:block;background:#1e293b;" loading="lazy">'
         + '<span style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.65);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;">' + (i+1) + '</span>'
         + '</div>'
         // Controles
@@ -5884,6 +6012,15 @@ function renderTPWithCaption(ctx){
         onCap:    pfx + 'Cap',
         onEdit:   pfx + 'Edit'
       });
+  try{ jacHydrateImgs(grid); }catch(e){}
+}
+
+// Abre uma foto em tela cheia resolvendo referência do IndexedDB
+function jacViewFoto(ref){
+  jacFotoGet(ref).then(function(u){
+    if(!u){ toast('Foto não encontrada','warn'); return; }
+    if(typeof viewP==='function') viewP(u);
+  });
 }
 // Handlers genéricos p/ outros contextos (av, of, insp)
 function tpFotoMove(i, dir){
@@ -6075,6 +6212,143 @@ function cloudGitHubLoad(){
 function cloudRenderSavedConfig(){
   var el=document.getElementById('cloud-saved-config');
   if(el) el.innerHTML='<div style="font-size:11px;color:var(--text-dim);">Backup por Pasta de Rede e Google Drive disponíveis em 💾 Armazenamento.</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ARMAZENAMENTO DE FOTOS EM INDEXEDDB — resolve o limite de 5 MB
+// ═══════════════════════════════════════════════════════════════
+var _jacDB = null;
+
+function jacDBOpen(){
+  return new Promise(function(resolve, reject){
+    if(_jacDB){ resolve(_jacDB); return; }
+    if(!window.indexedDB){ reject(new Error('IndexedDB indisponível')); return; }
+    var req = indexedDB.open('jac_fotos_db', 1);
+    req.onupgradeneeded = function(e){
+      var db = e.target.result;
+      if(!db.objectStoreNames.contains('fotos')) db.createObjectStore('fotos');
+    };
+    req.onsuccess = function(e){ _jacDB = e.target.result; resolve(_jacDB); };
+    req.onerror   = function(e){ reject(e.target.error || new Error('Falha ao abrir IndexedDB')); };
+  });
+}
+
+// Guarda uma foto e devolve a chave de referência
+async function jacFotoPut(dataUrl){
+  if(!dataUrl) return dataUrl;
+  if(String(dataUrl).indexOf('idb:') === 0) return dataUrl; // já é referência
+  try{
+    var db = await jacDBOpen();
+    var key = 'f_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+    await new Promise(function(res, rej){
+      var tx = db.transaction('fotos','readwrite');
+      tx.objectStore('fotos').put(dataUrl, key);
+      tx.oncomplete = res; tx.onerror = function(){ rej(tx.error); };
+    });
+    return 'idb:' + key;
+  }catch(e){
+    console.warn('jacFotoPut falhou, mantendo base64:', e);
+    return dataUrl; // fallback: continua em base64
+  }
+}
+
+// Resolve uma referência para o dataURL real
+async function jacFotoGet(ref){
+  if(!ref) return '';
+  if(String(ref).indexOf('idb:') !== 0) return ref; // já é dataURL
+  try{
+    var db = await jacDBOpen();
+    var key = String(ref).slice(4);
+    return await new Promise(function(res, rej){
+      var tx = db.transaction('fotos','readonly');
+      var rq = tx.objectStore('fotos').get(key);
+      rq.onsuccess = function(){ res(rq.result || ''); };
+      rq.onerror   = function(){ rej(rq.error); };
+    });
+  }catch(e){ return ''; }
+}
+
+// Resolve um array de referências de uma vez
+async function jacFotosResolve(arr){
+  if(!arr || !arr.length) return [];
+  return await Promise.all(arr.map(function(u){ return jacFotoGet(u); }));
+}
+
+// Troca todos os <img data-idb="..."> pelas imagens reais
+async function jacHydrateImgs(root){
+  var scope = root || document;
+  var imgs = scope.querySelectorAll('img[data-idb]');
+  for(var i=0;i<imgs.length;i++){
+    var el = imgs[i];
+    var ref = el.getAttribute('data-idb');
+    if(!ref) continue;
+    try{
+      var u = await jacFotoGet(ref);
+      if(u){ el.src = u; el.removeAttribute('data-idb'); }
+    }catch(e){}
+  }
+}
+
+// src pronto para uso: dataURL direto, ou placeholder + data-idb
+function jacImgSrc(ref){
+  if(!ref) return '';
+  if(String(ref).indexOf('idb:') === 0){
+    // 1x1 transparente enquanto carrega
+    return 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  }
+  return ref;
+}
+function jacImgAttr(ref){
+  return String(ref||'').indexOf('idb:')===0 ? ' data-idb="'+ref+'"' : '';
+}
+
+// ── Medidor de armazenamento ─────────────────────────────────
+function jacStorageInfo(){
+  var used = 0;
+  try{
+    for(var k in localStorage){
+      if(localStorage.hasOwnProperty(k)) used += (localStorage[k]||'').length + k.length;
+    }
+  }catch(e){}
+  var mb = used/1048576;
+  return {bytes: used, mb: mb, pct: Math.min(100, (mb/5)*100)};
+}
+
+function jacStorageWarn(){
+  var i = jacStorageInfo();
+  if(i.mb > 4.0){
+    toast('⚠️ Armazenamento em ' + i.mb.toFixed(1) + ' MB de ~5 MB — faça um backup e limpe registros antigos','warn');
+    return true;
+  }
+  return false;
+}
+
+// Backup completo com fotos resolvidas do IndexedDB (para exportar/enviar)
+async function buildBackupDataFull(scope){
+  var json = buildBackupData(scope);
+  var d;
+  try{ d = JSON.parse(json); }catch(e){ return json; }
+
+  async function res(arr){
+    if(!arr || !arr.length) return arr;
+    for(var i=0;i<arr.length;i++){
+      if(typeof arr[i]==='string' && arr[i].indexOf('idb:')===0){
+        arr[i] = await jacFotoGet(arr[i]);
+      } else if(arr[i] && arr[i].u && String(arr[i].u).indexOf('idb:')===0){
+        arr[i].u = await jacFotoGet(arr[i].u);
+      }
+    }
+    return arr;
+  }
+
+  for(var r of (d.regs||[]))      { await res(r.fotos); }
+  for(var i of (d.inspecoes||[])) { await res(i.fotos); }
+  for(var o of (d.oficina||[]))   { await res(o.fotos); }
+  await res(d.fotos);
+  for(var rel of (d.relatorios||[])){
+    for(var it of (rel.items||[])) { await res(it.fotos); }
+  }
+  return JSON.stringify(d);
 }
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -8717,7 +8991,7 @@ async function gdriveSalvarBackup(){
   }catch(e){}
 
   gdriveSt('⏳ Preparando backup...','');
-  var content=buildBackupData();
+  var content=await buildBackupDataFull();
   var sizeMB=(content.length/1048576).toFixed(1);
   var fileName=buildFileName();
 
@@ -8857,15 +9131,7 @@ function gdriveInit(){
 }
 
 // Downloads simples (para compatibilidade)
-function gdriveDownloadBackup(){
-  var content=buildBackupData();
-  var nome=buildFileName();
-  var blob=new Blob([content],{type:'application/json'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a'); a.href=url; a.download=nome; a.click();
-  setTimeout(function(){URL.revokeObjectURL(url);},3000);
-  gdriveSt('✅ Backup baixado: '+nome,'ok');
-}
+
 function gdriveDownloadMes(){
   var el=document.getElementById('bkp-mes');
   var mes=el?el.value:'';
@@ -8885,12 +9151,12 @@ function gdriveSt(msg, tipo){
   var cor=tipo==='err'?'var(--danger)':(tipo==='ok'?'var(--login-green)':'var(--text-dim)');
   els.forEach(function(el){el.textContent=msg;el.style.color=cor;});
 }
-function gdriveDownloadBackup(){
+async function gdriveDownloadBackup(){
   if(typeof loadData==='function'&&!(S.regs||[]).length){try{loadData();}catch(e){}}
   var t=jacTamanhoDados();
   gdriveSt('⏳ Preparando backup ('+t.mb+' MB)...','');
   try{
-    var content=buildBackupData();
+    var content=await buildBackupDataFull();
     var nome=buildFileName();
     var blob=new Blob([content],{type:'application/json'});
     var url=URL.createObjectURL(blob);
@@ -11487,11 +11753,13 @@ function switchCrewTab(tab){
 
 // ── Photo captions for novo registro ──
 function addPhotosWithCaption(files, ctx){
-  Array.from(files).forEach(f=>{
-    compress(f, u=>{
-      S.tp[ctx]=S.tp[ctx]||[];
-      S.tp[ctx].push({nm:f.name, u, caption:''});
-      renderTPWithCaption(ctx);
+  Array.from(files).forEach(function(f){
+    compress(f, function(u){
+      jacFotoPut(u).then(function(ref){
+        S.tp[ctx]=S.tp[ctx]||[];
+        S.tp[ctx].push({nm:f.name, u:ref, caption:''});
+        renderTPWithCaption(ctx);
+      });
     });
   });
 }
@@ -12532,7 +12800,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.5.1';
+const APP_VERSION = '3.6.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
