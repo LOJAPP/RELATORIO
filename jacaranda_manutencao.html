@@ -2875,6 +2875,7 @@ let S={regs:[],crew:[],fotos:[],empresas:[],oficina:[],desvios:[],inspecoes:[],e
 let activeDept='Todos', curWeek=null;
 var _r2Items = [];        // itens do relatório técnico
 var _crewSel  = new Set(); // tripulantes selecionados (ações em lote)
+var _r2EditId = null;      // id do relatório em edição (null = novo)
 
 // ── TRIPULANTES SEED (Lista Completa do Excel) ──
 const CREW_SEED=[
@@ -3328,6 +3329,7 @@ function saveReg(){
     nv:rNv,
     fotos:fotosData.map(p=>p.u),
     fotosCaptions:fotosData.map(p=>p.caption||''),
+    fotosPos:fotosData.map(p=>p.pos||null),
     ts:Date.now()});
   S.tp.reg=[];document.getElementById('pg-reg').innerHTML='';
   saveData(true);clearRegForm();kpis();toast('✅ Registro salvo!','ok');
@@ -4459,6 +4461,7 @@ function initNovoRelatorio(){
   // Mostrar relatórios salvos
   try{ renderR2Saved(); }catch(e){}
   try{ renderR2Sigs(); }catch(e){}
+  try{ r2EditBanner(); }catch(e){}
   // Barra de ferramentas + auto-resize
   setTimeout(function(){ try{jacInitAutoGrow();}catch(e){} }, 50);
 }
@@ -4537,12 +4540,13 @@ function saveNovoRelatorio(diag){
 
     if(!S.relatorios) S.relatorios = [];
     var antes = S.relatorios.length;
-    L(true, 'relatórios antes: ' + antes);
+    var editando = !!_r2EditId && S.relatorios.some(function(x){ return x.id===_r2EditId; });
+    L(true, 'relatórios antes: ' + antes + (editando ? ' — MODO EDIÇÃO' : ' — NOVO'));
 
     var g = function(id){ var el=document.getElementById(id); return el ? (el.value||'').trim() : ''; };
 
     var rel = {
-      id: gid(),
+      id: editando ? _r2EditId : gid(),
       data: data,
       autorNm: autor ? ('['+abbr+'] '+autor.nm) : _autorNm,
       dept:    g('r2-dept'),
@@ -4558,8 +4562,16 @@ function saveNovoRelatorio(diag){
     };
     L(true, 'objeto montado — ' + rel.items.length + ' item(s), ' + rel.assinaturas.length + ' assinatura(s)');
 
-    S.relatorios.push(rel);
-    L(true, 'adicionado à memória: ' + S.relatorios.length);
+    if(editando){
+      var pos = S.relatorios.findIndex(function(x){ return x.id===_r2EditId; });
+      rel.ts     = S.relatorios[pos].ts;          // preserva data de criação
+      rel.tsEdit = Date.now();                     // marca última edição
+      S.relatorios[pos] = rel;
+      L(true, 'SUBSTITUÍDO o relatório existente (sem duplicar)');
+    } else {
+      S.relatorios.push(rel);
+      L(true, 'adicionado à memória: ' + S.relatorios.length);
+    }
 
     // 3. Persistir
     var ok = saveData(true);
@@ -4573,7 +4585,7 @@ function saveNovoRelatorio(diag){
     // 4. Confirmar leitura de volta
     var check = 0;
     try{ check = (JSON.parse(localStorage.getItem('jac_v5')||'{}').relatorios||[]).length; }catch(e){}
-    L(check > antes, 'confirmado no armazenamento: ' + check + ' relatório(s)');
+    L(editando ? check === antes : check > antes, 'confirmado no armazenamento: ' + check + ' relatório(s)');
 
     // 5. Limpar e renderizar
     _r2Items = [];
@@ -4587,8 +4599,13 @@ function saveNovoRelatorio(diag){
       var el=document.getElementById(id); if(el) el.value='';
     });
 
-    toast('✅ Relatório "'+titulo+'" salvo! ('+check+' no total)','ok');
-    if(diag) jacDiagBox(log, '✅ Salvou com sucesso');
+    var foiEdicao = editando;
+    _r2EditId = null;
+    r2EditBanner();
+    toast(foiEdicao
+      ? '✅ "'+titulo+'" atualizado (sem duplicar)'
+      : '✅ Relatório "'+titulo+'" salvo! ('+check+' no total)','ok');
+    if(diag) jacDiagBox(log, '✅ ' + (foiEdicao ? 'Atualizado' : 'Salvou') + ' com sucesso');
     return true;
 
   }catch(err){
@@ -4714,6 +4731,8 @@ function renderR2Items(){
           onRemove: 'r2FotoRemove(' + i + ',',
           onCap:    'r2FotoCap(' + i + ',',
           onEdit:   'r2FotoEdit(' + i + ',',
+          onFit:    'r2FotoEnquadrar(' + i + ',',
+          pos:      item.fotosPos || [],
           curried:  true
         })
       + '</div></div>';
@@ -4788,6 +4807,7 @@ function r2Excluir(id){
 
 function r2CarregarForm(id){
   var r=(S.relatorios||[]).find(function(x){return x.id===id;});if(!r)return;
+  _r2EditId = id;  // marca que estamos EDITANDO este relatório
   var set=function(elId,v){var el=document.getElementById(elId);if(el)el.value=v||'';};
   set('r2-data',r.data);set('r2-dept',r.dept);set('r2-projeto',r.projeto);
   set('r2-area',r.area);set('r2-titulo',r.titulo);set('r2-desc',r.desc);set('r2-planos',r.planos);
@@ -4797,9 +4817,10 @@ function r2CarregarForm(id){
   _r2Sigs=JSON.parse(JSON.stringify(r.assinaturas||[]));
   if(!_r2Sigs.length) _r2Sigs=r2SigDefaults();
   renderR2Items(); renderR2Sigs();
-  toast('Relatório carregado — edite e salve nova versão','ok');
+  r2EditBanner();
+  toast('✏️ Editando "'+(r.titulo||'')+'" — ao salvar, substitui o original','ok');
   var panel=document.getElementById('npanel-relatorio');
-  if(panel)panel.scrollIntoView({behavior:'smooth'});
+  try{ if(panel && panel.scrollIntoView) panel.scrollIntoView({behavior:'smooth'}); }catch(e){}
 }
 
 // PDF do relatório que está sendo editado (sem precisar salvar antes)
@@ -4855,8 +4876,12 @@ async function r2PrintPDF(id, rObj){
       ? '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 14px;background:#fafafa;">'
         + fotos.map(function(u, fi){
             var cap = (item.fotosDesc && item.fotosDesc[fi]) || '';
+            var pz = (item.fotosPos && item.fotosPos[fi]) || null;
             return '<figure style="margin:0;break-inside:avoid;">'
-              + '<img src="' + u + '" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid #ddd;display:block;-webkit-print-color-adjust:exact;">'
+              + '<div style="width:100%;aspect-ratio:4/3;overflow:hidden;border-radius:6px;border:1px solid #ddd;background:#0f172a;">'
+              + '<img src="' + u + '" style="width:100%;height:100%;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;'
+              + jacFitCSS(pz) + '">'
+              + '</div>'
               + '<figcaption style="font-size:9px;color:#555;text-align:center;padding:3px 2px 0;line-height:1.3;">'
               + (cap ? esc(cap) : 'Foto ' + (fi+1)) + '</figcaption></figure>';
           }).join('')
@@ -5834,9 +5859,10 @@ function renderSem(week){
         +(r.ob?'<div style="font-size:12px;margin-top:4px;background:#f8fafc;padding:5px 8px;border-radius:5px;border-left:3px solid var(--border2);">'+escHtml(r.ob)+'</div>':'')
         +'</div></div>'
         +(fotos.length?'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">'
-          +fotos.slice(0,6).map((u,fi)=>'<img src="'+u+'" onclick="viewP(\''+u+'\')" '
-            +'style="width:72px;height:72px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border);" '
-            +'loading="lazy" onerror="this.style.display=\'none\'" alt="foto '+(fi+1)+'">').join('')
+          +fotos.slice(0,6).map((u,fi)=>'<img src="'+jacImgSrc(u)+'"'+jacImgAttr(u)+' onclick="jacViewFoto(\''+u+'\')" '
+            +'style="width:72px;height:72px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:#1e293b;'
+            +jacFitCSS((r.fotosPos||[])[fi])+'" '
+            +'loading="lazy" alt="foto '+(fi+1)+'">').join('')
           +(fotos.length>6?'<div style="width:72px;height:72px;background:var(--surface2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-dim);">+'+(fotos.length-6)+'</div>':'')
           +'</div>':'')
         +'</div>';
@@ -6035,6 +6061,8 @@ function jacFotoGrid(fotos, caps, opts){
   var onRemove = opts.onRemove || '';
   var onCap    = opts.onCap    || '';
   var onEdit   = opts.onEdit   || '';
+  var onFit    = opts.onFit    || '';
+  var poss     = opts.pos      || [];
   var cur      = !!opts.curried;
   if(!fotos || !fotos.length) return '';
   return '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px;">'
@@ -6043,12 +6071,13 @@ function jacFotoGrid(fotos, caps, opts){
       return '<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff;">'
         // Imagem
         + '<div style="position:relative;aspect-ratio:4/3;background:#0f172a;cursor:zoom-in;" onclick="jacViewFoto(\'' + u + '\')">'
-        + '<img src="' + jacImgSrc(u) + '"' + jacImgAttr(u) + ' style="width:100%;height:100%;object-fit:cover;display:block;background:#1e293b;" loading="lazy">'
+        + '<img src="' + jacImgSrc(u) + '"' + jacImgAttr(u) + ' style="width:100%;height:100%;display:block;background:#1e293b;' + jacFitCSS(poss[i]) + '" loading="lazy">'
         + '<span style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.65);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;">' + (i+1) + '</span>'
         + '</div>'
         // Controles
         + '<div style="display:flex;gap:2px;padding:4px;background:var(--surface2);justify-content:center;" onclick="event.stopPropagation()">'
         + (onMove ? '<button title="Mover para esquerda" onclick="' + onMove + (cur?'':'(') + i + ',-1)" ' + (i===0?'disabled':'') + ' style="flex:1;border:none;background:' + (i===0?'#e5e7eb':'#fff') + ';border-radius:4px;padding:3px;cursor:' + (i===0?'default':'pointer') + ';font-size:12px;">◀</button>' : '')
+        + (onFit ? '<button title="Enquadrar / mover imagem" onclick="' + onFit + (cur?'':'(') + i + ')" style="flex:1;border:none;background:#ede9fe;color:#7c3aed;border-radius:4px;padding:3px;cursor:pointer;font-size:12px;font-weight:700;">⛶</button>' : '')
         + (onEdit ? '<button title="Girar imagem" onclick="' + onEdit + (cur?'':'(') + i + ')" style="flex:1;border:none;background:#fff;border-radius:4px;padding:3px;cursor:pointer;font-size:12px;">↻</button>' : '')
         + (onRemove ? '<button title="Remover" onclick="' + onRemove + (cur?'':'(') + i + ')" style="flex:1;border:none;background:#fee2e2;color:#dc2626;border-radius:4px;padding:3px;cursor:pointer;font-size:12px;">✕</button>' : '')
         + (onMove ? '<button title="Mover para direita" onclick="' + onMove + (cur?'':'(') + i + ',1)" ' + (i===fotos.length-1?'disabled':'') + ' style="flex:1;border:none;background:' + (i===fotos.length-1?'#e5e7eb':'#fff') + ';border-radius:4px;padding:3px;cursor:' + (i===fotos.length-1?'default':'pointer') + ';font-size:12px;">▶</button>' : '')
@@ -6109,7 +6138,9 @@ function renderTPWithCaption(ctx){
         onMove:   pfx + 'Move',
         onRemove: pfx + 'Remove',
         onCap:    pfx + 'Cap',
-        onEdit:   pfx + 'Edit'
+        onEdit:   pfx + 'Edit',
+        onFit:    pfx + 'Enquadrar',
+        pos:      items.map(function(p){return p.pos;})
       });
   try{ jacHydrateImgs(grid); }catch(e){}
 }
@@ -6138,13 +6169,15 @@ function tpFotoEdit(i){
 function r2FotoMove(itemIdx, i, dir){
   var it = _r2Items[itemIdx]; if(!it || !it.fotos) return;
   var j = i + dir; if(j < 0 || j >= it.fotos.length) return;
-  var t = it.fotos[i]; it.fotos[i] = it.fotos[j]; it.fotos[j] = t;
-  if(it.fotosDesc){ var d = it.fotosDesc[i]; it.fotosDesc[i] = it.fotosDesc[j]; it.fotosDesc[j] = d; }
+  var sw = function(a){ if(!a) return; var t=a[i]; a[i]=a[j]; a[j]=t; };
+  sw(it.fotos); sw(it.fotosDesc); sw(it.fotosPos);
   renderR2Items();
 }
 function r2FotoRemove(itemIdx, i){
   var it = _r2Items[itemIdx]; if(!it) return;
-  (it.fotos||[]).splice(i,1); (it.fotosDesc||[]).splice(i,1);
+  (it.fotos||[]).splice(i,1);
+  (it.fotosDesc||[]).splice(i,1);
+  if(it.fotosPos) it.fotosPos.splice(i,1);
   renderR2Items();
 }
 function r2FotoCap(itemIdx, i, v){
@@ -6453,7 +6486,7 @@ async function buildBackupDataFull(scope){
 // ═══════════════════════════════════════════════════════════
 // CONTROLE DE VERSÃO E ATUALIZAÇÃO FORÇADA
 // ═══════════════════════════════════════════════════════════
-var JAC_BUILD = '20260806-0100';
+var JAC_BUILD = '20260806-0900';
 
 // Mostra o build atual no canto da tela (clique = forçar atualização)
 function jacVersionBadge(){
@@ -6699,6 +6732,291 @@ function renderActCard(r){
 function ghTokenLimpar(t){ return String(t||'').replace(/\s+/g,''); }
 function cloudGhTokenCheck(){
   toast('ℹ️ A integração com GitHub foi removida — use Pasta de Rede ou Google Drive','ok');
+}
+
+// Banner indicando modo de edição
+function r2EditBanner(){
+  var box = document.getElementById('r2-edit-banner');
+  if(!box){
+    var painel = document.getElementById('npanel-relatorio');
+    if(!painel) return;
+    var inner = painel.querySelector('div[style*="padding:16px"]') || painel.firstElementChild;
+    box = document.createElement('div');
+    box.id = 'r2-edit-banner';
+    box.style.display = 'none';
+    if(inner) inner.insertBefore(box, inner.firstChild);
+    else painel.insertBefore(box, painel.firstChild);
+  }
+  if(_r2EditId){
+    var r = (S.relatorios||[]).find(function(x){ return x.id===_r2EditId; });
+    box.style.cssText = 'display:flex;align-items:center;gap:10px;background:#fef3c7;border:1px solid #fbbf24;'
+      + 'border-radius:10px;padding:10px 14px;margin-bottom:12px;flex-wrap:wrap;';
+    box.innerHTML =
+      '<span style="font-size:18px;">✏️</span>'
+      + '<div style="flex:1;min-width:150px;">'
+      + '<div style="font-size:12px;font-weight:800;color:#92400e;">Editando relatório existente</div>'
+      + '<div style="font-size:11px;color:#a16207;">"' + escHtml(r?r.titulo:'') + '" — ao salvar, substitui o original</div>'
+      + '</div>'
+      + '<button class="btn btn-ghost btn-sm" onclick="r2CancelarEdicao()" style="font-size:11px;">✕ Cancelar edição</button>'
+      + '<button class="btn btn-ghost btn-sm" onclick="r2SalvarComoNovo()" style="font-size:11px;">📋 Salvar como cópia</button>';
+  } else {
+    box.style.display = 'none';
+    box.innerHTML = '';
+  }
+}
+
+// Sai do modo edição e limpa o formulário
+function r2CancelarEdicao(){
+  _r2EditId = null;
+  _r2Items = [];
+  _r2Sigs  = (typeof r2SigDefaults==='function') ? r2SigDefaults() : [];
+  ['r2-titulo','r2-projeto','r2-area','r2-desc','r2-planos'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.value = '';
+  });
+  var d = document.getElementById('r2-data');
+  if(d) d.value = new Date().toISOString().slice(0,10);
+  try{ renderR2Items(); renderR2Sigs(); }catch(e){}
+  r2EditBanner();
+  toast('Edição cancelada — formulário limpo','ok');
+}
+
+// Salva como um relatório NOVO mesmo estando em edição
+function r2SalvarComoNovo(){
+  _r2EditId = null;
+  r2EditBanner();
+  var t = document.getElementById('r2-titulo');
+  if(t && t.value && !/\(cópia\)$/.test(t.value)) t.value = t.value + ' (cópia)';
+  saveNovoRelatorio();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ENQUADRAMENTO DE FOTOS — mover, ampliar e ajustar o recorte
+// ═══════════════════════════════════════════════════════════════
+var _fitCtx = null;   // {get, set, idx, refresh}
+
+// Abre o editor de enquadramento
+async function jacEnquadrar(ctx){
+  _fitCtx = ctx;
+  var ref = ctx.get();
+  var url = await jacFotoGet(ref.u || ref);
+  if(!url){ toast('Foto não encontrada','warn'); return; }
+
+  var pos = ref.pos || {x:50, y:50, z:100, fit:'cover'};
+
+  var ov = document.createElement('div');
+  ov.id = 'jac-fit';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;'
+    + 'display:flex;align-items:center;justify-content:center;padding:14px;';
+  ov.onclick = function(e){ if(e.target===ov) jacFitFechar(); };
+
+  var p = document.createElement('div');
+  p.style.cssText = 'background:#fff;border-radius:14px;max-width:560px;width:100%;overflow:hidden;';
+  p.innerHTML =
+    '<div style="background:#07182e;color:#fff;padding:13px 17px;display:flex;align-items:center;gap:10px;">'
+    + '<span style="font-weight:800;font-size:14px;flex:1;">🖼️ Enquadrar foto</span>'
+    + '<button onclick="jacFitFechar()" style="background:rgba(255,255,255,.15);border:none;color:#fff;'
+    + 'border-radius:7px;padding:4px 11px;cursor:pointer;font-size:16px;">✕</button></div>'
+
+    // Área de pré-visualização (proporção igual à do relatório)
+    + '<div style="padding:14px;">'
+    + '<div style="font-size:11px;color:#64748b;margin-bottom:7px;">'
+    + 'Arraste a imagem para reposicionar · use o zoom para aproximar</div>'
+    + '<div id="fit-frame" style="position:relative;width:100%;aspect-ratio:4/3;overflow:hidden;'
+    + 'border-radius:10px;background:#0f172a;cursor:grab;border:2px solid #7c3aed;">'
+    + '<img id="fit-img" src="' + url + '" draggable="false" '
+    + 'style="position:absolute;width:100%;height:100%;object-fit:cover;'
+    + 'object-position:' + pos.x + '% ' + pos.y + '%;transform:scale(' + (pos.z/100) + ');'
+    + 'transform-origin:' + pos.x + '% ' + pos.y + '%;user-select:none;">'
+    // Guias de terços
+    + '<div style="position:absolute;inset:0;pointer-events:none;opacity:.25;'
+    + 'background:linear-gradient(to right,transparent 33.3%,#fff 33.3%,#fff 33.5%,transparent 33.5%,'
+    + 'transparent 66.6%,#fff 66.6%,#fff 66.8%,transparent 66.8%),'
+    + 'linear-gradient(to bottom,transparent 33.3%,#fff 33.3%,#fff 33.5%,transparent 33.5%,'
+    + 'transparent 66.6%,#fff 66.6%,#fff 66.8%,transparent 66.8%);"></div>'
+    + '</div>'
+
+    // Controles
+    + '<div style="margin-top:12px;">'
+    + '<div style="display:flex;align-items:center;gap:9px;margin-bottom:9px;">'
+    + '<span style="font-size:11px;font-weight:700;width:52px;">🔍 Zoom</span>'
+    + '<input type="range" id="fit-z" min="100" max="300" value="' + pos.z + '" '
+    + 'oninput="jacFitAplicar()" style="flex:1;">'
+    + '<span id="fit-z-lbl" style="font-size:11px;font-family:monospace;width:42px;text-align:right;">'
+    + pos.z + '%</span></div>'
+
+    + '<div style="display:flex;align-items:center;gap:9px;margin-bottom:9px;">'
+    + '<span style="font-size:11px;font-weight:700;width:52px;">↔️ Horiz.</span>'
+    + '<input type="range" id="fit-x" min="0" max="100" value="' + pos.x + '" '
+    + 'oninput="jacFitAplicar()" style="flex:1;">'
+    + '<span id="fit-x-lbl" style="font-size:11px;font-family:monospace;width:42px;text-align:right;">'
+    + pos.x + '%</span></div>'
+
+    + '<div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;">'
+    + '<span style="font-size:11px;font-weight:700;width:52px;">↕️ Vert.</span>'
+    + '<input type="range" id="fit-y" min="0" max="100" value="' + pos.y + '" '
+    + 'oninput="jacFitAplicar()" style="flex:1;">'
+    + '<span id="fit-y-lbl" style="font-size:11px;font-family:monospace;width:42px;text-align:right;">'
+    + pos.y + '%</span></div>'
+
+    // Modo de ajuste
+    + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
+    + '<button class="btn btn-ghost btn-sm" onclick="jacFitModo(\'cover\')" id="fit-m-cover" style="flex:1;font-size:11px;">'
+    + '⬛ Preencher quadro</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="jacFitModo(\'contain\')" id="fit-m-contain" style="flex:1;font-size:11px;">'
+    + '🔲 Mostrar tudo</button></div>'
+
+    // Ações rápidas
+    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px;">'
+    + '<button class="btn btn-ghost btn-sm" onclick="jacFitPreset(50,20)" style="font-size:10px;">⬆ Topo</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="jacFitPreset(50,50)" style="font-size:10px;">⊙ Centro</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="jacFitPreset(50,80)" style="font-size:10px;">⬇ Base</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="jacFitReset()" style="font-size:10px;">↺ Zerar</button>'
+    + '</div>'
+
+    + '<div style="display:flex;gap:8px;">'
+    + '<button class="btn btn-primary" onclick="jacFitSalvar()" style="flex:2;">✅ Aplicar enquadramento</button>'
+    + '<button class="btn btn-ghost" onclick="jacFitFechar()" style="flex:1;">Cancelar</button>'
+    + '</div></div></div>';
+
+  ov.appendChild(p);
+  document.body.appendChild(ov);
+  jacFitModo(pos.fit || 'cover');
+  jacFitArrastar();
+}
+
+function jacFitAplicar(){
+  var x = +(document.getElementById('fit-x')||{value:50}).value;
+  var y = +(document.getElementById('fit-y')||{value:50}).value;
+  var z = +(document.getElementById('fit-z')||{value:100}).value;
+  var img = document.getElementById('fit-img'); if(!img) return;
+  img.style.objectPosition  = x + '% ' + y + '%';
+  img.style.transformOrigin = x + '% ' + y + '%';
+  img.style.transform       = 'scale(' + (z/100) + ')';
+  var lx=document.getElementById('fit-x-lbl'); if(lx) lx.textContent = x + '%';
+  var ly=document.getElementById('fit-y-lbl'); if(ly) ly.textContent = y + '%';
+  var lz=document.getElementById('fit-z-lbl'); if(lz) lz.textContent = z + '%';
+}
+
+function jacFitModo(m){
+  var img = document.getElementById('fit-img'); if(!img) return;
+  img.style.objectFit = m;
+  img.style.background = m==='contain' ? '#0f172a' : '';
+  ['cover','contain'].forEach(function(k){
+    var b = document.getElementById('fit-m-'+k);
+    if(b) b.className = 'btn btn-sm ' + (k===m ? 'btn-primary' : 'btn-ghost');
+  });
+  window._fitModo = m;
+}
+
+function jacFitPreset(x, y){
+  var ex=document.getElementById('fit-x'), ey=document.getElementById('fit-y');
+  if(ex) ex.value = x; if(ey) ey.value = y;
+  jacFitAplicar();
+}
+
+function jacFitReset(){
+  ['fit-x','fit-y'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=50; });
+  var z=document.getElementById('fit-z'); if(z) z.value=100;
+  jacFitModo('cover');
+  jacFitAplicar();
+}
+
+// Arrastar a imagem com o mouse / dedo
+function jacFitArrastar(){
+  var frame = document.getElementById('fit-frame'); if(!frame) return;
+  var arrastando = false, px = 0, py = 0, ix = 50, iy = 50;
+
+  var iniciar = function(e){
+    arrastando = true;
+    frame.style.cursor = 'grabbing';
+    var t = e.touches ? e.touches[0] : e;
+    px = t.clientX; py = t.clientY;
+    ix = +(document.getElementById('fit-x')||{value:50}).value;
+    iy = +(document.getElementById('fit-y')||{value:50}).value;
+    e.preventDefault();
+  };
+  var mover = function(e){
+    if(!arrastando) return;
+    var t = e.touches ? e.touches[0] : e;
+    var r = frame.getBoundingClientRect();
+    // Movimento invertido: arrastar para a direita revela o lado esquerdo
+    var nx = ix - ((t.clientX - px) / r.width) * 100;
+    var ny = iy - ((t.clientY - py) / r.height) * 100;
+    nx = Math.max(0, Math.min(100, nx));
+    ny = Math.max(0, Math.min(100, ny));
+    var ex=document.getElementById('fit-x'), ey=document.getElementById('fit-y');
+    if(ex) ex.value = Math.round(nx);
+    if(ey) ey.value = Math.round(ny);
+    jacFitAplicar();
+    e.preventDefault();
+  };
+  var parar = function(){ arrastando = false; frame.style.cursor = 'grab'; };
+
+  frame.addEventListener('mousedown', iniciar);
+  window.addEventListener('mousemove', mover);
+  window.addEventListener('mouseup', parar);
+  frame.addEventListener('touchstart', iniciar, {passive:false});
+  window.addEventListener('touchmove', mover, {passive:false});
+  window.addEventListener('touchend', parar);
+
+  // Zoom com a roda do mouse
+  frame.addEventListener('wheel', function(e){
+    var z = document.getElementById('fit-z'); if(!z) return;
+    z.value = Math.max(100, Math.min(300, +z.value + (e.deltaY < 0 ? 8 : -8)));
+    jacFitAplicar();
+    e.preventDefault();
+  }, {passive:false});
+}
+
+function jacFitSalvar(){
+  if(!_fitCtx){ jacFitFechar(); return; }
+  var pos = {
+    x: +(document.getElementById('fit-x')||{value:50}).value,
+    y: +(document.getElementById('fit-y')||{value:50}).value,
+    z: +(document.getElementById('fit-z')||{value:100}).value,
+    fit: window._fitModo || 'cover'
+  };
+  var ctx = _fitCtx;
+  ctx.set(pos);
+  jacFitFechar();
+  if(ctx.refresh) ctx.refresh();
+  toast('✅ Enquadramento aplicado','ok');
+}
+
+function jacFitFechar(){
+  var el = document.getElementById('jac-fit'); if(el) el.remove();
+  _fitCtx = null;
+}
+
+// Gera o CSS de enquadramento para uma foto
+function jacFitCSS(pos){
+  if(!pos) return 'object-fit:cover;object-position:50% 50%;';
+  return 'object-fit:' + (pos.fit||'cover') + ';'
+    + 'object-position:' + (pos.x!=null?pos.x:50) + '% ' + (pos.y!=null?pos.y:50) + '%;'
+    + (pos.z && pos.z !== 100
+        ? 'transform:scale(' + (pos.z/100) + ');transform-origin:'
+          + (pos.x!=null?pos.x:50) + '% ' + (pos.y!=null?pos.y:50) + '%;'
+        : '');
+}
+
+// ── Handlers de enquadramento por contexto ──
+function r2FotoEnquadrar(itemIdx, i){
+  var it = _r2Items[itemIdx]; if(!it || !it.fotos || !it.fotos[i]) return;
+  if(!it.fotosPos) it.fotosPos = [];
+  jacEnquadrar({
+    get: function(){ return {u: it.fotos[i], pos: it.fotosPos[i]}; },
+    set: function(p){ it.fotosPos[i] = p; },
+    refresh: function(){ renderR2Items(); }
+  });
+}
+
+function regFotoEnquadrar(i){
+  var arr = S.tp.reg || []; if(!arr[i]) return;
+  jacEnquadrar({
+    get: function(){ return {u: arr[i].u, pos: arr[i].pos}; },
+    set: function(p){ arr[i].pos = p; },
+    refresh: function(){ renderTPWithCaption('reg'); }
+  });
 }
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -13153,7 +13471,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.6.3';
+const APP_VERSION = '3.7.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
