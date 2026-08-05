@@ -3056,12 +3056,12 @@ function _goPage(id){
   if(id==='semanal'){renderSemTabs();}
   if(id==='fotos'){renderGallery();fillFotoAssoc();}
   if(id==='novo'){
-    fillWeekSel();
-    buildCrewCheckList('novo');
-    fillDeptSelectFull('r-dept');
-    fillDeptSelectFull('r2-dept');
-    initNovoBlocoSelects();
-    switchNovoTab('atividade');
+    try{fillWeekSel();}catch(e){console.warn('fillWeekSel:',e);}
+    try{buildCrewCheckList('novo');}catch(e){console.warn('buildCrewCheckList:',e);}
+    try{fillDeptSelectFull('r-dept');}catch(e){console.warn('fillDept r-dept:',e);}
+    try{fillDeptSelectFull('r2-dept');}catch(e){console.warn('fillDept r2-dept:',e);}
+    try{initNovoBlocoSelects();}catch(e){console.warn('initNovoBlocoSelects:',e);}
+    try{switchNovoTab('atividade');}catch(e){console.warn('switchNovoTab:',e);}
     // Popular selects de pessoa com delay para garantir S.crew carregado
     // Pré-popular autor com Comandante configurado
     var _cfgV=(getCfg().vessel||{});
@@ -5975,6 +5975,106 @@ function jacInitAutoGrow(){
     }
     jacAutoGrow(el);
   });
+}
+
+// ═══════════════════════════════════════════════════════════
+// FUNÇÕES AUSENTES — corrigidas
+// ═══════════════════════════════════════════════════════════
+
+// Popula os selects da aba Bloco/Oficina
+function initNovoBlocoSelects(){
+  try{ fillDeptSelectFull('novo-bloco-dept'); }catch(e){}
+  try{ fillDeptSelectFull('nb-dept'); }catch(e){}
+  // Data padrão
+  ['novo-bloco-data','nb-data'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el && !el.value) el.value=new Date().toISOString().slice(0,10);
+  });
+  // Empresas
+  try{ fillEmpresaSelect(); }catch(e){}
+  // Semana
+  try{ fillWeekSel(); }catch(e){}
+}
+
+// Atualiza a barra de ações em lote dos tripulantes
+function _updateCrewBulkBar(){
+  var bar=document.getElementById('crew-bulk-bar');
+  var cnt=document.getElementById('crew-bulk-count');
+  var n=(_crewSel && _crewSel.size) || 0;
+  if(bar) bar.style.display = n>0 ? 'flex' : 'none';
+  if(cnt) cnt.textContent = n + ' selecionado(s)';
+}
+
+// Carrega um arquivo JSON genérico
+function loadJSON(input, cb){
+  var f = input && input.files && input.files[0];
+  if(!f){ toast('Nenhum arquivo selecionado','warn'); return; }
+  var r=new FileReader();
+  r.onload=function(e){
+    try{ var d=JSON.parse(e.target.result); if(typeof cb==='function') cb(d,f.name); }
+    catch(ex){ toast('❌ Arquivo JSON inválido: '+ex.message,'err'); }
+  };
+  r.readAsText(f,'UTF-8');
+}
+
+// Alterna campo de função personalizada
+function toggleCustomFn(selId, inputId){
+  var sel=document.getElementById(selId);
+  var inp=document.getElementById(inputId);
+  if(!sel||!inp) return;
+  var isOutro = (sel.value||'').toLowerCase()==='outro';
+  inp.style.display = isOutro ? '' : 'none';
+  if(isOutro) inp.focus(); else inp.value='';
+}
+
+// Importa rota do ECDIS (RTZ/GPX) — usa o parser existente
+function rioImportECDIS(input){
+  if(typeof rtzImport==='function'){ rtzImport(input); return; }
+  toast('⚠️ Importador de rotas indisponível','warn');
+}
+
+// Salva a viagem na pasta de rede
+async function rioViagemSalvarNaPasta(){
+  var nro=((document.getElementById('rio-viagem-nro')||{}).value||'').trim()
+    || ('V-'+new Date().toISOString().slice(0,7));
+  var payload={
+    tipo:'viagem-rio', nro:nro, exp:new Date().toISOString(),
+    navio:(getCfg().vessel||{}).name||'M/V LOG-IN JACARANDÁ',
+    calado:(document.getElementById('rio-calado')||{}).value||'',
+    squat:(document.getElementById('rio-squat')||{}).value||'',
+    bm_t:(document.getElementById('rio-bm-t')||{}).value||'',
+    bm_h:(document.getElementById('rio-bm-h')||{}).value||'',
+    pm_t:(document.getElementById('rio-pm-t')||{}).value||'',
+    pm_h:(document.getElementById('rio-pm-h')||{}).value||'',
+    rota:(function(){ try{return JSON.parse(localStorage.getItem('jac_rtz_route')||'null');}catch(e){return null;} })(),
+    trechos:(function(){ try{return rioPortosLoad();}catch(e){return [];} })()
+  };
+  var json=JSON.stringify(payload,null,2);
+  var fname='VIAGEM_'+nro.replace(/[^\w-]+/g,'-')+'_'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'.json';
+  var ok=false;
+  if(typeof jacSaveStructured==='function'){
+    ok=await jacSaveStructured(['Rio Amazonas','Viagens'], fname, json, 'application/json');
+  }
+  if(!ok){
+    rioSaveFile(fname,'application/json',json);
+    toast('⬇️ Viagem baixada (configure a Pasta Raiz p/ salvar direto)','ok');
+  } else {
+    toast('✅ Viagem "'+nro+'" salva na pasta','ok');
+  }
+  // também guarda localmente
+  try{ rioViagemSalvar(); }catch(e){}
+}
+
+// ── Stubs de nuvem (GitHub removido do app) ──
+function cloudGitHubSalvarConfig(){
+  toast('ℹ️ A integração com GitHub foi removida — use Pasta de Rede ou Google Drive','ok');
+}
+function cloudGitHubLoad(){
+  toast('ℹ️ A integração com GitHub foi removida — use 📥 Importar Dados','ok');
+}
+function cloudRenderSavedConfig(){
+  var el=document.getElementById('cloud-saved-config');
+  if(el) el.innerHTML='<div style="font-size:11px;color:var(--text-dim);">Backup por Pasta de Rede e Google Drive disponíveis em 💾 Armazenamento.</div>';
 }
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -12432,7 +12532,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.5.0';
+const APP_VERSION = '3.5.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
