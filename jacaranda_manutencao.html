@@ -2873,7 +2873,8 @@ ou qualquer formato com horas e alturas..." style="width:100%;font-size:11px;fon
 // ── STATE ──
 let S={regs:[],crew:[],fotos:[],empresas:[],oficina:[],desvios:[],inspecoes:[],embHistory:[],relatorios:[],rioCfg:{},tp:{reg:[],av:[],of:[],insp:[]}};
 let activeDept='Todos', curWeek=null;
-var _r2Items = [];  // itens do relatório técnico
+var _r2Items = [];        // itens do relatório técnico
+var _crewSel  = new Set(); // tripulantes selecionados (ações em lote)
 
 // ── TRIPULANTES SEED (Lista Completa do Excel) ──
 const CREW_SEED=[
@@ -6452,7 +6453,7 @@ async function buildBackupDataFull(scope){
 // ═══════════════════════════════════════════════════════════
 // CONTROLE DE VERSÃO E ATUALIZAÇÃO FORÇADA
 // ═══════════════════════════════════════════════════════════
-var JAC_BUILD = '20260805-2330';
+var JAC_BUILD = '20260806-0100';
 
 // Mostra o build atual no canto da tela (clique = forçar atualização)
 function jacVersionBadge(){
@@ -6638,6 +6639,66 @@ async function r2CarregarDaPasta(){
   }catch(e){
     toast('❌ ' + e.message,'err');
   }
+}
+
+// Seleção de tripulantes para ações em lote
+function toggleCrewSel(id){
+  if(!_crewSel) _crewSel = new Set();
+  if(_crewSel.has(id)) _crewSel.delete(id); else _crewSel.add(id);
+  renderCrew();
+  _updateCrewBulkBar();
+}
+
+// Cor do departamento (avatar dos tripulantes)
+function deptColor(dept){
+  var m = {
+    'Convés':'#1A5FA8','Conves':'#1A5FA8','Ponte':'#0d3d73',
+    'Máquinas':'#b45309','Maquinas':'#b45309','Praça de Máquinas':'#b45309',
+    'MC Reefer':'#0891b2','Bloco':'#7c3aed','Elétrica':'#ca8a04','Eletrica':'#ca8a04',
+    'Caldaderia':'#dc2626','Hotelaria':'#16a34a','Comando':'#0a1e45',
+    'Segurança':'#be123c','Seguranca':'#be123c','Administrativo':'#475569'
+  };
+  if(m[dept]) return m[dept];
+  // Cor derivada do nome para departamentos personalizados
+  var h = 0, s = String(dept||'');
+  for(var i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) & 0xffffff;
+  return 'hsl(' + (h % 360) + ',45%,42%)';
+}
+
+// Card de atividade usado no Histórico
+function renderActCard(r){
+  var fotos = (r.fotos||[]);
+  var stCol = r.st==='Concluído' ? '#16a34a' : (r.st==='Em andamento' ? '#d97706' : '#64748b');
+  return '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid '+deptColor(r.dp)+';">'
+    + '<div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;">'
+    + '<div style="flex:1;min-width:180px;">'
+    + '<div style="font-weight:700;font-size:13px;margin-bottom:3px;">'+escHtml(r.a||r.titulo||'—')+'</div>'
+    + '<div style="font-size:11px;color:var(--text-dim);">'
+    + fd(r.d||'') + (r.dp?' · '+escHtml(r.dp):'') + (r.q?' · Qtd: '+escHtml(r.q):'')
+    + ' · <span style="color:'+stCol+';font-weight:600;">'+escHtml(r.st||'—')+'</span></div>'
+    + (r.l?'<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">📍 '+escHtml(r.l)+'</div>':'')
+    + (r.ob?'<div style="font-size:12px;margin-top:5px;background:var(--surface2);padding:6px 8px;border-radius:6px;">'+escHtml(r.ob)+'</div>':'')
+    + '</div>'
+    + '<div style="display:flex;gap:5px;flex-shrink:0;">'
+    + '<button class="btn btn-ghost btn-sm" onclick="editReg(\''+r.id+'\')" style="font-size:11px;">✏️</button>'
+    + '<button class="btn btn-danger btn-sm" onclick="delReg(\''+r.id+'\')" style="font-size:11px;">🗑</button>'
+    + '</div></div>'
+    + (fotos.length
+      ? '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;">'
+        + fotos.slice(0,4).map(function(u,i){
+            return '<img src="'+jacImgSrc(u)+'"'+jacImgAttr(u)+' onclick="jacViewFoto(\''+u+'\')" '
+              + 'style="width:64px;height:64px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:#1e293b;" loading="lazy">';
+          }).join('')
+        + (fotos.length>4?'<div style="width:64px;height:64px;background:var(--surface2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-dim);">+'+(fotos.length-4)+'</div>':'')
+        + '</div>'
+      : '')
+    + '</div>';
+}
+
+// Limpeza de token (compatibilidade — GitHub removido)
+function ghTokenLimpar(t){ return String(t||'').replace(/\s+/g,''); }
+function cloudGhTokenCheck(){
+  toast('ℹ️ A integração com GitHub foi removida — use Pasta de Rede ou Google Drive','ok');
 }
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -8587,27 +8648,6 @@ function cloudGhToggleToken(){
   if(!el) return;
   var oculto = el.style.webkitTextSecurity === 'disc' || el.style.webkitTextSecurity === '';
   el.style.webkitTextSecurity = oculto ? 'none' : 'disc';
-}
-function cloudGhTokenCheck(){
-  var el = document.getElementById('cfg-gh-token');
-  var out = document.getElementById('gh-token-check');
-  if(!el || !out) return;
-  var t = ghTokenLimpar(el.value);
-  if(!t){ out.textContent=''; return; }
-  // Validar formato de token do GitHub
-  var classic = /^gh[pousr]_[A-Za-z0-9]{36,}$/.test(t);
-  var fine    = /^github_pat_[A-Za-z0-9_]{50,}$/.test(t);
-  if(classic){
-    out.innerHTML = '<span style="color:var(--login-green);">✅ Formato válido (Classic) · '+t.length+' caracteres</span>';
-  } else if(fine){
-    out.innerHTML = '<span style="color:var(--login-green);">✅ Formato válido (Fine-grained) · '+t.length+' caracteres</span>';
-  } else if(t.indexOf(' ')>=0){
-    out.innerHTML = '<span style="color:var(--danger);">❌ O token contém ESPAÇOS — cole novamente sem espaços</span>';
-  } else if(t.length < 30){
-    out.innerHTML = '<span style="color:var(--danger);">❌ Muito curto ('+t.length+' chars) — isso parece uma senha, não um token. Tokens têm 40+ caracteres e começam com ghp_</span>';
-  } else {
-    out.innerHTML = '<span style="color:var(--warn);">⚠️ Formato não reconhecido ('+t.length+' chars). Tokens começam com ghp_ ou github_pat_</span>';
-  }
 }
 function cloudGhLimparToken(){
   if(!confirm('Apagar o token salvo? Você precisará colá-lo novamente.')) return;
@@ -11332,6 +11372,30 @@ function clearAll(){
 const DEFAULT_DEPTS=['Convés','Máquinas','MC Reefer','Bloco','Elétrica','Caldaderia','Hotelaria','Comando'];
 const DEFAULT_ROLES=['Master','Chief Officer','2nd Officer','3rd Officer','Chief Engineer','2nd Engineer','3rd Engineer','Bosun','AB Seaman','Mechanic','Eletrician','Oiler','Wiper','Nurse','Cook','Steward','Deck Cadet'];
 
+// Abreviaturas das funções a bordo — usado em todo o app
+const ROLE_ABBR = {
+  // Inglês (padrão IMO)
+  'Master':'CMT', 'Chief Officer':'IMT', '2nd Officer':'1ON', '3rd Officer':'2ON',
+  'Chief Engineer':'OSM', '2nd Engineer':'1OM', '3rd Engineer':'2OM',
+  'Bosun':'CTR', 'AB Seaman':'MNC', 'Mechanic':'CDM', 'Eletrician':'ELT',
+  'Electrician':'ELT', 'Oiler':'MNM', 'Wiper':'MNM', 'Nurse':'ASA',
+  'Cook':'CZA', 'Steward':'TAA', 'Deck Cadet':'CDT', 'Engine Cadet':'CDM',
+  // Português (registro brasileiro)
+  'Comandante':'CMT', 'Imediato':'IMT', '1º Oficial':'IMT', '1o Oficial':'IMT',
+  '2º Oficial':'1ON', '2o Oficial':'1ON', '3º Oficial':'2ON', '3o Oficial':'2ON',
+  'Oficial de Náutica':'ON', 'Oficial de Máquinas':'OM',
+  'Chefe de Máquinas':'OSM', 'Chefe de Maquinas':'OSM',
+  '1º Maquinista':'1OM', '1o Maquinista':'1OM',
+  '2º Maquinista':'2OM', '2o Maquinista':'2OM',
+  '3º Maquinista':'3OM', '3o Maquinista':'3OM',
+  'Contramestre':'CTR', 'Marinheiro de Convés':'MNC', 'Marinheiro':'MNC',
+  'Marinheiro de Máquinas':'MNM', 'Moço de Convés':'MOC', 'Moço de Máquinas':'MOM',
+  'Eletricista':'ELT', 'Caldeireiro':'CDM', 'Enfermeiro':'ASA',
+  'Cozinheiro':'CZA', 'Taifeiro':'TAA', 'Auxiliar de Saúde':'ASA',
+  'Praticante':'CDT', 'Cadete':'CDT'
+};
+
+
 function getCfg(){
   try{return JSON.parse(localStorage.getItem('jac_cfg')||'{}');}catch(e){return {};}
 }
@@ -13089,7 +13153,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.6.2';
+const APP_VERSION = '3.6.3';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
