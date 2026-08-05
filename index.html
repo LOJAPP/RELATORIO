@@ -3,11 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LOG-IN Jacarandá — App de Manutenção</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>LOG-IN Jacarandá</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0a1e45">
-<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('./service-worker.js');</script>
-<meta http-equiv="refresh" content="0;url=jacaranda_manutencao.html">
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./service-worker.js').then(function(reg){ reg.update(); });
+}
+location.replace('jacaranda_manutencao.html?v=' + Date.now());
+</script>
 </head>
-<body><p>Carregando... <a href="jacaranda_manutencao.html">Clique aqui</a></p></body>
+<body style="font-family:sans-serif;padding:40px;text-align:center;">
+<p>Carregando… <a href="jacaranda_manutencao.html">clique aqui se não abrir</a></p>
+</body>
 </html>

@@ -1157,7 +1157,14 @@
       </div>
       <!-- Lista de relatórios salvos -->
       <div class="panel">
-        <div class="panel-header" style="color:#7c3aed;">📚 Relatórios Salvos <span class="badge" id="r2-saved-count">0</span></div>
+        <div class="panel-header" style="color:#7c3aed;display:flex;align-items:center;gap:8px;">
+          <span>📚 Relatórios Salvos</span><span class="badge" id="r2-saved-count">0</span>
+          <label class="btn btn-ghost btn-sm" style="margin-left:auto;cursor:pointer;font-size:11px;font-weight:600;">
+            📥 Importar JSON
+            <input type="file" accept=".json" style="display:none" onchange="r2ImportarJSON(this);this.value=''">
+          </label>
+          <button class="btn btn-ghost btn-sm" onclick="r2CarregarDaPasta()" style="font-size:11px;">📂 Da pasta</button>
+        </div>
         <div style="padding:12px 14px;" id="r2-saved-list">
           <div style="color:var(--muted);font-size:12px;font-style:italic;">Nenhum relatório salvo ainda.</div>
         </div>
@@ -4671,10 +4678,12 @@ function renderR2Saved(){
       +'<div style="font-size:11px;color:var(--text-dim);">'+fd(r.data||'')+(r.dept?' · '+escHtml(r.dept):'')+(r.autorNm?' · '+escHtml(r.autorNm):'')+'</div>'
       +(r.projeto?'<div style="font-size:10px;color:#7c3aed;">'+escHtml(r.projeto)+'</div>':'')
       +'</div>'
-      +'<div style="display:flex;gap:6px;flex-shrink:0;">'
-      +'<button class="btn btn-ghost btn-sm" onclick="r2PrintPDF(\''+r.id+'\')" style="font-size:11px;">PDF</button>'
-      +'<button class="btn btn-ghost btn-sm" onclick="r2CarregarForm(\''+r.id+'\')" style="font-size:11px;">Editar</button>'
-      +'<button class="btn btn-danger btn-sm" onclick="r2Excluir(\''+r.id+'\')" style="font-size:11px;">Del</button>'
+      +'<div style="display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap;">'
+      +'<button class="btn btn-ghost btn-sm" onclick="r2PrintPDF(\''+r.id+'\')" title="Imprimir / PDF" style="font-size:11px;">🖨 PDF</button>'
+      +'<button class="btn btn-ghost btn-sm" onclick="r2ExportarJSON(\''+r.id+'\')" title="Baixar como arquivo JSON" style="font-size:11px;">📤 JSON</button>'
+      +'<button class="btn btn-ghost btn-sm" onclick="r2SalvarNaPastaIndividual(\''+r.id+'\')" title="Salvar na pasta do navio" style="font-size:11px;">📁</button>'
+      +'<button class="btn btn-ghost btn-sm" onclick="r2CarregarForm(\''+r.id+'\')" title="Editar" style="font-size:11px;">✏️</button>'
+      +'<button class="btn btn-danger btn-sm" onclick="r2Excluir(\''+r.id+'\')" title="Excluir" style="font-size:11px;">🗑</button>'
       +'</div></div>'
       +(r.items&&r.items.length?'<div style="font-size:10px;color:var(--text-dim);margin-top:5px;">'+r.items.length+' item(s)</div>':'')
       +'</div>';
@@ -6349,6 +6358,197 @@ async function buildBackupDataFull(scope){
     for(var it of (rel.items||[])) { await res(it.fotos); }
   }
   return JSON.stringify(d);
+}
+
+// ═══════════════════════════════════════════════════════════
+// CONTROLE DE VERSÃO E ATUALIZAÇÃO FORÇADA
+// ═══════════════════════════════════════════════════════════
+var JAC_BUILD = '20260805-2200';
+
+// Mostra o build atual no canto da tela (clique = forçar atualização)
+function jacVersionBadge(){
+  if(document.getElementById('jac-ver-badge')) return;
+  var b = document.createElement('div');
+  b.id = 'jac-ver-badge';
+  b.title = 'Clique para forçar atualização do app';
+  b.style.cssText = 'position:fixed;bottom:6px;right:8px;z-index:9998;background:rgba(10,30,69,.82);'
+    + 'color:#fff;font-size:9px;font-family:monospace;padding:3px 8px;border-radius:5px;'
+    + 'cursor:pointer;opacity:.6;user-select:none;';
+  b.textContent = 'v' + (typeof APP_VERSION!=='undefined'?APP_VERSION:'?') + ' · ' + JAC_BUILD;
+  b.onmouseenter = function(){ b.style.opacity='1'; };
+  b.onmouseleave = function(){ b.style.opacity='.6'; };
+  b.onclick = jacForcarAtualizacao;
+  document.body.appendChild(b);
+}
+
+// Limpa todo o cache e recarrega com a versão mais recente
+async function jacForcarAtualizacao(){
+  if(!confirm('🔄 Forçar atualização?\n\nO app vai limpar o cache e recarregar a versão mais recente.\nSeus dados salvos NÃO serão afetados.')) return;
+  toast('⏳ Limpando cache...','ok');
+  try{
+    if('caches' in window){
+      var ks = await caches.keys();
+      await Promise.all(ks.map(function(k){ return caches.delete(k); }));
+    }
+    if('serviceWorker' in navigator){
+      var regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(function(r){ return r.unregister(); }));
+    }
+  }catch(e){ console.warn('limpeza:',e); }
+  setTimeout(function(){
+    location.href = location.pathname + '?v=' + Date.now();
+  }, 600);
+}
+
+// ═══════════════════════════════════════════════════════════
+// EXPORTAR / IMPORTAR RELATÓRIO TÉCNICO INDIVIDUAL
+// ═══════════════════════════════════════════════════════════
+
+// Exporta UM relatório como arquivo JSON próprio
+async function r2ExportarJSON(id){
+  var r = (S.relatorios||[]).find(function(x){ return x.id===id; });
+  if(!r){ toast('Relatório não encontrado','err'); return; }
+
+  // Resolver fotos do IndexedDB para o arquivo ficar completo
+  var rel = JSON.parse(JSON.stringify(r));
+  for(var i=0;i<(rel.items||[]).length;i++){
+    if(rel.items[i].fotos && rel.items[i].fotos.length){
+      rel.items[i].fotos = await jacFotosResolve(rel.items[i].fotos);
+    }
+  }
+
+  var v = getCfg().vessel || {};
+  var pacote = {
+    _tipo: 'relatorio_tecnico_jacaranda',
+    _versao: 1,
+    navio: v.name || 'M/V LOG-IN JACARANDÁ',
+    imo: v.imo || '9471886',
+    exportado: new Date().toISOString(),
+    relatorio: rel
+  };
+
+  var slug = (rel.titulo||'sem-titulo')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'-').slice(0,60);
+  var nome = 'relatorio tecnico-' + slug + '.json';
+
+  var json = JSON.stringify(pacote, null, 2);
+  var blob = new Blob([json], {type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nome;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+
+  var mb = (json.length/1048576).toFixed(2);
+  toast('📤 "' + nome + '" exportado (' + mb + ' MB)','ok');
+}
+
+// Salva UM relatório na pasta de rede como arquivo próprio
+async function r2SalvarNaPastaIndividual(id){
+  var r = (S.relatorios||[]).find(function(x){ return x.id===id; });
+  if(!r){ toast('Relatório não encontrado','err'); return; }
+  var rel = JSON.parse(JSON.stringify(r));
+  for(var i=0;i<(rel.items||[]).length;i++){
+    if(rel.items[i].fotos && rel.items[i].fotos.length){
+      rel.items[i].fotos = await jacFotosResolve(rel.items[i].fotos);
+    }
+  }
+  var v = getCfg().vessel || {};
+  var pacote = {_tipo:'relatorio_tecnico_jacaranda', _versao:1,
+    navio:v.name||'M/V LOG-IN JACARANDÁ', imo:v.imo||'9471886',
+    exportado:new Date().toISOString(), relatorio:rel};
+  var slug = (rel.titulo||'sem-titulo').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'-').slice(0,60);
+  var nome = 'relatorio tecnico-' + slug + '.json';
+  var json = JSON.stringify(pacote, null, 2);
+
+  var ok = false;
+  if(typeof jacSaveStructured === 'function'){
+    ok = await jacSaveStructured(['Relatorio Tecnico'], nome, json, 'application/json');
+  }
+  if(ok) toast('✅ "' + nome + '" salvo na pasta do navio','ok');
+  else {
+    r2ExportarJSON(id);
+    toast('⬇️ Baixado (configure a Pasta Raiz p/ salvar direto)','ok');
+  }
+}
+
+// Importa um relatório técnico individual
+function r2ImportarJSON(input){
+  var f = input && input.files && input.files[0];
+  if(!f){ return; }
+  var reader = new FileReader();
+  reader.onload = async function(e){
+    try{
+      var d = JSON.parse(e.target.result);
+      var rel = d.relatorio || (d._tipo === 'relatorio_tecnico_jacaranda' ? d : null) || d.rel || d;
+      if(!rel || !rel.titulo){ toast('❌ Arquivo não é um relatório técnico válido','err'); return; }
+
+      // Guardar fotos no IndexedDB para não estourar o localStorage
+      for(var i=0;i<(rel.items||[]).length;i++){
+        var fs = rel.items[i].fotos || [];
+        for(var j=0;j<fs.length;j++){
+          if(typeof fs[j]==='string' && fs[j].indexOf('data:image')===0){
+            fs[j] = await jacFotoPut(fs[j]);
+          }
+        }
+      }
+
+      if(!S.relatorios) S.relatorios = [];
+      var existente = S.relatorios.find(function(x){ return x.id === rel.id; });
+      if(existente){
+        if(!confirm('Já existe um relatório com este ID.\n\nOK = substituir  |  Cancelar = criar cópia')){
+          rel.id = gid();
+          rel.titulo = rel.titulo + ' (cópia)';
+          S.relatorios.push(rel);
+        } else {
+          Object.assign(existente, rel);
+        }
+      } else {
+        if(!rel.id) rel.id = gid();
+        S.relatorios.push(rel);
+      }
+
+      saveData(true);
+      renderR2Saved();
+      toast('📥 Relatório "' + rel.titulo + '" importado','ok');
+    }catch(ex){
+      toast('❌ Erro ao importar: ' + ex.message,'err');
+      console.error('r2ImportarJSON:', ex);
+    }
+  };
+  reader.readAsText(f, 'UTF-8');
+}
+
+// Carrega um relatório individual da pasta de rede
+async function r2CarregarDaPasta(){
+  if(!window._rootDir){
+    // Sem pasta configurada — abre seletor de arquivo
+    var inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = '.json';
+    inp.onchange = function(){ r2ImportarJSON(inp); };
+    inp.click();
+    return;
+  }
+  try{
+    var dir = await window._rootDir.getDirectoryHandle('Relatorio Tecnico', {create:false});
+    var arquivos = [];
+    for await (var [nome, handle] of dir.entries()){
+      if(handle.kind === 'file' && /\.json$/i.test(nome)) arquivos.push(nome);
+    }
+    if(!arquivos.length){ toast('Nenhum relatório na pasta','warn'); return; }
+    var escolha = prompt('Relatórios na pasta:\n\n' + arquivos.map(function(n,i){return (i+1)+'. '+n;}).join('\n') + '\n\nDigite o número:');
+    var idx = parseInt(escolha) - 1;
+    if(isNaN(idx) || !arquivos[idx]) return;
+    var fh = await dir.getFileHandle(arquivos[idx]);
+    var file = await fh.getFile();
+    var txt = await file.text();
+    var fake = { files: [ new File([txt], arquivos[idx], {type:'application/json'}) ] };
+    r2ImportarJSON(fake);
+  }catch(e){
+    toast('❌ ' + e.message,'err');
+  }
 }
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -12800,7 +13000,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.6.0';
+const APP_VERSION = '3.6.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
@@ -16055,7 +16255,7 @@ const _importApply = {
 window.addEventListener('beforeunload', function(){ saveData(true); });
 // Auto-save every 60s as safety net  
 setInterval(function(){ saveData(true); }, 60000);
-loadData();checkInspFromURL();kpis();renderDash();fillWeekSel();renderDriveLinks();try{applyDriveDefaults();}catch(e){}try{syncConfigFromDrive();}catch(e){}try{restoreRootDir();}catch(e){}try{npPopulate();}catch(e){}setTimeout(function(){try{autoStartupSync();}catch(e){}},1200);
+loadData();checkInspFromURL();kpis();renderDash();fillWeekSel();renderDriveLinks();try{jacVersionBadge();}catch(e){}try{applyDriveDefaults();}catch(e){}try{syncConfigFromDrive();}catch(e){}try{restoreRootDir();}catch(e){}try{npPopulate();}catch(e){}setTimeout(function(){try{autoStartupSync();}catch(e){}},1200);
 // Check for embedded data from shared HTML
 if(window.__JDATA_PENDING__){
   setTimeout(function(){
