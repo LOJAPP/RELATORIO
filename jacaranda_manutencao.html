@@ -1177,7 +1177,9 @@
 
     <!-- SEMANAL -->
     <div id="page-semanal" class="page">
-      <div class="export-bar"><span>📅</span><p>Relatório semanal com fotos das atividades. Edite diretamente aqui.</p><button class="btn btn-warn btn-sm" onclick="curWeek?openSemPrint(curWeek):exportPDF()">🖨 Imprimir / 📄 PDF</button></div>
+      <div class="export-bar"><span>📅</span><p>Relatório semanal com fotos das atividades.</p>
+        <button class="btn btn-ghost btn-sm" id="sem-edit-btn" onclick="semToggleEdit()">✏️ Editar</button>
+        <button class="btn btn-warn btn-sm" onclick="curWeek?openSemPrint(curWeek):exportPDF()">🖨 Imprimir / 📄 PDF</button></div>
       <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;margin-bottom:12px;">
         <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">📁 Pasta do navio — salvar e carregar relatórios (subpastas por função)</div>
         <div class="form-row" style="margin-bottom:8px;">
@@ -5244,6 +5246,8 @@ function renderHistorico(){
       </div>
       ${rs.map((r,i)=>renderActCard(r,i,true)).join('')}
     </div>`).join('');
+  // Carregar fotos do banco interno
+  try{ jacHydrateImgs(tl); }catch(e){}
 }
 
 function renderMensal(){
@@ -6047,11 +6051,50 @@ function renderSem(week){
         +';background:'+(i%2===0?'#fff':'#f9fafb')+'">'
         +'<div style="display:flex;gap:10px;flex-wrap:wrap;">'
         +'<div style="flex:1;min-width:180px;">'
-        +'<div style="font-weight:700;font-size:13px;margin-bottom:2px;">'+escHtml(r.a||r.titulo||'—')+'</div>'
-        +'<div style="font-size:11px;color:var(--text-dim);">'+fd(r.d||'')+' · Qtd: '+escHtml(r.q||'—')
-        +' · <span style="color:'+stCol+';font-weight:600;">'+escHtml(r.st||'—')+'</span></div>'
-        +(r.ob?'<div style="font-size:12px;margin-top:4px;background:#f8fafc;padding:5px 8px;border-radius:5px;border-left:3px solid var(--border2);">'+escHtml(r.ob)+'</div>':'')
+        // Título — editável no modo edição
+        +(_semEdit
+          ?'<input type="text" value="'+escHtml(r.a||r.titulo||'')+'" '
+            +'onchange="semSetCampo(\''+r.id+'\',\'a\',this.value)" '
+            +'style="width:100%;font-weight:700;font-size:13px;border:1.5px solid var(--login-blue);'
+            +'border-radius:6px;padding:5px 8px;margin-bottom:4px;">'
+          :'<div style="font-weight:700;font-size:13px;margin-bottom:2px;">'+escHtml(r.a||r.titulo||'—')+'</div>')
+        // Linha de dados
+        +(_semEdit
+          ?'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:4px;">'
+            +'<input type="date" value="'+(r.d||'')+'" onchange="semSetCampo(\''+r.id+'\',\'d\',this.value)" '
+            +'style="font-size:11px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;">'
+            +'<input type="text" value="'+escHtml(r.q||'')+'" placeholder="Qtd" '
+            +'onchange="semSetCampo(\''+r.id+'\',\'q\',this.value)" '
+            +'style="width:70px;font-size:11px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;">'
+            +'<select onchange="semSetCampo(\''+r.id+'\',\'st\',this.value)" '
+            +'style="font-size:11px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;">'
+            +['Concluído','Em andamento','Pendente','Programado'].map(function(s){
+                return '<option '+(r.st===s?'selected':'')+'>'+s+'</option>'; }).join('')
+            +'</select></div>'
+          :'<div style="font-size:11px;color:var(--text-dim);">'+fd(r.d||'')+' · Qtd: '+escHtml(r.q||'—')
+            +' · <span style="color:'+stCol+';font-weight:600;">'+escHtml(r.st||'—')+'</span></div>')
+        // Observação
+        +(_semEdit
+          ?'<textarea placeholder="Observações..." onchange="semSetCampo(\''+r.id+'\',\'ob\',this.value)" '
+            +'oninput="jacAutoGrow(this)" '
+            +'style="width:100%;font-size:12px;border:1px solid var(--border);border-radius:6px;'
+            +'padding:6px 8px;margin-top:4px;min-height:48px;resize:vertical;font-family:inherit;box-sizing:border-box;">'
+            +escHtml(r.ob||'')+'</textarea>'
+          :(r.ob?'<div style="font-size:12px;margin-top:4px;background:#f8fafc;padding:5px 8px;border-radius:5px;border-left:3px solid var(--border2);">'+escHtml(r.ob)+'</div>':''))
         +'</div></div>'
+        // Barra de ações no modo edição
+        +(_semEdit
+          ?'<div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;justify-content:flex-end;">'
+            +'<button class="btn btn-ghost btn-sm" onclick="semFotosReg(\''+r.id+'\')" style="font-size:11px;">'
+            +'📷 Fotos ('+fotos.length+')</button>'
+            +'<button class="btn btn-ghost btn-sm" onclick="semMoverReg(\''+r.id+'\',-1)" '
+            +(i===0?'disabled':'')+' style="font-size:11px;">▲</button>'
+            +'<button class="btn btn-ghost btn-sm" onclick="semMoverReg(\''+r.id+'\',1)" '
+            +(i===rlist.length-1?'disabled':'')+' style="font-size:11px;">▼</button>'
+            +'<button class="btn btn-ghost btn-sm" onclick="semMoverSemana(\''+r.id+'\')" style="font-size:11px;">📅 Semana</button>'
+            +'<button class="btn btn-danger btn-sm" onclick="semRemoverReg(\''+r.id+'\')" style="font-size:11px;">🗑</button>'
+            +'</div>'
+          :'')
         +(fotos.length?'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;">'
           +fotos.slice(0,6).map((u,fi)=>'<img src="'+jacImgSrc(u)+'"'+jacImgAttr(u)+' onclick="jacViewFoto(\''+u+'\')" '
             +'style="width:72px;height:72px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:#1e293b;'
@@ -6081,6 +6124,11 @@ function renderSem(week){
       +'</div></div>';
   }
   body.innerHTML=h;
+  // Carregar as fotos do banco interno
+  try{ jacHydrateImgs(body); }catch(e){ console.warn('hydrate semanal:',e); }
+  if(_semEdit){
+    try{ body.querySelectorAll('textarea').forEach(function(t){ jacAutoGrow(t); }); }catch(e){}
+  }
 }
 
 function initSemanal(){ renderSemTabs(); }
@@ -6680,7 +6728,7 @@ async function buildBackupDataFull(scope){
 // ═══════════════════════════════════════════════════════════
 // CONTROLE DE VERSÃO E ATUALIZAÇÃO FORÇADA
 // ═══════════════════════════════════════════════════════════
-var JAC_BUILD = '20260806-1300';
+var JAC_BUILD = '20260806-1700';
 
 // Mostra o build atual no canto da tela (clique = forçar atualização)
 function jacVersionBadge(){
@@ -7276,6 +7324,186 @@ async function jacEspacoRender(){
     + '🗜️ Comprimir fotos</button>'
     + '<button class="btn btn-ghost btn-sm" onclick="jacEspacoRender()" style="font-size:11px;">'
     + '🔄 Atualizar</button></div>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EDIÇÃO NO RELATÓRIO SEMANAL
+// ═══════════════════════════════════════════════════════════════
+var _semEdit = false;   // modo edição ligado/desligado
+
+function semToggleEdit(){
+  _semEdit = !_semEdit;
+  var b = document.getElementById('sem-edit-btn');
+  if(b){
+    b.textContent = _semEdit ? '✅ Concluir edição' : '✏️ Editar';
+    b.className = 'btn btn-sm ' + (_semEdit ? 'btn-green' : 'btn-ghost');
+  }
+  if(curWeek) renderSem(curWeek);
+  toast(_semEdit
+    ? '✏️ Modo edição ativo — clique nos campos para alterar'
+    : '✅ Edição concluída','ok');
+}
+
+// Altera um campo do registro direto no relatório
+function semSetCampo(regId, campo, valor){
+  var r = (S.regs||[]).find(function(x){ return x.id===regId; });
+  if(!r) return;
+  r[campo] = valor;
+  saveData(true);
+}
+
+// Remove um registro do relatório semanal
+function semRemoverReg(regId){
+  var r = (S.regs||[]).find(function(x){ return x.id===regId; });
+  if(!r) return;
+  if(!confirm('Remover "' + (r.a||r.titulo||'') + '" do relatório?\n\nO registro será excluído do app.')) return;
+  S.regs = S.regs.filter(function(x){ return x.id!==regId; });
+  saveData(true);
+  renderSem(curWeek);
+  try{ kpis(); renderDash(); }catch(e){}
+  toast('🗑️ Registro removido','ok');
+}
+
+// Move um registro para outra semana
+function semMoverSemana(regId){
+  var r = (S.regs||[]).find(function(x){ return x.id===regId; });
+  if(!r) return;
+  var nova = prompt('Mover para qual semana? (número)', r.s || '');
+  if(nova === null) return;
+  nova = String(nova).trim().padStart(2,'0');
+  if(!nova || nova === r.s) return;
+  r.s = nova;
+  saveData(true);
+  renderSemTabs();
+  toast('📅 Movido para a semana ' + nova,'ok');
+}
+
+// Reordena os registros dentro da semana
+function semMoverReg(regId, dir){
+  var lista = (S.regs||[]).filter(function(x){ return x.s===curWeek; });
+  var idxGlobal = S.regs.findIndex(function(x){ return x.id===regId; });
+  var pos = lista.findIndex(function(x){ return x.id===regId; });
+  var alvo = lista[pos + dir];
+  if(!alvo) return;
+  var idxAlvo = S.regs.findIndex(function(x){ return x.id===alvo.id; });
+  var t = S.regs[idxGlobal]; S.regs[idxGlobal] = S.regs[idxAlvo]; S.regs[idxAlvo] = t;
+  saveData(true);
+  renderSem(curWeek);
+}
+
+// Gerencia as fotos de um registro pelo relatório semanal
+async function semFotosReg(regId){
+  var r = (S.regs||[]).find(function(x){ return x.id===regId; });
+  if(!r){ toast('Registro não encontrado','err'); return; }
+  if(!r.fotos) r.fotos = [];
+  if(!r.fotosCaptions) r.fotosCaptions = [];
+  if(!r.fotosPos) r.fotosPos = [];
+  window._semFotoReg = regId;
+
+  var ov = document.createElement('div');
+  ov.id = 'sem-fotos-modal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9997;'
+    + 'display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;';
+  ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+  var p = document.createElement('div');
+  p.style.cssText = 'background:#fff;border-radius:14px;max-width:640px;width:100%;margin:auto;';
+  p.innerHTML =
+    '<div style="background:linear-gradient(135deg,#0a1e45,#143068);color:#fff;padding:14px 18px;'
+    + 'border-radius:14px 14px 0 0;display:flex;align-items:center;gap:10px;">'
+    + '<div style="flex:1;"><div style="font-weight:800;font-size:14px;">📷 Fotos da atividade</div>'
+    + '<div style="font-size:11px;opacity:.85;">' + escHtml(r.a||r.titulo||'') + '</div></div>'
+    + '<label class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;cursor:pointer;font-size:11px;">'
+    + '➕ Adicionar<input type="file" accept="image/*" multiple style="display:none" '
+    + 'onchange="semAddFoto(\'' + regId + '\',this.files);this.value=\'\'"></label>'
+    + '<button onclick="document.getElementById(\'sem-fotos-modal\').remove()" '
+    + 'style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:7px;padding:4px 11px;cursor:pointer;font-size:17px;">✕</button>'
+    + '</div>'
+    + '<div style="padding:16px;" id="sem-fotos-grid"></div>';
+  ov.appendChild(p);
+  document.body.appendChild(ov);
+  semRenderFotosModal(regId);
+}
+
+function semRenderFotosModal(regId){
+  var r = (S.regs||[]).find(function(x){ return x.id===regId; });
+  var g = document.getElementById('sem-fotos-grid');
+  if(!r || !g) return;
+  if(!(r.fotos||[]).length){
+    g.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px;">'
+      + 'Nenhuma foto — use ➕ Adicionar acima</div>';
+    return;
+  }
+  g.innerHTML =
+    '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">'
+    + r.fotos.length + ' foto(s) — ◀ ▶ reordenar · ⛶ enquadrar · ↻ girar</div>'
+    + jacFotoGrid(r.fotos, r.fotosCaptions||[], {
+        onMove:   'semFotoMove(\'' + regId + '\',',
+        onRemove: 'semFotoRemove(\'' + regId + '\',',
+        onCap:    'semFotoCap(\'' + regId + '\',',
+        onEdit:   'semFotoGirar(\'' + regId + '\',',
+        onFit:    'semFotoEnquadrar(\'' + regId + '\',',
+        pos:      r.fotosPos || [],
+        curried:  true
+      });
+  try{ jacHydrateImgs(g); }catch(e){}
+}
+
+function semAddFoto(regId, files){
+  var r = (S.regs||[]).find(function(x){ return x.id===regId; });
+  if(!r) return;
+  if(!r.fotos) r.fotos = [];
+  if(!r.fotosCaptions) r.fotosCaptions = [];
+  if(!r.fotosPos) r.fotosPos = [];
+  Array.from(files).forEach(function(f){
+    compress(f, function(u){
+      jacFotoPut(u).then(function(ref){
+        r.fotos.push(ref); r.fotosCaptions.push(''); r.fotosPos.push(null);
+        saveData(true);
+        semRenderFotosModal(regId);
+        if(curWeek) renderSem(curWeek);
+      });
+    });
+  });
+}
+function semFotoMove(regId, i, dir){
+  var r=(S.regs||[]).find(function(x){return x.id===regId;}); if(!r) return;
+  var j=i+dir; if(j<0||j>=r.fotos.length) return;
+  var sw=function(a){ if(!a) return; var t=a[i]; a[i]=a[j]; a[j]=t; };
+  sw(r.fotos); sw(r.fotosCaptions); sw(r.fotosPos);
+  saveData(true); semRenderFotosModal(regId); if(curWeek) renderSem(curWeek);
+}
+function semFotoRemove(regId, i){
+  var r=(S.regs||[]).find(function(x){return x.id===regId;}); if(!r) return;
+  r.fotos.splice(i,1);
+  if(r.fotosCaptions) r.fotosCaptions.splice(i,1);
+  if(r.fotosPos) r.fotosPos.splice(i,1);
+  saveData(true); semRenderFotosModal(regId); if(curWeek) renderSem(curWeek);
+}
+function semFotoCap(regId, i, v){
+  var r=(S.regs||[]).find(function(x){return x.id===regId;}); if(!r) return;
+  if(!r.fotosCaptions) r.fotosCaptions=[];
+  r.fotosCaptions[i]=v; saveData(true);
+}
+function semFotoGirar(regId, i){
+  var r=(S.regs||[]).find(function(x){return x.id===regId;}); if(!r||!r.fotos[i]) return;
+  jacFotoGet(r.fotos[i]).then(function(u){
+    if(!u) return;
+    jacGirarFoto(u, function(u2){
+      jacFotoPut(u2).then(function(ref){
+        r.fotos[i]=ref; saveData(true);
+        semRenderFotosModal(regId); if(curWeek) renderSem(curWeek);
+      });
+    });
+  });
+}
+function semFotoEnquadrar(regId, i){
+  var r=(S.regs||[]).find(function(x){return x.id===regId;}); if(!r||!r.fotos[i]) return;
+  if(!r.fotosPos) r.fotosPos=[];
+  jacEnquadrar({
+    get: function(){ return {u:r.fotos[i], pos:r.fotosPos[i]}; },
+    set: function(p){ r.fotosPos[i]=p; saveData(true); },
+    refresh: function(){ semRenderFotosModal(regId); if(curWeek) renderSem(curWeek); }
+  });
 }
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -13730,7 +13958,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.7.1';
+const APP_VERSION = '3.7.2';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
