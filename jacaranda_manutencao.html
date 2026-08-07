@@ -1179,7 +1179,7 @@
     <div id="page-semanal" class="page">
       <div class="export-bar"><span>📅</span><p>Relatório semanal com fotos das atividades.</p>
         <button class="btn btn-ghost btn-sm" id="sem-edit-btn" onclick="semToggleEdit()">✏️ Editar</button>
-        <button class="btn btn-warn btn-sm" onclick="curWeek?openSemPrint(curWeek):exportPDF()">🖨 Imprimir / 📄 PDF</button></div>
+        <button class="btn btn-warn btn-sm" onclick="curWeek?openSemPrint(curWeek):toast('⚠️ Selecione uma semana','warn')">👁 Pré-visualizar / 📄 PDF</button></div>
       <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;margin-bottom:12px;">
         <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">📁 Pasta do navio — salvar e carregar relatórios (subpastas por função)</div>
         <div class="form-row" style="margin-bottom:8px;">
@@ -1201,7 +1201,9 @@
 
     <!-- MENSAL -->
     <div id="page-mensal" class="page">
-      <div class="export-bar"><span>📆</span><p>Relatório mensal consolidado. Edite registros diretamente.</p><button class="btn btn-ghost btn-sm" onclick="exportPDF()">🖨 Imprimir</button><button class="btn btn-warn btn-sm" onclick="toast('📄 No diálogo, escolha “Salvar como PDF” como destino','ok');exportPDF()">📄 Salvar PDF</button></div>
+      <div class="export-bar"><span>📆</span><p>Relatório mensal consolidado.</p>
+        <button class="btn btn-ghost btn-sm" id="mes-edit-btn" onclick="mesToggleEdit()">✏️ Editar</button>
+        <button class="btn btn-warn btn-sm" onclick="mesPreparar()">👁 Pré-visualizar / 📄 PDF</button></div>
       <div class="form-row" style="margin-bottom:14px;">
         <div class="form-group" style="max-width:200px;"><label>Mês</label><input type="month" class="form-control" id="mes-sel" onchange="renderMensal()"></div>
       </div>
@@ -4152,17 +4154,35 @@ function fillFotoAssoc(){
 function renderGallery(){
   const g=document.getElementById('gallery');if(!g)return;
   const all=[];
-  S.regs.forEach(r=>(r.fotos||[]).forEach(u=>all.push({u,desc:`SEM ${r.s}: ${r.a.slice(0,40)}`,ts:r.ts})));
-  S.fotos.forEach(f=>all.push({u:f.u,desc:f.desc||f.nm,ts:f.ts}));
-  if(!all.length){g.innerHTML='<div class="empty-state" style="width:100%"><div class="ico">🖼️</div><p>Nenhuma foto</p></div>';return;}
-  all.sort((a,b)=>b.ts-a.ts);
+  (S.regs||[]).forEach(r=>(r.fotos||[]).forEach((u,i)=>all.push({
+    u, desc:`SEM ${r.s||''}: ${String(r.a||'').slice(0,40)}`, ts:r.ts,
+    pos:(r.fotosPos||[])[i]
+  })));
+  (S.fotos||[]).forEach(f=>all.push({u:f.u||f, desc:f.desc||f.nm||f.cap||'', ts:f.ts, pos:f.pos}));
+  (S.relatorios||[]).forEach(rel=>(rel.items||[]).forEach(it=>(it.fotos||[]).forEach((u,i)=>all.push({
+    u, desc:`📄 ${String(rel.titulo||'').slice(0,32)}`, ts:rel.ts,
+    pos:(it.fotosPos||[])[i]
+  }))));
+  (S.inspecoes||[]).forEach(x=>(x.fotos||[]).forEach(u=>all.push({
+    u, desc:`🔍 ${String(x.titulo||x.area||'').slice(0,32)}`, ts:x.ts
+  })));
+
+  if(!all.length){
+    g.innerHTML='<div class="empty-state" style="width:100%"><div class="ico">🖼️</div><p>Nenhuma foto</p></div>';
+    return;
+  }
+  all.sort((a,b)=>(b.ts||0)-(a.ts||0));
   window._galList=all.map(f=>f.u);
   g.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;width:100%;';
   g.innerHTML=all.map((f,i)=>`
-    <div style="cursor:pointer;" onclick="viewP(window._galList[${i}],window._galList)">
-      <div style="aspect-ratio:4/3;overflow:hidden;border-radius:8px;border:2px solid var(--border);background:#fff;"><img src="${f.u}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
-      <div style="font-size:10px;color:var(--text-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(f.desc||'').slice(0,48)}</div>
+    <div style="cursor:pointer;" onclick="jacViewFoto(window._galList[${i}])">
+      <div style="aspect-ratio:4/3;overflow:hidden;border-radius:8px;border:2px solid var(--border);background:#1e293b;">
+        <img src="${jacImgSrc(f.u)}"${jacImgAttr(f.u)} alt="" loading="lazy"
+          style="width:100%;height:100%;display:block;${jacFitCSS(f.pos)}"></div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml((f.desc||'').slice(0,48))}</div>
     </div>`).join('');
+  // Carregar as fotos do banco interno
+  try{ jacHydrateImgs(g); }catch(e){ console.warn('hydrate galeria:',e); }
 }
 
 // ── PHOTOS RENDER HELPER ──
@@ -5351,8 +5371,9 @@ function renderMensal(){
       <span><strong style="color:var(--login-blue)">Ch. Máq.:</strong> ${vcfg.cmaq||'Jorge Murrieta'}</span>
       <span><strong style="color:var(--login-blue)">Sub-Ch.:</strong> ${vcfg.scmaq||'Cesar Diaz'}</span>
     </div>`;
+  try{ jacHydrateImgs(div); }catch(e){}
+  if(_mesEdit){ try{ div.querySelectorAll('textarea').forEach(function(t){ jacAutoGrow(t); }); }catch(e){} }
 }
-
 function openCrew(id){
   const t=id?S.crew.find(x=>x.id===id):null;
   document.getElementById('mcrew-id').value=id||'';
@@ -6730,7 +6751,7 @@ async function buildBackupDataFull(scope){
 // ═══════════════════════════════════════════════════════════
 // CONTROLE DE VERSÃO E ATUALIZAÇÃO FORÇADA
 // ═══════════════════════════════════════════════════════════
-var JAC_BUILD = '20260807-1000';
+var JAC_BUILD = '20260807-1500';
 
 // Mostra o build atual no canto da tela (clique = forçar atualização)
 function jacVersionBadge(){
@@ -6943,36 +6964,80 @@ function deptColor(dept){
 }
 
 // Card de atividade usado no Histórico
-function renderActCard(r){
+// Card de atividade — usado no Histórico e no Mensal. Editável quando o modo edição está ativo.
+function renderActCard(r, idx, compacto){
+  var editavel = (typeof _mesEdit !== 'undefined' && _mesEdit);
   var fotos = (r.fotos||[]);
   var stCol = r.st==='Concluído' ? '#16a34a' : (r.st==='Em andamento' ? '#d97706' : '#64748b');
-  return '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;border-left:4px solid '+deptColor(r.dp)+';">'
+
+  var corpo = editavel
+    ? '<input type="text" value="' + escHtml(r.a||r.titulo||'') + '" '
+      + 'onchange="mesSetCampo(\'' + r.id + '\',\'a\',this.value)" '
+      + 'style="width:100%;font-weight:700;font-size:13px;border:1.5px solid var(--login-blue);'
+      + 'border-radius:6px;padding:5px 8px;margin-bottom:5px;">'
+      + '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px;">'
+      + '<input type="date" value="' + (r.d||'') + '" onchange="mesSetCampo(\'' + r.id + '\',\'d\',this.value)" '
+      + 'style="font-size:11px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;">'
+      + '<input type="text" value="' + escHtml(r.q||'') + '" placeholder="Qtd" '
+      + 'onchange="mesSetCampo(\'' + r.id + '\',\'q\',this.value)" '
+      + 'style="width:70px;font-size:11px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;">'
+      + '<select onchange="mesSetCampo(\'' + r.id + '\',\'st\',this.value)" '
+      + 'style="font-size:11px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;">'
+      + ['Concluído','Em andamento','Pendente','Programado'].map(function(sv){
+          return '<option ' + (r.st===sv?'selected':'') + '>' + sv + '</option>'; }).join('')
+      + '</select></div>'
+      + '<textarea placeholder="Observações..." onchange="mesSetCampo(\'' + r.id + '\',\'ob\',this.value)" '
+      + 'oninput="jacAutoGrow(this)" style="width:100%;font-size:12px;border:1px solid var(--border);'
+      + 'border-radius:6px;padding:6px 8px;min-height:44px;resize:vertical;font-family:inherit;box-sizing:border-box;">'
+      + escHtml(r.ob||'') + '</textarea>'
+    : '<div style="font-weight:700;font-size:13px;margin-bottom:3px;">' + escHtml(r.a||r.titulo||'—') + '</div>'
+      + '<div style="font-size:11px;color:var(--text-dim);">'
+      + fd(r.d||'') + (r.dp?' · '+escHtml(r.dp):'') + (r.q?' · Qtd: '+escHtml(r.q):'')
+      + ' · <span style="color:' + stCol + ';font-weight:600;">' + escHtml(r.st||'—') + '</span></div>'
+      + (r.l?'<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">📍 ' + escHtml(r.l) + '</div>':'')
+      + (r.ob?'<div style="font-size:12px;margin-top:5px;background:var(--surface2);padding:6px 8px;border-radius:6px;">'
+        + escHtml(r.ob) + '</div>':'');
+
+  var acoes = editavel
+    ? '<div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;justify-content:flex-end;">'
+      + '<button class="btn btn-ghost btn-sm" onclick="mesFotosReg(\'' + r.id + '\')" style="font-size:11px;">'
+      + '📷 Fotos (' + fotos.length + ')</button>'
+      + '<button class="btn btn-danger btn-sm" onclick="mesRemoverReg(\'' + r.id + '\')" style="font-size:11px;">🗑</button>'
+      + '</div>'
+    : '<div style="display:flex;gap:5px;flex-shrink:0;">'
+      + '<button class="btn btn-ghost btn-sm" onclick="editReg(\'' + r.id + '\')" style="font-size:11px;">✏️</button>'
+      + '<button class="btn btn-danger btn-sm" onclick="delReg(\'' + r.id + '\')" style="font-size:11px;">🗑</button>'
+      + '</div>';
+
+  return '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;'
+    + 'margin-bottom:8px;border-left:4px solid ' + deptColor(r.dp) + ';">'
     + '<div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;">'
-    + '<div style="flex:1;min-width:180px;">'
-    + '<div style="font-weight:700;font-size:13px;margin-bottom:3px;">'+escHtml(r.a||r.titulo||'—')+'</div>'
-    + '<div style="font-size:11px;color:var(--text-dim);">'
-    + fd(r.d||'') + (r.dp?' · '+escHtml(r.dp):'') + (r.q?' · Qtd: '+escHtml(r.q):'')
-    + ' · <span style="color:'+stCol+';font-weight:600;">'+escHtml(r.st||'—')+'</span></div>'
-    + (r.l?'<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">📍 '+escHtml(r.l)+'</div>':'')
-    + (r.ob?'<div style="font-size:12px;margin-top:5px;background:var(--surface2);padding:6px 8px;border-radius:6px;">'+escHtml(r.ob)+'</div>':'')
+    + '<div style="flex:1;min-width:180px;">' + corpo + '</div>'
+    + (editavel ? '' : acoes)
     + '</div>'
-    + '<div style="display:flex;gap:5px;flex-shrink:0;">'
-    + '<button class="btn btn-ghost btn-sm" onclick="editReg(\''+r.id+'\')" style="font-size:11px;">✏️</button>'
-    + '<button class="btn btn-danger btn-sm" onclick="delReg(\''+r.id+'\')" style="font-size:11px;">🗑</button>'
-    + '</div></div>'
+    + (editavel ? acoes : '')
     + (fotos.length
-      ? '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;">'
-        + fotos.slice(0,4).map(function(u,i){
-            return '<img src="'+jacImgSrc(u)+'"'+jacImgAttr(u)+' onclick="jacViewFoto(\''+u+'\')" '
-              + 'style="width:64px;height:64px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:#1e293b;" loading="lazy">';
+      ? '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;">'
+        + fotos.slice(0,8).map(function(u, i){
+            var cap = (r.fotosCaptions||[])[i] || '';
+            return '<div style="cursor:pointer;" onclick="jacViewFoto(\'' + u + '\')">'
+              + '<img src="' + jacImgSrc(u) + '"' + jacImgAttr(u) + ' '
+              + 'style="width:100%;aspect-ratio:4/3;border-radius:6px;border:1px solid var(--border);'
+              + 'background:#1e293b;' + jacFitCSS((r.fotosPos||[])[i]) + '" loading="lazy">'
+              + (cap ? '<div style="font-size:9px;color:var(--text-dim);text-align:center;'
+                + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(cap) + '</div>' : '')
+              + '</div>';
           }).join('')
-        + (fotos.length>4?'<div style="width:64px;height:64px;background:var(--surface2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-dim);">+'+(fotos.length-4)+'</div>':'')
+        + (fotos.length>8
+          ? '<div style="aspect-ratio:4/3;background:var(--surface2);border-radius:6px;display:flex;'
+            + 'align-items:center;justify-content:center;font-size:11px;color:var(--text-dim);">+'
+            + (fotos.length-8) + '</div>'
+          : '')
         + '</div>'
       : '')
     + '</div>';
 }
 
-// Limpeza de token (compatibilidade — GitHub removido)
 function ghTokenLimpar(t){ return String(t||'').replace(/\s+/g,''); }
 function cloudGhTokenCheck(){
   toast('ℹ️ A integração com GitHub foi removida — use Pasta de Rede ou Google Drive','ok');
@@ -7763,6 +7828,312 @@ async function r2PreVisualizar(){
 
 async function r2ImprimirSelecionado(){
   await r2PreVisualizar();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RELATÓRIO MENSAL — edição, seleção de itens e pré-visualização
+// ═══════════════════════════════════════════════════════════════
+var _mesEdit    = false;
+var _mesExclui  = new Set();   // ids desmarcados para o PDF
+
+function mesToggleEdit(){
+  _mesEdit = !_mesEdit;
+  var b = document.getElementById('mes-edit-btn');
+  if(b){
+    b.textContent = _mesEdit ? '✅ Concluir edição' : '✏️ Editar';
+    b.className = 'btn btn-sm ' + (_mesEdit ? 'btn-green' : 'btn-ghost');
+  }
+  renderMensal();
+  toast(_mesEdit ? '✏️ Modo edição — clique nos campos para alterar' : '✅ Edição concluída','ok');
+}
+
+function mesSetCampo(regId, campo, valor){
+  var r = (S.regs||[]).find(function(x){ return x.id===regId; });
+  if(!r) return;
+  r[campo] = valor;
+  saveData(true);
+}
+
+function mesRemoverReg(regId){
+  var r = (S.regs||[]).find(function(x){ return x.id===regId; });
+  if(!r) return;
+  if(!confirm('Remover "' + (r.a||'') + '" do app?')) return;
+  S.regs = S.regs.filter(function(x){ return x.id!==regId; });
+  saveData(true); renderMensal();
+  try{ kpis(); renderDash(); }catch(e){}
+  toast('🗑️ Registro removido','ok');
+}
+
+// Fotos de um registro pelo mensal (reaproveita o gerenciador do semanal)
+function mesFotosReg(regId){ semFotosReg(regId); }
+
+// Mês selecionado, no formato AAAA-MM
+function mesAtual(){
+  var el = document.getElementById('mes-sel');
+  return el && el.value ? el.value : new Date().toISOString().slice(0,7);
+}
+
+// Registros do mês
+function mesRegistros(){
+  var m = mesAtual();
+  return (S.regs||[]).filter(function(r){ return (r.d||'').slice(0,7) === m; });
+}
+
+// ── Painel de seleção antes de imprimir ──
+function mesPreparar(){
+  var mes  = mesAtual();
+  var regs = mesRegistros();
+  var ofic = (S.oficina||[]).filter(function(o){ return (o.d||'').slice(0,7)===mes; });
+  var desv = (S.desvios||[]).filter(function(x){ return (x.d||'').slice(0,7)===mes; });
+  var insp = (S.inspecoes||[]).filter(function(x){ return (x.d||'').slice(0,7)===mes; });
+
+  if(!regs.length && !ofic.length && !desv.length && !insp.length){
+    toast('⚠️ Nenhum registro neste mês','warn'); return;
+  }
+  _mesExclui = new Set();
+
+  var mod = document.getElementById('modal-mes-print');
+  if(!mod){
+    mod = document.createElement('div');
+    mod.id = 'modal-mes-print';
+    mod.className = 'modal-overlay';
+    document.body.appendChild(mod);
+  }
+
+  var linha = function(id, titulo, sub, cor, nFotos){
+    return '<label style="display:flex;align-items:center;gap:10px;padding:9px;border-radius:8px;'
+      + 'cursor:pointer;border:1px solid var(--border);margin-bottom:6px;background:#fff;">'
+      + '<input type="checkbox" checked onchange="mesTog(\'' + id + '\',this.checked)" '
+      + 'style="width:16px;height:16px;flex-shrink:0;">'
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-size:13px;font-weight:700;">' + escHtml(titulo) + '</div>'
+      + '<div style="font-size:11px;color:var(--text-dim);">' + escHtml(sub)
+      + (nFotos ? ' · 📷 ' + nFotos : '') + '</div></div>'
+      + '<span id="mes-tag-' + id + '" style="background:#dcfce7;color:#15803d;font-size:10px;'
+      + 'font-weight:700;padding:2px 8px;border-radius:8px;flex-shrink:0;">incluído</span></label>';
+  };
+
+  var grupo = function(titulo, cor, itens){
+    if(!itens) return '';
+    return '<div style="font-size:11px;font-weight:800;text-transform:uppercase;color:' + cor
+      + ';margin:12px 0 7px;letter-spacing:.5px;">' + titulo + '</div>' + itens;
+  };
+
+  mod.innerHTML =
+    '<div style="background:#fff;border-radius:14px;max-width:600px;width:95%;max-height:88vh;'
+    + 'overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.35);">'
+    + '<div style="background:linear-gradient(135deg,#07182e,#0e2540);color:#fff;padding:16px 20px;'
+    + 'border-radius:14px 14px 0 0;position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;">'
+    + '<div style="flex:1;"><div style="font-size:15px;font-weight:800;">🖨 Preparar relatório mensal</div>'
+    + '<div style="font-size:11px;opacity:.85;">' + mes + ' · ' + regs.length + ' atividade(s)</div></div>'
+    + '<button onclick="mesFecharPreparar()" style="background:rgba(255,255,255,.18);border:none;'
+    + 'color:#fff;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:17px;">✕</button></div>'
+    + '<div style="padding:16px;">'
+    + '<div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">'
+    + 'Desmarque o que <strong>não</strong> deve entrar no relatório impresso.</div>'
+    + '<div style="display:flex;gap:6px;margin-bottom:6px;">'
+    + '<button class="btn btn-ghost btn-sm" onclick="mesSelTodos(true)" style="flex:1;font-size:11px;">☑ Todos</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="mesSelTodos(false)" style="flex:1;font-size:11px;">☐ Nenhum</button></div>'
+    + grupo('Atividades', '#1A5FA8', regs.map(function(r){
+        return linha('reg-'+r.id, r.a||r.titulo||'—', fd(r.d||'')+' · '+(r.dp||'')+' · '+(r.st||''), '#1A5FA8', (r.fotos||[]).length);
+      }).join(''))
+    + grupo('Bloco / Oficina', '#059669', ofic.map(function(o){
+        return linha('of-'+o.id, o.item||o.titulo||o.lb||'—', fd(o.d||'')+' · '+(o.dep||''), '#059669', (o.fotos||[]).length);
+      }).join(''))
+    + grupo('Desvios', '#dc2626', desv.map(function(x){
+        return linha('dv-'+x.id, x.tipo||x.titulo||'—', fd(x.d||'')+' · '+(x.st||''), '#dc2626', 0);
+      }).join(''))
+    + grupo('Inspeções', '#7c3aed', insp.map(function(x){
+        return linha('insp-'+x.id, x.titulo||x.it||'—', fd(x.d||'')+' · '+(x.st||x.result||''), '#7c3aed', (x.fotos||[]).length);
+      }).join(''))
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px;">'
+    + '<button class="btn btn-primary" onclick="mesPreVisualizar()" style="grid-column:1/-1;padding:12px;font-weight:700;">'
+    + '👁 Pré-visualizar relatório</button>'
+    + '<button class="btn btn-warn btn-sm" onclick="mesPreVisualizar()" style="font-size:12px;">🖨 Imprimir</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="mesFecharPreparar()" style="font-size:12px;">Cancelar</button>'
+    + '</div></div></div>';
+
+  mod.classList.add('open');
+  mod.style.display = 'flex';
+}
+
+function mesTog(id, on){
+  if(on) _mesExclui.delete(id); else _mesExclui.add(id);
+  var t = document.getElementById('mes-tag-' + id);
+  if(t){
+    t.textContent = on ? 'incluído' : 'excluído';
+    t.style.background = on ? '#dcfce7' : '#fee2e2';
+    t.style.color      = on ? '#15803d' : '#dc2626';
+  }
+}
+function mesSelTodos(on){
+  document.querySelectorAll('#modal-mes-print input[type=checkbox]').forEach(function(c){
+    c.checked = on; c.dispatchEvent(new Event('change'));
+  });
+}
+function mesFecharPreparar(){
+  var m = document.getElementById('modal-mes-print');
+  if(m){ m.classList.remove('open'); m.style.display='none'; }
+}
+
+// ── Pré-visualização / impressão do mensal ──
+async function mesPreVisualizar(){
+  var mes  = mesAtual();
+  mesFecharPreparar();
+  await jacResolverFotosParaImpressao(null);
+
+  var cfg = getCfg(); var v = cfg.vessel||{};
+  var esc = escHtml;
+  var inc = function(pfx, id){ return !_mesExclui.has(pfx + '-' + id); };
+
+  var regs = mesRegistros().filter(function(r){ return inc('reg', r.id); });
+  var ofic = (S.oficina||[]).filter(function(o){ return (o.d||'').slice(0,7)===mes && inc('of', o.id); });
+  var desv = (S.desvios||[]).filter(function(x){ return (x.d||'').slice(0,7)===mes && inc('dv', x.id); });
+  var insp = (S.inspecoes||[]).filter(function(x){ return (x.d||'').slice(0,7)===mes && inc('insp', x.id); });
+
+  var mesNome = (function(){
+    var p = mes.split('-');
+    var nomes = ['janeiro','fevereiro','março','abril','maio','junho','julho',
+                 'agosto','setembro','outubro','novembro','dezembro'];
+    return (nomes[parseInt(p[1],10)-1] || '') + ' de ' + p[0];
+  })();
+
+  var fotosDe = function(o){
+    var fs = (o.fotos||[]);
+    if(!fs.length) return '';
+    return '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:9px 14px;background:#fafafa;">'
+      + fs.map(function(u, i){
+          var cap = (o.fotosCaptions||o.fotosDesc||[])[i] || '';
+          var pz  = (o.fotosPos||[])[i];
+          return '<figure style="margin:0;break-inside:avoid;">'
+            + '<div style="width:100%;aspect-ratio:4/3;overflow:hidden;border-radius:6px;border:1px solid #ddd;background:#0f172a;">'
+            + '<img src="' + jacFotoImpressao(u) + '" style="width:100%;height:100%;display:block;'
+            + '-webkit-print-color-adjust:exact;' + jacFitCSS(pz) + '"></div>'
+            + (cap ? '<figcaption style="font-size:9px;color:#555;text-align:center;padding:3px 2px 0;">'
+                + esc(cap) + '</figcaption>' : '')
+            + '</figure>';
+        }).join('')
+      + '</div>';
+  };
+
+  // Agrupar atividades por departamento
+  var porDept = {};
+  regs.forEach(function(r){ (porDept[r.dp] = porDept[r.dp] || []).push(r); });
+
+  var atividades = Object.keys(porDept).sort().map(function(dp){
+    return '<div style="margin-bottom:14px;break-inside:avoid;">'
+      + '<div style="background:#1A5FA8;color:#fff;padding:7px 14px;border-radius:8px 8px 0 0;'
+      + 'font-size:12px;font-weight:700;text-transform:uppercase;-webkit-print-color-adjust:exact;">'
+      + esc(dp||'—') + ' <span style="opacity:.75;font-weight:400;">(' + porDept[dp].length + ')</span></div>'
+      + '<div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;">'
+      + porDept[dp].map(function(r, i){
+          var stCol = r.st==='Concluído'?'#16a34a':(r.st==='Em andamento'?'#d97706':'#64748b');
+          return '<div style="' + (i>0?'border-top:1px solid #f1f5f9;':'') + '">'
+            + '<div style="padding:9px 14px;">'
+            + '<div style="font-size:13px;font-weight:700;">' + esc(r.a||r.titulo||'—') + '</div>'
+            + '<div style="font-size:11px;color:#64748b;">' + fd(r.d||'')
+            + (r.q?' · Qtd: '+esc(r.q):'')
+            + ' · <span style="color:' + stCol + ';font-weight:600;">' + esc(r.st||'') + '</span></div>'
+            + (r.ob?'<div style="font-size:12px;margin-top:4px;color:#374151;">' + esc(r.ob) + '</div>':'')
+            + '</div>' + fotosDe(r) + '</div>';
+        }).join('')
+      + '</div></div>';
+  }).join('');
+
+  var secao = function(titulo, cor, itens, fn){
+    if(!itens.length) return '';
+    return '<div style="margin-bottom:14px;break-inside:avoid;">'
+      + '<div style="background:' + cor + ';color:#fff;padding:7px 14px;border-radius:8px 8px 0 0;'
+      + 'font-size:12px;font-weight:700;text-transform:uppercase;-webkit-print-color-adjust:exact;">'
+      + titulo + ' (' + itens.length + ')</div>'
+      + '<div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;">'
+      + itens.map(fn).join('') + '</div></div>';
+  };
+
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
+    + '<title>Relatório Mensal — ' + mesNome + '</title>'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0;}@page{margin:11mm 12mm;size:A4;}'
+    + 'body{font-family:"Segoe UI",system-ui,Arial,sans-serif;font-size:12px;color:#111827;background:#f1f5f9;'
+    + '-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.sheet{max-width:210mm;margin:0 auto;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.12);}'
+    + '@media print{body{background:#fff;}.no-print{display:none!important}.sheet{box-shadow:none;max-width:none;}}'
+    + '</style></head><body>'
+    + '<div class="no-print" style="background:#07182e;padding:11px 18px;display:flex;gap:8px;'
+    + 'align-items:center;justify-content:space-between;flex-wrap:wrap;position:sticky;top:0;z-index:10;">'
+    + '<span style="color:#fff;font-size:13px;font-weight:700;">📆 Relatório Mensal — ' + mesNome + '</span>'
+    + '<div style="display:flex;gap:8px;">'
+    + '<button onclick="window.print()" style="background:#3b82f6;color:#fff;border:none;border-radius:7px;'
+    + 'padding:9px 18px;font-weight:700;cursor:pointer;font-size:13px;">🖨 Imprimir</button>'
+    + '<button onclick="alert(\'No diálogo de impressão, escolha \\u201cSalvar como PDF\\u201d como destino.\');window.print()" '
+    + 'style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-weight:700;'
+    + 'cursor:pointer;font-size:13px;">📄 Salvar PDF</button>'
+    + '<button onclick="window.close()" style="background:rgba(255,255,255,.12);color:#fff;'
+    + 'border:1px solid rgba(255,255,255,.22);border-radius:7px;padding:9px 15px;cursor:pointer;font-size:13px;">✕ Fechar</button>'
+    + '</div></div>'
+    + '<div class="sheet">'
+    + '<div style="background:linear-gradient(135deg,#07182e 0%,#143068 55%,#1a4080 100%);color:#fff;'
+    + 'padding:20px 24px;-webkit-print-color-adjust:exact;">'
+    + '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
+    + '<div style="flex-shrink:0;"><div style="font-family:\'Barlow Condensed\',Arial,sans-serif;font-size:30px;'
+    + 'font-weight:800;line-height:1;letter-spacing:-1px;"><span style="color:#fff;">log</span>'
+    + '<span style="color:#6DB847;">in</span><span style="color:#F5A800;">.</span></div>'
+    + '<div style="font-size:8px;opacity:.65;letter-spacing:1.4px;text-transform:uppercase;margin-top:2px;">'
+    + 'logística intermodal</div></div>'
+    + '<div style="width:1px;height:44px;background:rgba(255,255,255,.2);"></div>'
+    + '<div style="flex:1;min-width:180px;">'
+    + '<div style="font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:4px;">'
+    + 'Relatório Mensal de Manutenção</div>'
+    + '<div style="font-size:19px;font-weight:800;text-transform:capitalize;">' + mesNome + '</div>'
+    + '<div style="font-size:12px;opacity:.85;">⚓ ' + esc(v.name||'M/V LOG-IN JACARANDÁ') + '</div></div>'
+    + '<div style="text-align:right;font-size:10px;opacity:.75;line-height:1.7;flex-shrink:0;">'
+    + '<div>IMO ' + esc(v.imo||'9471886') + '</div>'
+    + '<div>' + esc(v.armador||'LOG-IN Logística Intermodal') + '</div>'
+    + '<div>' + regs.length + ' atividade(s)</div></div></div></div>'
+    + '<div style="padding:16px 24px;">'
+    + (atividades || '<div style="color:#9ca3af;font-size:12px;font-style:italic;padding:14px;text-align:center;">Nenhuma atividade selecionada.</div>')
+    + secao('🏭 Bloco / Oficina', '#059669', ofic, function(o, i){
+        return '<div style="padding:9px 14px;' + (i>0?'border-top:1px solid #f1f5f9;':'') + '">'
+          + '<div style="font-size:12px;font-weight:700;">' + esc(o.item||o.titulo||o.lb||'—') + '</div>'
+          + '<div style="font-size:11px;color:#64748b;">' + fd(o.d||'') + ' · ' + esc(o.dep||'') + ' · ' + esc(o.st||'') + '</div>'
+          + (o.work?'<div style="font-size:12px;margin-top:3px;">' + esc(o.work) + '</div>':'')
+          + '</div>' + fotosDe(o);
+      })
+    + secao('⚠️ Desvios', '#dc2626', desv, function(x, i){
+        return '<div style="padding:9px 14px;' + (i>0?'border-top:1px solid #f1f5f9;':'') + '">'
+          + '<div style="font-size:12px;font-weight:700;">' + esc(x.tipo||x.titulo||'—')
+          + ' — <span style="color:#dc2626;">' + esc(x.st||'Aberto') + '</span></div>'
+          + '<div style="font-size:12px;">' + esc(x.desc||'') + '</div></div>';
+      })
+    + secao('🔍 Inspeções', '#7c3aed', insp, function(x, i){
+        return '<div style="padding:9px 14px;' + (i>0?'border-top:1px solid #f1f5f9;':'') + '">'
+          + '<div style="font-size:12px;font-weight:700;">' + esc(x.titulo||x.it||'—') + '</div>'
+          + '<div style="font-size:11px;color:#64748b;">' + fd(x.d||'') + ' · ' + esc(x.st||x.result||'') + '</div>'
+          + (x.obs?'<div style="font-size:12px;margin-top:3px;">' + esc(x.obs) + '</div>':'')
+          + '</div>' + fotosDe(x);
+      })
+    + '</div>'
+    + '<div style="padding:20px 24px 24px;border-top:2px solid #e5e7eb;break-inside:avoid;">'
+    + '<div style="display:flex;justify-content:space-around;gap:24px;flex-wrap:wrap;">'
+    + [{nm:v.cmte||'Comandante', rl:'Comandante'},
+       {nm:v.chefe||'Chefe de Máquinas', rl:'Chefe de Máquinas'}].map(function(sg){
+        return '<div style="text-align:center;flex:1;min-width:150px;max-width:230px;">'
+          + '<div style="border-bottom:1.5px solid #374151;height:46px;margin-bottom:6px;"></div>'
+          + '<div contenteditable="true" style="font-size:12px;font-weight:700;color:#374151;outline:none;">'
+          + esc(sg.nm) + '</div>'
+          + '<div contenteditable="true" style="font-size:10px;color:#9ca3af;outline:none;">' + sg.rl + '</div></div>';
+      }).join('')
+    + '</div></div>'
+    + '<div style="background:#f9fafb;padding:9px 24px;border-top:1px solid #e5e7eb;display:flex;'
+    + 'justify-content:space-between;font-size:9px;color:#9ca3af;flex-wrap:wrap;gap:8px;">'
+    + '<span>' + esc(v.name||'M/V LOG-IN JACARANDÁ') + ' · IMO ' + esc(v.imo||'9471886') + '</span>'
+    + '<span>Gerado em ' + new Date().toLocaleString('pt-BR') + '</span></div>'
+    + '</div></body></html>';
+
+  var wOpen = window.open('', '_blank', 'width=940,height=1100');
+  if(!wOpen){ toast('⚠️ Permita pop-ups para abrir o relatório','warn'); return; }
+  wOpen.document.write(html);
+  wOpen.document.close();
+  toast('📆 Relatório mensal aberto — 🖨 Imprimir ou 📄 Salvar PDF','ok');
 }
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -14217,7 +14588,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.7.3';
+const APP_VERSION = '3.8.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
