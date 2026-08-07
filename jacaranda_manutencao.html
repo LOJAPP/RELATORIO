@@ -1129,8 +1129,8 @@
               💾 Salvar Relatório Técnico
             </button>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <button class="btn btn-warn btn-sm" onclick="r2PrintAtual()" style="font-size:12px;font-weight:700;">
-                🖨 Imprimir / 📄 PDF
+              <button class="btn btn-warn btn-sm" onclick="r2PrepararAtual()" style="font-size:12px;font-weight:700;">
+                👁 Pré-visualizar / 🖨 PDF
               </button>
               <button class="btn btn-ghost btn-sm" onclick="saveTecNaPasta()" style="font-size:12px;">
                 📁 Salvar na pasta
@@ -3877,7 +3877,7 @@ function editRegRenderPhotos(regId){
   if(!fotos.length){ grid.innerHTML='<span style="color:var(--muted);font-size:12px;font-style:italic;">Sem fotos — adicione usando os botões abaixo</span>'; return; }
   grid.innerHTML=fotos.map((u,i)=>`
     <div style="position:relative;width:80px;">
-      <img src="${u}" onclick="viewP('${u}')" style="width:80px;height:80px;object-fit:cover;border-radius:7px;border:2px solid var(--border);cursor:pointer;display:block;">
+      <img src="${jacFotoImpressao(u)}" onclick="viewP('${u}')" style="width:80px;height:80px;object-fit:cover;border-radius:7px;border:2px solid var(--border);cursor:pointer;display:block;">
       <button onclick="editRegRemovePhoto('${regId}',${i})" style="position:absolute;top:-5px;right:-5px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;font-weight:700;line-height:1;">✕</button>
     </div>`).join('');
 }
@@ -4265,8 +4265,10 @@ function doSemPrint(){
 }
 
 // ── Professional PDF for weekly report (new window, like inspection PDF) ──
-function printSemPDF(week, excluded){
+async function printSemPDF(week, excluded){
   excluded = excluded || new Set();
+  // Resolver as fotos do banco interno para base64 (a janela de impressão não acessa o IndexedDB)
+  await jacResolverFotosParaImpressao(week);
   const regs   = S.regs.filter(r=>r.s===week && !excluded.has('reg-'+r.id));
   const ofWeek = S.oficina.filter(o=>o.s===week && !excluded.has('of-'+o.id));
   const dvWeek = S.desvios.filter(d=>d.s===week && !excluded.has('dv-'+d.id));
@@ -4412,7 +4414,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;backgr
           <span class="st-badge" style="${stStyle(r.st)}">${r.st}</span>
         </div>`;
         if((r.fotos||[]).length){
-          actsHtml += `<div class="pgrid">${r.fotos.map((u,fi)=>{const cap=(r.fotosCaptions&&r.fotosCaptions[fi])||'';return `<div class="pgrid-cell"><img src="${u}" alt="${cap}">${cap?`<div class="pgrid-cap">${escHtml(cap)}</div>`:''}</div>`;}).join('')}</div>`;
+          actsHtml += `<div class="pgrid">${r.fotos.map((u,fi)=>{const cap=(r.fotosCaptions&&r.fotosCaptions[fi])||'';return `<div class="pgrid-cell"><img src="${jacFotoImpressao(u)}" alt="${cap}">${cap?`<div class="pgrid-cap">${escHtml(cap)}</div>`:''}</div>`;}).join('')}</div>`;
         }
       });
     });
@@ -4529,7 +4531,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;backgr
               antesAll.forEach((u,fi)=>{
                 const dc = antesDesc[fi]||'';
                 inspHtml += `<div style="border-radius:5px;overflow:hidden;border:1px solid #fca5a5;">
-                  <img src="${u}" style="width:100%;height:100px;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+                  <img src="${jacFotoImpressao(u)}" style="width:100%;height:100px;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
                   ${dc?`<div style="font-size:7px;color:#991b1b;text-align:center;padding:2px;background:#fff8f8;border-top:1px solid #fecdd3;">${escHtml(dc)}</div>`:''}
                 </div>`;
               });
@@ -4551,7 +4553,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;backgr
               (it.fotosDepois||[]).forEach((u,fi)=>{
                 const dc = (it.fotosDepoisDesc&&it.fotosDepoisDesc[fi])||'';
                 inspHtml += `<div style="border-radius:5px;overflow:hidden;border:1px solid #86efac;">
-                  <img src="${u}" style="width:100%;height:100px;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+                  <img src="${jacFotoImpressao(u)}" style="width:100%;height:100px;object-fit:cover;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
                   ${dc?`<div style="font-size:7px;color:#14532d;text-align:center;padding:2px;background:#f0fdf4;border-top:1px solid #86efac;">${escHtml(dc)}</div>`:''}
                 </div>`;
               });
@@ -4574,7 +4576,7 @@ body{font-family:"Segoe UI",Arial,sans-serif;font-size:12px;color:#111827;backgr
         inspHtml += `<div class="gen-photos">
           <div class="gen-photos-hdr">📷 Fotos Gerais (${ins.fotos.length})</div>
           <div class="gen-photos-grid">
-            ${ins.fotos.map(u=>`<img src="${u}" alt="">`).join('')}
+            ${ins.fotos.map(u=>`<img src="${jacFotoImpressao(u)}" alt="">`).join('')}
           </div>
         </div>`;
       }
@@ -4984,7 +4986,7 @@ function renderR2Saved(){
       +(r.projeto?'<div style="font-size:10px;color:#7c3aed;">'+escHtml(r.projeto)+'</div>':'')
       +'</div>'
       +'<div style="display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap;">'
-      +'<button class="btn btn-ghost btn-sm" onclick="r2PrintPDF(\''+r.id+'\')" title="Imprimir / PDF" style="font-size:11px;">🖨 PDF</button>'
+      +'<button class="btn btn-ghost btn-sm" onclick="r2Preparar(\''+r.id+'\')" title="Pré-visualizar e imprimir" style="font-size:11px;">👁 PDF</button>'
       +'<button class="btn btn-ghost btn-sm" onclick="r2ExportarJSON(\''+r.id+'\')" title="Baixar como arquivo JSON" style="font-size:11px;">📤 JSON</button>'
       +'<button class="btn btn-ghost btn-sm" onclick="r2SalvarNaPastaIndividual(\''+r.id+'\')" title="Salvar na pasta do navio" style="font-size:11px;">📁</button>'
       +'<button class="btn btn-ghost btn-sm" onclick="r2CarregarForm(\''+r.id+'\')" title="Editar" style="font-size:11px;">✏️</button>'
@@ -6728,7 +6730,7 @@ async function buildBackupDataFull(scope){
 // ═══════════════════════════════════════════════════════════
 // CONTROLE DE VERSÃO E ATUALIZAÇÃO FORÇADA
 // ═══════════════════════════════════════════════════════════
-var JAC_BUILD = '20260806-1700';
+var JAC_BUILD = '20260807-1000';
 
 // Mostra o build atual no canto da tela (clique = forçar atualização)
 function jacVersionBadge(){
@@ -7504,6 +7506,263 @@ function semFotoEnquadrar(regId, i){
     set: function(p){ r.fotosPos[i]=p; saveData(true); },
     refresh: function(){ semRenderFotosModal(regId); if(curWeek) renderSem(curWeek); }
   });
+}
+
+// Cache temporária de fotos resolvidas para impressão
+var _fotoCache = {};
+
+// Resolve todas as referências idb: de uma semana para base64
+async function jacResolverFotosParaImpressao(week){
+  _fotoCache = {};
+  var refs = new Set();
+  var coleta = function(arr){
+    if(!arr) return;
+    arr.forEach(function(it){
+      var u = (typeof it==='string') ? it : (it && it.u);
+      if(typeof u==='string' && u.indexOf('idb:')===0) refs.add(u);
+    });
+  };
+  (S.regs||[]).filter(function(r){ return !week || r.s===week; }).forEach(function(r){ coleta(r.fotos); });
+  (S.oficina||[]).filter(function(o){ return !week || o.s===week; }).forEach(function(o){ coleta(o.fotos); });
+  (S.desvios||[]).filter(function(d){ return !week || d.s===week; }).forEach(function(d){ coleta(d.fotos); });
+  (S.inspecoes||[]).filter(function(i){ return !week || i.semana===week; }).forEach(function(i){ coleta(i.fotos); });
+
+  var lista = Array.from(refs);
+  for(var i=0;i<lista.length;i++){
+    try{ _fotoCache[lista[i]] = await jacFotoGet(lista[i]); }catch(e){ _fotoCache[lista[i]] = ''; }
+  }
+  return _fotoCache;
+}
+
+// Devolve o base64 pronto para impressão (usa a cache)
+function jacFotoImpressao(u){
+  if(!u) return '';
+  if(String(u).indexOf('idb:')===0) return _fotoCache[u] || '';
+  return u;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SELEÇÃO DE ITENS + PRÉ-VISUALIZAÇÃO DO RELATÓRIO TÉCNICO
+// ═══════════════════════════════════════════════════════════════
+var _r2PrintRel = null;      // relatório sendo preparado
+var _r2Excluir  = new Set(); // itens desmarcados
+var _r2FotoExcl = new Set(); // fotos desmarcadas ("itemIdx:fotoIdx")
+
+// Abre o painel de seleção antes de imprimir
+// Prepara a impressão a partir do formulário atual (sem precisar salvar)
+function r2PrepararAtual(){
+  var g = function(id){ var el=document.getElementById(id); return el ? (el.value||'').trim() : ''; };
+  var titulo = g('r2-titulo');
+  if(!titulo){ toast('⚠️ Preencha o título antes de pré-visualizar','warn'); return; }
+  var r = {
+    id: 'preview',
+    data: (document.getElementById('r2-data')||{}).value || '',
+    titulo: titulo,
+    autorNm: g('r2-autor') || (getCfg().vessel||{}).cmte || '—',
+    dept: (document.getElementById('r2-dept')||{}).value || '',
+    projeto: g('r2-projeto'),
+    area: g('r2-area'),
+    desc: g('r2-desc'),
+    planos: g('r2-planos'),
+    assinaturas: (_r2Sigs||[]).filter(function(s){ return s.nm; }),
+    items: JSON.parse(JSON.stringify(_r2Items||[]))
+  };
+  r2Preparar(null, r);
+}
+
+async function r2Preparar(id, relDireto){
+  var r = relDireto || (id ? (S.relatorios||[]).find(function(x){ return x.id===id; }) : null);
+  if(!r){ toast('Relatório não encontrado','err'); return; }
+
+  _r2PrintRel = r;
+  _r2Excluir  = new Set();
+  _r2FotoExcl = new Set();
+
+  var mod = document.getElementById('modal-r2-print');
+  if(!mod){
+    mod = document.createElement('div');
+    mod.id = 'modal-r2-print';
+    mod.className = 'modal-overlay';
+    document.body.appendChild(mod);
+  }
+
+  var itens = (r.items||[]);
+  var totalFotos = itens.reduce(function(a,it){ return a + (it.fotos||[]).length; }, 0);
+
+  var linhas = itens.map(function(it, i){
+    var fotos = (it.fotos||[]);
+    return '<div style="border:1px solid var(--border);border-radius:9px;margin-bottom:8px;background:#fff;overflow:hidden;">'
+      + '<label style="display:flex;align-items:center;gap:10px;padding:10px;cursor:pointer;background:#f8fafc;">'
+      + '<input type="checkbox" checked onchange="r2TogItem(' + i + ',this.checked)" '
+      + 'style="width:16px;height:16px;flex-shrink:0;">'
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-size:13px;font-weight:700;">' + (i+1) + '. ' + escHtml(it.desc||'Sem título') + '</div>'
+      + '<div style="font-size:11px;color:var(--text-dim);">' + fotos.length + ' foto(s)'
+      + (it.obs ? ' · com observações' : '') + '</div></div>'
+      + '<span id="r2-tag-' + i + '" style="background:#dcfce7;color:#15803d;font-size:10px;font-weight:700;'
+      + 'padding:2px 8px;border-radius:8px;flex-shrink:0;">incluído</span></label>'
+      // Fotos do item — seleção individual
+      + (fotos.length
+        ? '<div id="r2-fotos-' + i + '" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px;">'
+          + fotos.map(function(u, fi){
+              var cap = (it.fotosDesc && it.fotosDesc[fi]) || '';
+              return '<label style="cursor:pointer;position:relative;display:block;">'
+                + '<input type="checkbox" checked onchange="r2TogFoto(' + i + ',' + fi + ',this.checked)" '
+                + 'style="position:absolute;top:4px;left:4px;z-index:2;width:15px;height:15px;">'
+                + '<img src="' + jacImgSrc(u) + '"' + jacImgAttr(u) + ' id="r2-pv-' + i + '-' + fi + '" '
+                + 'style="width:100%;aspect-ratio:4/3;border-radius:6px;background:#1e293b;'
+                + jacFitCSS((it.fotosPos||[])[fi]) + '">'
+                + (cap ? '<div style="font-size:9px;text-align:center;color:var(--text-dim);'
+                  + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(cap) + '</div>' : '')
+                + '</label>';
+            }).join('')
+          + '</div>'
+        : '')
+      + '</div>';
+  }).join('');
+
+  mod.innerHTML =
+    '<div style="background:#fff;border-radius:14px;max-width:620px;width:95%;max-height:88vh;'
+    + 'overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.35);">'
+    + '<div style="background:linear-gradient(135deg,#07182e,#0e2540);color:#fff;padding:16px 20px;'
+    + 'border-radius:14px 14px 0 0;position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;">'
+    + '<div style="flex:1;"><div style="font-size:15px;font-weight:800;">🖨 Preparar impressão</div>'
+    + '<div style="font-size:11px;opacity:.85;">' + escHtml(r.titulo||'') + ' · '
+    + itens.length + ' item(s) · ' + totalFotos + ' foto(s)</div></div>'
+    + '<button onclick="r2FecharPreparar()" style="background:rgba(255,255,255,.18);border:none;color:#fff;'
+    + 'border-radius:8px;padding:5px 12px;cursor:pointer;font-size:17px;">✕</button></div>'
+
+    + '<div style="padding:16px;">'
+    + '<div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">'
+    + 'Desmarque o que <strong>não</strong> deve entrar no relatório impresso.</div>'
+    + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
+    + '<button class="btn btn-ghost btn-sm" onclick="r2SelTodos(true)" style="flex:1;font-size:11px;">☑ Marcar todos</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="r2SelTodos(false)" style="flex:1;font-size:11px;">☐ Desmarcar todos</button>'
+    + '</div>'
+    + (linhas || '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;">Nenhum item neste relatório.</div>')
+
+    // Assinaturas
+    + '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">'
+    + '<div style="font-size:12px;font-weight:700;margin-bottom:8px;">✍️ Assinaturas no impresso</div>'
+    + '<div id="r2-pv-sigs"></div></div>'
+
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px;">'
+    + '<button class="btn btn-primary" onclick="r2PreVisualizar()" style="grid-column:1/-1;padding:12px;font-weight:700;">'
+    + '👁 Pré-visualizar relatório</button>'
+    + '<button class="btn btn-warn btn-sm" onclick="r2ImprimirSelecionado()" style="font-size:12px;">🖨 Imprimir</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="r2FecharPreparar()" style="font-size:12px;">Cancelar</button>'
+    + '</div></div></div>';
+
+  mod.classList.add('open');
+  mod.style.display = 'flex';
+  try{ jacHydrateImgs(mod); }catch(e){}
+  r2PvSigsRender();
+}
+
+function r2PvSigsRender(){
+  var box = document.getElementById('r2-pv-sigs'); if(!box || !_r2PrintRel) return;
+  var sigs = _r2PrintRel.assinaturas && _r2PrintRel.assinaturas.length
+    ? _r2PrintRel.assinaturas
+    : [{nm:(getCfg().vessel||{}).cmte||'Comandante', rl:'Comandante'},
+       {nm:_r2PrintRel.autorNm||'Responsável', rl:'Responsável Técnico'}];
+  _r2PrintRel._sigsTemp = JSON.parse(JSON.stringify(sigs));
+  var crew = (S.crew||[]).map(function(c){ return '<option value="'+escHtml(c.nm)+'">'; }).join('');
+  box.innerHTML = '<datalist id="r2-pv-nomes">' + crew + '</datalist>'
+    + _r2PrintRel._sigsTemp.map(function(sg, i){
+      return '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;">'
+        + '<input type="text" class="form-control" list="r2-pv-nomes" value="' + escHtml(sg.nm||'') + '" '
+        + 'placeholder="Nome" oninput="_r2PrintRel._sigsTemp[' + i + '].nm=this.value" '
+        + 'style="flex:2;font-size:12px;padding:5px 8px;">'
+        + '<input type="text" class="form-control" value="' + escHtml(sg.rl||'') + '" '
+        + 'placeholder="Cargo" oninput="_r2PrintRel._sigsTemp[' + i + '].rl=this.value" '
+        + 'style="flex:1.4;font-size:12px;padding:5px 8px;">'
+        + (_r2PrintRel._sigsTemp.length>1
+          ? '<button onclick="_r2PrintRel._sigsTemp.splice(' + i + ',1);r2PvSigsRender();" '
+            + 'style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;border-radius:5px;'
+            + 'padding:4px 9px;cursor:pointer;font-size:11px;">✕</button>'
+          : '')
+        + '</div>';
+    }).join('')
+    + '<button class="btn btn-ghost btn-sm" onclick="_r2PrintRel._sigsTemp.push({nm:\'\',rl:\'\'});r2PvSigsRender();" '
+    + 'style="font-size:11px;width:100%;">➕ Adicionar assinatura</button>';
+}
+
+function r2TogItem(i, on){
+  if(on) _r2Excluir.delete(i); else _r2Excluir.add(i);
+  var tag = document.getElementById('r2-tag-' + i);
+  if(tag){
+    tag.textContent = on ? 'incluído' : 'excluído';
+    tag.style.background = on ? '#dcfce7' : '#fee2e2';
+    tag.style.color      = on ? '#15803d' : '#dc2626';
+  }
+  var fx = document.getElementById('r2-fotos-' + i);
+  if(fx) fx.style.opacity = on ? '1' : '.35';
+}
+
+function r2TogFoto(i, fi, on){
+  var k = i + ':' + fi;
+  if(on) _r2FotoExcl.delete(k); else _r2FotoExcl.add(k);
+  var img = document.getElementById('r2-pv-' + i + '-' + fi);
+  if(img) img.style.opacity = on ? '1' : '.3';
+}
+
+function r2SelTodos(on){
+  if(!_r2PrintRel) return;
+  (_r2PrintRel.items||[]).forEach(function(it, i){
+    var cbs = document.querySelectorAll('#modal-r2-print input[type=checkbox]');
+    r2TogItem(i, on);
+    (it.fotos||[]).forEach(function(_, fi){ r2TogFoto(i, fi, on); });
+  });
+  document.querySelectorAll('#modal-r2-print input[type=checkbox]').forEach(function(c){ c.checked = on; });
+}
+
+function r2FecharPreparar(){
+  var m = document.getElementById('modal-r2-print');
+  if(m){ m.classList.remove('open'); m.style.display='none'; }
+}
+
+// Monta uma cópia do relatório só com o que foi marcado
+function r2MontarSelecionado(){
+  if(!_r2PrintRel) return null;
+  var r = JSON.parse(JSON.stringify(_r2PrintRel));
+  delete r._sigsTemp;
+  if(_r2PrintRel._sigsTemp) r.assinaturas = _r2PrintRel._sigsTemp.filter(function(s){ return s.nm; });
+  r.items = (r.items||[]).filter(function(it, i){ return !_r2Excluir.has(i); })
+    .map(function(it, novoI){
+      // Descobrir o índice original para filtrar as fotos
+      var origI = (_r2PrintRel.items||[]).findIndex(function(o){ return o === _r2PrintRel.items[novoI]; });
+      return it;
+    });
+  // Filtrar fotos usando os índices originais
+  var itensFinal = [];
+  (_r2PrintRel.items||[]).forEach(function(it, i){
+    if(_r2Excluir.has(i)) return;
+    var copia = JSON.parse(JSON.stringify(it));
+    var fotos = [], descs = [], poss = [];
+    (it.fotos||[]).forEach(function(u, fi){
+      if(_r2FotoExcl.has(i + ':' + fi)) return;
+      fotos.push(u);
+      descs.push((it.fotosDesc||[])[fi] || '');
+      poss.push((it.fotosPos||[])[fi] || null);
+    });
+    copia.fotos = fotos; copia.fotosDesc = descs; copia.fotosPos = poss;
+    itensFinal.push(copia);
+  });
+  r.items = itensFinal;
+  return r;
+}
+
+async function r2PreVisualizar(){
+  var r = r2MontarSelecionado(); if(!r) return;
+  if(!r.items.length && !r.desc){
+    toast('⚠️ Nada selecionado para o relatório','warn'); return;
+  }
+  r2FecharPreparar();
+  await r2PrintPDF(null, r);
+}
+
+async function r2ImprimirSelecionado(){
+  await r2PreVisualizar();
 }
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -11942,7 +12201,7 @@ function buildSnapshotHTML(data,vessel,cmte,exportDate){
           <div style="padding:8px 12px;background:#F7FBFF;border-top:1px solid #EBF3FB;">
             <div style="font-size:9px;color:#8AACD0;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">📷 ${r.fotos.length} foto(s)</div>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;">
-              ${(r.fotos||[]).map(u=>`<div style="aspect-ratio:4/3;overflow:hidden;border-radius:4px;border:1px solid #C8D9ED;"><img src="${u}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy"></div>`).join('')}
+              ${(r.fotos||[]).map(u=>`<div style="aspect-ratio:4/3;overflow:hidden;border-radius:4px;border:1px solid #C8D9ED;"><img src="${jacFotoImpressao(u)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy"></div>`).join('')}
             </div>
           </div>`:'';
         return `<div style="border:1px solid #C8D9ED;border-radius:6px;margin-bottom:8px;overflow:hidden;background:#fff;">
@@ -13061,7 +13320,7 @@ function renderOficina(){
     const fotosHtml=(o.fotos||[]).length?`
       <div class="act-photos">
         <div class="act-photos-label">📷 ${o.fotos.length} foto(s)</div>
-        <div class="act-photos-grid">${o.fotos.map(u=>`<div class="act-photo-wrap" onclick="viewP('${u}')"><img src="${u}" loading="lazy"></div>`).join('')}</div>
+        <div class="act-photos-grid">${o.fotos.map(u=>`<div class="act-photo-wrap" onclick="viewP('${u}')"><img src="${jacFotoImpressao(u)}" loading="lazy"></div>`).join('')}</div>
       </div>`:'';
     const valor=o.valor?`💰 R$ ${o.valor.toFixed(2).replace('.',',')} &nbsp;·&nbsp; `:'';
     const alreadyInSem = S.regs.some(r=>r.ofId===o.id);
@@ -13958,7 +14217,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.7.2';
+const APP_VERSION = '3.7.3';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
