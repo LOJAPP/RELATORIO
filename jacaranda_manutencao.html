@@ -5150,7 +5150,12 @@ async function r2PrintPDF(id, rObj){
     + '-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
     + '.sheet{max-width:210mm;margin:0 auto;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.12);}'
     + '.sig-nm:focus,.sig-rl:focus{background:#fef9c3;}'
-    + '@media print{body{background:#fff;}.no-print{display:none!important}.sheet{box-shadow:none;max-width:none;}}'
+    + '@media print{'
+    +   'body{background:#fff;}.no-print{display:none!important}.sheet{box-shadow:none;max-width:none;}'
+    +   '.assinaturas{break-inside:avoid;page-break-inside:avoid;}'
+    +   'figure{break-inside:avoid;page-break-inside:avoid;}'
+    +   'p,div{orphans:3;widows:3;}'
+    + '}'
     + '</style></head><body>'
     // Barra de ações (não imprime)
     + '<div class="no-print" style="background:#07182e;padding:11px 18px;display:flex;gap:8px;align-items:center;'
@@ -5203,7 +5208,7 @@ async function r2PrintPDF(id, rObj){
     + (itemsHtml || '<div style="color:#9ca3af;font-size:12px;font-style:italic;padding:14px;text-align:center;">Nenhum item registrado.</div>')
     + '</div>'
     // Assinaturas
-    + '<div style="padding:20px 24px 24px;border-top:2px solid #e5e7eb;break-inside:avoid;">'
+    + '<div class="assinaturas" style="padding:16px 24px 18px;border-top:2px solid #e5e7eb;">'
     + '<div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#9ca3af;margin-bottom:16px;text-align:center;">Assinaturas</div>'
     + '<div style="display:flex;justify-content:space-around;gap:24px;flex-wrap:wrap;">' + sigHtml + '</div>'
     + '</div>'
@@ -6751,7 +6756,7 @@ async function buildBackupDataFull(scope){
 // ═══════════════════════════════════════════════════════════
 // CONTROLE DE VERSÃO E ATUALIZAÇÃO FORÇADA
 // ═══════════════════════════════════════════════════════════
-var JAC_BUILD = '20260807-1500';
+var JAC_BUILD = '20260807-1900';
 
 // Mostra o build atual no canto da tela (clique = forçar atualização)
 function jacVersionBadge(){
@@ -8001,16 +8006,15 @@ async function mesPreVisualizar(){
   var fotosDe = function(o){
     var fs = (o.fotos||[]);
     if(!fs.length) return '';
-    return '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:9px 14px;background:#fafafa;">'
+    return '<div class="fgrid">'
       + fs.map(function(u, i){
           var cap = (o.fotosCaptions||o.fotosDesc||[])[i] || '';
           var pz  = (o.fotosPos||[])[i];
-          return '<figure style="margin:0;break-inside:avoid;">'
-            + '<div style="width:100%;aspect-ratio:4/3;overflow:hidden;border-radius:6px;border:1px solid #ddd;background:#0f172a;">'
-            + '<img src="' + jacFotoImpressao(u) + '" style="width:100%;height:100%;display:block;'
-            + '-webkit-print-color-adjust:exact;' + jacFitCSS(pz) + '"></div>'
-            + (cap ? '<figcaption style="font-size:9px;color:#555;text-align:center;padding:3px 2px 0;">'
-                + esc(cap) + '</figcaption>' : '')
+          var src = jacFotoImpressao(u);
+          if(!src) return '';   // não deixa moldura vazia ocupando espaço
+          return '<figure>'
+            + '<div class="fbox"><img src="' + src + '" style="' + jacFitCSS(pz) + '"></div>'
+            + (cap ? '<figcaption class="fcap">' + esc(cap) + '</figcaption>' : '')
             + '</figure>';
         }).join('')
       + '</div>';
@@ -8021,42 +8025,69 @@ async function mesPreVisualizar(){
   regs.forEach(function(r){ (porDept[r.dp] = porDept[r.dp] || []).push(r); });
 
   var atividades = Object.keys(porDept).sort().map(function(dp){
-    return '<div style="margin-bottom:14px;break-inside:avoid;">'
-      + '<div style="background:#1A5FA8;color:#fff;padding:7px 14px;border-radius:8px 8px 0 0;'
-      + 'font-size:12px;font-weight:700;text-transform:uppercase;-webkit-print-color-adjust:exact;">'
+    return '<div class="grupo">'
+      + '<div class="gr-hdr" style="background:#1A5FA8;">'
       + esc(dp||'—') + ' <span style="opacity:.75;font-weight:400;">(' + porDept[dp].length + ')</span></div>'
-      + '<div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;">'
-      + porDept[dp].map(function(r, i){
+      + '<div class="gr-body">'
+      + porDept[dp].map(function(r){
           var stCol = r.st==='Concluído'?'#16a34a':(r.st==='Em andamento'?'#d97706':'#64748b');
-          return '<div style="' + (i>0?'border-top:1px solid #f1f5f9;':'') + '">'
-            + '<div style="padding:9px 14px;">'
+          return '<div class="item">'
             + '<div style="font-size:13px;font-weight:700;">' + esc(r.a||r.titulo||'—') + '</div>'
             + '<div style="font-size:11px;color:#64748b;">' + fd(r.d||'')
             + (r.q?' · Qtd: '+esc(r.q):'')
             + ' · <span style="color:' + stCol + ';font-weight:600;">' + esc(r.st||'') + '</span></div>'
-            + (r.ob?'<div style="font-size:12px;margin-top:4px;color:#374151;">' + esc(r.ob) + '</div>':'')
-            + '</div>' + fotosDe(r) + '</div>';
+            + (r.ob?'<div style="font-size:12px;margin-top:3px;color:#374151;">' + esc(r.ob) + '</div>':'')
+            + fotosDe(r) + '</div>';
         }).join('')
       + '</div></div>';
   }).join('');
 
   var secao = function(titulo, cor, itens, fn){
     if(!itens.length) return '';
-    return '<div style="margin-bottom:14px;break-inside:avoid;">'
-      + '<div style="background:' + cor + ';color:#fff;padding:7px 14px;border-radius:8px 8px 0 0;'
-      + 'font-size:12px;font-weight:700;text-transform:uppercase;-webkit-print-color-adjust:exact;">'
-      + titulo + ' (' + itens.length + ')</div>'
-      + '<div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;">'
-      + itens.map(fn).join('') + '</div></div>';
+    return '<div class="grupo">'
+      + '<div class="gr-hdr" style="background:' + cor + ';">' + titulo + ' (' + itens.length + ')</div>'
+      + '<div class="gr-body">' + itens.map(fn).join('') + '</div></div>';
   };
 
   var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
     + '<title>Relatório Mensal — ' + mesNome + '</title>'
-    + '<style>*{box-sizing:border-box;margin:0;padding:0;}@page{margin:11mm 12mm;size:A4;}'
-    + 'body{font-family:"Segoe UI",system-ui,Arial,sans-serif;font-size:12px;color:#111827;background:#f1f5f9;'
-    + '-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '<style>'
+    + '*{box-sizing:border-box;margin:0;padding:0;}'
+    + '@page{margin:10mm 11mm;size:A4;}'
+    + 'body{font-family:"Segoe UI",system-ui,Arial,sans-serif;font-size:12px;color:#111827;'
+    + 'background:#f1f5f9;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
     + '.sheet{max-width:210mm;margin:0 auto;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.12);}'
-    + '@media print{body{background:#fff;}.no-print{display:none!important}.sheet{box-shadow:none;max-width:none;}}'
+    + '.grupo{margin-bottom:12px;}'
+    + '.gr-hdr{color:#fff;padding:6px 13px;border-radius:7px 7px 0 0;font-size:12px;font-weight:700;'
+    +   'text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.gr-body{border:1px solid #e5e7eb;border-top:none;border-radius:0 0 7px 7px;}'
+    + '.item{padding:8px 13px;}'
+    + '.item + .item{border-top:1px solid #f1f5f9;}'
+    + '.fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:7px 13px;background:#fafafa;}'
+    + '.fgrid figure{margin:0;}'
+    + '.fbox{width:100%;height:0;padding-bottom:75%;position:relative;overflow:hidden;'
+    +   'border-radius:5px;border:1px solid #ddd;background:#0f172a;}'
+    + '.fbox img{position:absolute;inset:0;width:100%;height:100%;display:block;'
+    +   '-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.fcap{font-size:8.5px;color:#555;text-align:center;padding:2px 1px 0;line-height:1.25;}'
+    + '@media print{'
+    +   'body{background:#fff;}'
+    +   '.no-print{display:none!important;}'
+    +   '.sheet{box-shadow:none;max-width:none;}'
+    // Nada de "avoid" em blocos grandes: eles podem quebrar entre páginas
+    +   '.grupo,.gr-body{break-inside:auto;page-break-inside:auto;}'
+    // Só as unidades pequenas ficam inteiras
+    +   '.item{break-inside:avoid;page-break-inside:avoid;}'
+    +   '.fgrid figure{break-inside:avoid;page-break-inside:avoid;}'
+    // Cabeçalho de grupo nunca fica sozinho no fim da página
+    +   '.gr-hdr{break-after:avoid;page-break-after:avoid;}'
+    // Evita linhas soltas
+    +   'p,div{orphans:3;widows:3;}'
+    +   '.assinaturas{break-inside:avoid;page-break-inside:avoid;break-before:auto;}'
+    // Remove sombras e alturas que geram folgas
+    +   '.fgrid{padding:5px 13px;}'
+    +   'img{max-width:100%;}'
+    + '}'
     + '</style></head><body>'
     + '<div class="no-print" style="background:#07182e;padding:11px 18px;display:flex;gap:8px;'
     + 'align-items:center;justify-content:space-between;flex-wrap:wrap;position:sticky;top:0;z-index:10;">'
@@ -8092,27 +8123,27 @@ async function mesPreVisualizar(){
     + '<div style="padding:16px 24px;">'
     + (atividades || '<div style="color:#9ca3af;font-size:12px;font-style:italic;padding:14px;text-align:center;">Nenhuma atividade selecionada.</div>')
     + secao('🏭 Bloco / Oficina', '#059669', ofic, function(o, i){
-        return '<div style="padding:9px 14px;' + (i>0?'border-top:1px solid #f1f5f9;':'') + '">'
+        return '<div class="item">'
           + '<div style="font-size:12px;font-weight:700;">' + esc(o.item||o.titulo||o.lb||'—') + '</div>'
           + '<div style="font-size:11px;color:#64748b;">' + fd(o.d||'') + ' · ' + esc(o.dep||'') + ' · ' + esc(o.st||'') + '</div>'
           + (o.work?'<div style="font-size:12px;margin-top:3px;">' + esc(o.work) + '</div>':'')
-          + '</div>' + fotosDe(o);
+          + fotosDe(o) + '</div>';
       })
     + secao('⚠️ Desvios', '#dc2626', desv, function(x, i){
-        return '<div style="padding:9px 14px;' + (i>0?'border-top:1px solid #f1f5f9;':'') + '">'
+        return '<div class="item">'
           + '<div style="font-size:12px;font-weight:700;">' + esc(x.tipo||x.titulo||'—')
           + ' — <span style="color:#dc2626;">' + esc(x.st||'Aberto') + '</span></div>'
-          + '<div style="font-size:12px;">' + esc(x.desc||'') + '</div></div>';
+          + (x.desc?'<div style="font-size:12px;">' + esc(x.desc) + '</div>':'') + '</div>';
       })
     + secao('🔍 Inspeções', '#7c3aed', insp, function(x, i){
-        return '<div style="padding:9px 14px;' + (i>0?'border-top:1px solid #f1f5f9;':'') + '">'
+        return '<div class="item">'
           + '<div style="font-size:12px;font-weight:700;">' + esc(x.titulo||x.it||'—') + '</div>'
           + '<div style="font-size:11px;color:#64748b;">' + fd(x.d||'') + ' · ' + esc(x.st||x.result||'') + '</div>'
           + (x.obs?'<div style="font-size:12px;margin-top:3px;">' + esc(x.obs) + '</div>':'')
-          + '</div>' + fotosDe(x);
+          + fotosDe(x) + '</div>';
       })
     + '</div>'
-    + '<div style="padding:20px 24px 24px;border-top:2px solid #e5e7eb;break-inside:avoid;">'
+    + '<div class="assinaturas" style="padding:16px 24px 18px;border-top:2px solid #e5e7eb;">'
     + '<div style="display:flex;justify-content:space-around;gap:24px;flex-wrap:wrap;">'
     + [{nm:v.cmte||'Comandante', rl:'Comandante'},
        {nm:v.chefe||'Chefe de Máquinas', rl:'Chefe de Máquinas'}].map(function(sg){
@@ -14588,7 +14619,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.8.0';
+const APP_VERSION = '3.8.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
