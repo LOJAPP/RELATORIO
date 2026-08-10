@@ -1180,6 +1180,7 @@
       <div class="export-bar"><span>📅</span><p>Relatório semanal com fotos das atividades.</p>
         <button class="btn btn-ghost btn-sm" id="sem-edit-btn" onclick="semToggleEdit()">✏️ Editar</button>
         <button class="btn btn-ghost btn-sm" onclick="jacSigsEditar('semanal','Relatório Semanal')">✍️ Assinaturas</button>
+        <button class="btn btn-ghost btn-sm" onclick="semMultiAbrir()">📚 Várias semanas</button>
         <button class="btn btn-warn btn-sm" onclick="curWeek?openSemPrint(curWeek):toast('⚠️ Selecione uma semana','warn')">👁 Pré-visualizar / 📄 PDF</button></div>
       <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;margin-bottom:12px;">
         <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:8px;">📁 Pasta do navio — salvar e carregar relatórios (subpastas por função)</div>
@@ -6809,7 +6810,7 @@ async function buildBackupDataFull(scope){
 // ═══════════════════════════════════════════════════════════
 // CONTROLE DE VERSÃO E ATUALIZAÇÃO FORÇADA
 // ═══════════════════════════════════════════════════════════
-var JAC_BUILD = '20260808-0900';
+var JAC_BUILD = '20260810-0900';
 
 // Mostra o build atual no canto da tela (clique = forçar atualização)
 function jacVersionBadge(){
@@ -8082,14 +8083,36 @@ async function mesPreVisualizar(){
       + '<div class="gr-hdr" style="background:#1A5FA8;">'
       + esc(dp||'—') + ' <span style="opacity:.75;font-weight:400;">(' + porDept[dp].length + ')</span></div>'
       + '<div class="gr-body">'
-      + porDept[dp].map(function(r){
+      + porDept[dp].map(function(r, i){
           var stCol = r.st==='Concluído'?'#16a34a':(r.st==='Em andamento'?'#d97706':'#64748b');
+          // Mesma lógica do semanal: 1ª linha = título, resto = descrição detalhada
+          var titulo = r.titulo || (r.a ? String(r.a).split('\n')[0] : '—');
+          var desc   = r.titulo ? (r.a||'')
+                     : (r.a ? String(r.a).split('\n').slice(1).join('\n').trim() : '');
           return '<div class="item">'
-            + '<div style="font-size:13px;font-weight:700;">' + esc(r.a||r.titulo||'—') + '</div>'
-            + '<div style="font-size:11px;color:#64748b;">' + fd(r.d||'')
-            + (r.q?' · Qtd: '+esc(r.q):'')
-            + ' · <span style="color:' + stCol + ';font-weight:600;">' + esc(r.st||'') + '</span></div>'
-            + (r.ob?'<div style="font-size:12px;margin-top:3px;color:#374151;">' + esc(r.ob) + '</div>':'')
+            + '<div style="display:flex;gap:8px;align-items:flex-start;">'
+            + '<span style="background:#1A5FA8;color:#fff;font-size:10px;font-weight:800;'
+            + 'padding:2px 7px;border-radius:5px;flex-shrink:0;-webkit-print-color-adjust:exact;">'
+            + String(i+1).padStart(2,'0') + '</span>'
+            + '<div style="flex:1;min-width:0;">'
+            + '<div style="font-size:13px;font-weight:700;">' + esc(titulo) + '</div>'
+            + (desc ? '<div style="font-size:11.5px;color:#374151;margin-top:3px;line-height:1.55;'
+                + 'white-space:pre-wrap;">' + esc(desc) + '</div>' : '')
+            + '<div style="font-size:11px;color:#64748b;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;">'
+            + (r.d ? '<span>📅 ' + fd(r.d) + '</span>' : '')
+            + (r.l ? '<span>📍 <strong>' + esc(r.l) + '</strong></span>' : '')
+            + (r.q ? '<span>👷 ' + esc(r.q) + '</span>' : '')
+            + (r.rm ? '<span>🔖 ' + esc(r.rm) + '</span>' : '')
+            + (r.mat ? '<span>🧰 ' + esc(r.mat) + '</span>' : '')
+            + '</div>'
+            + (r.ob ? '<div style="font-size:11.5px;margin-top:5px;color:#374151;background:#f8fafc;'
+                + 'padding:6px 9px;border-radius:5px;border-left:3px solid #cbd5e1;white-space:pre-wrap;">'
+                + esc(r.ob) + '</div>' : '')
+            + '</div>'
+            + '<span style="background:' + stCol + ';color:#fff;font-size:9.5px;font-weight:700;'
+            + 'padding:3px 9px;border-radius:9px;white-space:nowrap;flex-shrink:0;'
+            + '-webkit-print-color-adjust:exact;">' + esc(r.st||'') + '</span>'
+            + '</div>'
             + fotosDe(r) + '</div>';
         }).join('')
       + '</div></div>';
@@ -8453,6 +8476,310 @@ async function histPreVisualizar(){
   wOpen.document.write(html);
   wOpen.document.close();
   toast('🗂️ Histórico aberto — 🖨 Imprimir ou 📄 Salvar PDF','ok');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RELATÓRIO DE VÁRIAS SEMANAS NUM ÚNICO PDF
+// ═══════════════════════════════════════════════════════════════
+var _semMultiSel = new Set();
+
+function semMultiAbrir(){
+  var sems = Array.from(new Set((S.regs||[]).map(function(r){ return r.s; })
+    .filter(Boolean))).sort();
+  if(!sems.length){ toast('⚠️ Nenhuma semana com registros','warn'); return; }
+
+  _semMultiSel = new Set(curWeek ? [curWeek] : []);
+
+  var mod = document.getElementById('modal-sem-multi');
+  if(!mod){
+    mod = document.createElement('div');
+    mod.id = 'modal-sem-multi';
+    mod.className = 'modal-overlay';
+    document.body.appendChild(mod);
+  }
+
+  var linhas = sems.map(function(sem){
+    var regs = (S.regs||[]).filter(function(r){ return r.s===sem; });
+    var fotos = regs.reduce(function(a,r){ return a + (r.fotos||[]).length; }, 0);
+    var datas = regs.map(function(r){ return r.d; }).filter(Boolean).sort();
+    var periodo = datas.length
+      ? fd(datas[0]) + (datas.length>1 ? ' a ' + fd(datas[datas.length-1]) : '')
+      : '';
+    var marcado = _semMultiSel.has(sem);
+    return '<label style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:9px;'
+      + 'cursor:pointer;border:1px solid var(--border);margin-bottom:6px;background:#fff;">'
+      + '<input type="checkbox" ' + (marcado?'checked':'') + ' '
+      + 'onchange="semMultiTog(\'' + sem + '\',this.checked)" style="width:16px;height:16px;flex-shrink:0;">'
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-size:13px;font-weight:700;">SEM ' + esc0(sem) + '</div>'
+      + '<div style="font-size:11px;color:var(--text-dim);">' + periodo
+      + ' · ' + regs.length + ' atividade(s)' + (fotos?' · 📷 '+fotos:'') + '</div></div>'
+      + '<span id="smt-' + sem + '" style="background:' + (marcado?'#dcfce7':'#f1f5f9')
+      + ';color:' + (marcado?'#15803d':'#94a3b8') + ';font-size:10px;font-weight:700;'
+      + 'padding:2px 8px;border-radius:8px;flex-shrink:0;">' + (marcado?'incluída':'—') + '</span></label>';
+  }).join('');
+
+  mod.innerHTML =
+    '<div style="background:#fff;border-radius:14px;max-width:560px;width:95%;max-height:88vh;'
+    + 'overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.35);">'
+    + '<div style="background:linear-gradient(135deg,#07182e,#0e2540);color:#fff;padding:16px 20px;'
+    + 'border-radius:14px 14px 0 0;position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;">'
+    + '<div style="flex:1;"><div style="font-size:15px;font-weight:800;">📚 Relatório de várias semanas</div>'
+    + '<div style="font-size:11px;opacity:.85;">Escolha as semanas que entram no mesmo PDF</div></div>'
+    + '<button onclick="semMultiFechar()" style="background:rgba(255,255,255,.18);border:none;'
+    + 'color:#fff;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:17px;">✕</button></div>'
+    + '<div style="padding:16px;">'
+    + '<div style="display:flex;gap:6px;margin-bottom:10px;">'
+    + '<button class="btn btn-ghost btn-sm" onclick="semMultiTodas(true)" style="flex:1;font-size:11px;">☑ Todas</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="semMultiTodas(false)" style="flex:1;font-size:11px;">☐ Nenhuma</button></div>'
+    + linhas
+    + '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:9px;padding:10px;margin-top:10px;">'
+    + '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;">'
+    + '<input type="checkbox" id="sem-multi-quebra" checked style="width:15px;height:15px;">'
+    + 'Começar cada semana numa página nova</label>'
+    + '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;margin-top:6px;">'
+    + '<input type="checkbox" id="sem-multi-fotos" checked style="width:15px;height:15px;">'
+    + 'Incluir as fotos</label></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;">'
+    + '<button class="btn btn-primary" onclick="semMultiGerar()" style="grid-column:1/-1;padding:12px;font-weight:700;">'
+    + '👁 Gerar relatório das semanas escolhidas</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="semMultiFechar()" style="grid-column:1/-1;font-size:12px;">Cancelar</button>'
+    + '</div></div></div>';
+
+  mod.classList.add('open');
+  mod.style.display = 'flex';
+}
+
+function esc0(s){ return escHtml(s); }
+
+function semMultiTog(sem, on){
+  if(on) _semMultiSel.add(sem); else _semMultiSel.delete(sem);
+  var t = document.getElementById('smt-' + sem);
+  if(t){
+    t.textContent = on ? 'incluída' : '—';
+    t.style.background = on ? '#dcfce7' : '#f1f5f9';
+    t.style.color      = on ? '#15803d' : '#94a3b8';
+  }
+}
+function semMultiTodas(on){
+  document.querySelectorAll('#modal-sem-multi input[type=checkbox]').forEach(function(c){
+    if(c.id && c.id.indexOf('sem-multi-')===0) return;  // não mexe nas opções
+    c.checked = on;
+    c.dispatchEvent(new Event('change'));
+  });
+}
+function semMultiFechar(){
+  var m = document.getElementById('modal-sem-multi');
+  if(m){ m.classList.remove('open'); m.style.display='none'; }
+}
+
+async function semMultiGerar(){
+  if(!_semMultiSel.size){ toast('⚠️ Escolha pelo menos uma semana','warn'); return; }
+  var quebrar = (document.getElementById('sem-multi-quebra')||{}).checked !== false;
+  var comFotos = (document.getElementById('sem-multi-fotos')||{}).checked !== false;
+  var semanas = Array.from(_semMultiSel).sort();
+  semMultiFechar();
+
+  await jacResolverFotosParaImpressao(null);
+  var cfg = getCfg(); var v = cfg.vessel||{};
+  var esc = escHtml;
+
+  var totalReg = 0, totalFoto = 0;
+
+  var fotosDe = function(r){
+    if(!comFotos) return '';
+    var fs = (r.fotos||[]);
+    if(!fs.length) return '';
+    var cells = fs.map(function(u, i){
+      var src = jacFotoImpressao(u);
+      if(!src) return '';
+      totalFoto++;
+      var cap = (r.fotosCaptions||[])[i] || '';
+      return '<figure><div class="fbox"><img src="' + src + '" style="'
+        + jacFitCSS((r.fotosPos||[])[i]) + '"></div>'
+        + (cap ? '<figcaption class="fcap">' + esc(cap) + '</figcaption>' : '') + '</figure>';
+    }).filter(Boolean).join('');
+    return cells ? '<div class="fgrid">' + cells + '</div>' : '';
+  };
+
+  var blocos = semanas.map(function(sem, si){
+    var regs = (S.regs||[]).filter(function(r){ return r.s===sem; })
+      .sort(function(a,b){ return String(a.d||'').localeCompare(String(b.d||'')); });
+    var ofic = (S.oficina||[]).filter(function(o){ return o.s===sem; });
+    var desv = (S.desvios||[]).filter(function(d){ return d.s===sem; });
+    var insp = (S.inspecoes||[]).filter(function(x){ return x.semana===sem; });
+    totalReg += regs.length;
+
+    var datas = regs.map(function(r){ return r.d; }).filter(Boolean).sort();
+    var periodo = datas.length
+      ? fd(datas[0]) + (datas.length>1 ? ' a ' + fd(datas[datas.length-1]) : '') : '';
+
+    var porDept = {};
+    regs.forEach(function(r){ (porDept[r.dp] = porDept[r.dp] || []).push(r); });
+
+    var ativ = Object.keys(porDept).sort().map(function(dp){
+      return '<div class="grupo">'
+        + '<div class="gr-hdr" style="background:#1A5FA8;">' + esc(dp||'—')
+        + ' <span style="opacity:.75;font-weight:400;">(' + porDept[dp].length + ')</span></div>'
+        + '<div class="gr-body">'
+        + porDept[dp].map(function(r, i){
+            var stCol = r.st==='Concluído'?'#16a34a':(r.st==='Em andamento'?'#d97706':'#64748b');
+            var titulo = r.titulo || (r.a ? String(r.a).split('\n')[0] : '—');
+            var desc   = r.titulo ? (r.a||'')
+                       : (r.a ? String(r.a).split('\n').slice(1).join('\n').trim() : '');
+            return '<div class="item">'
+              + '<div style="display:flex;gap:8px;align-items:flex-start;">'
+              + '<span style="background:#1A5FA8;color:#fff;font-size:10px;font-weight:800;'
+              + 'padding:2px 7px;border-radius:5px;flex-shrink:0;-webkit-print-color-adjust:exact;">'
+              + String(i+1).padStart(2,'0') + '</span>'
+              + '<div style="flex:1;min-width:0;">'
+              + '<div style="font-size:13px;font-weight:700;">' + esc(titulo) + '</div>'
+              + (desc ? '<div style="font-size:11.5px;color:#374151;margin-top:3px;line-height:1.55;'
+                  + 'white-space:pre-wrap;">' + esc(desc) + '</div>' : '')
+              + '<div style="font-size:11px;color:#64748b;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;">'
+              + (r.d ? '<span>📅 ' + fd(r.d) + '</span>' : '')
+              + (r.l ? '<span>📍 <strong>' + esc(r.l) + '</strong></span>' : '')
+              + (r.q ? '<span>👷 ' + esc(r.q) + '</span>' : '')
+              + '</div>'
+              + (r.ob ? '<div style="font-size:11.5px;margin-top:5px;color:#374151;background:#f8fafc;'
+                  + 'padding:6px 9px;border-radius:5px;border-left:3px solid #cbd5e1;white-space:pre-wrap;">'
+                  + esc(r.ob) + '</div>' : '')
+              + '</div>'
+              + '<span style="background:' + stCol + ';color:#fff;font-size:9.5px;font-weight:700;'
+              + 'padding:3px 9px;border-radius:9px;white-space:nowrap;flex-shrink:0;'
+              + '-webkit-print-color-adjust:exact;">' + esc(r.st||'') + '</span></div>'
+              + fotosDe(r) + '</div>';
+          }).join('')
+        + '</div></div>';
+    }).join('');
+
+    var extra = function(titulo, cor, itens, fn){
+      if(!itens.length) return '';
+      return '<div class="grupo"><div class="gr-hdr" style="background:' + cor + ';">'
+        + titulo + ' (' + itens.length + ')</div>'
+        + '<div class="gr-body">' + itens.map(fn).join('') + '</div></div>';
+    };
+
+    return '<section class="semana' + (quebrar && si>0 ? ' quebra' : '') + '">'
+      + '<div class="sem-hdr">'
+      + '<div><div class="sem-num">SEMANA ' + esc(sem) + '</div>'
+      + '<div class="sem-per">' + periodo + '</div></div>'
+      + '<div class="sem-kpi">' + regs.length + ' atividade(s)'
+      + (ofic.length?' · '+ofic.length+' oficina':'')
+      + (desv.length?' · '+desv.length+' desvio(s)':'') + '</div></div>'
+      + (ativ || '<div style="padding:12px;color:#9ca3af;font-size:12px;font-style:italic;">Sem atividades.</div>')
+      + extra('🏭 Bloco / Oficina', '#059669', ofic, function(o){
+          return '<div class="item"><div style="font-size:12px;font-weight:700;">'
+            + esc(o.item||o.titulo||o.lb||'—') + '</div>'
+            + '<div style="font-size:11px;color:#64748b;">' + fd(o.d||'') + ' · ' + esc(o.dep||'')
+            + ' · ' + esc(o.st||'') + '</div>'
+            + (o.work?'<div style="font-size:12px;margin-top:3px;">' + esc(o.work) + '</div>':'')
+            + fotosDe(o) + '</div>';
+        })
+      + extra('⚠️ Desvios', '#dc2626', desv, function(x){
+          return '<div class="item"><div style="font-size:12px;font-weight:700;">'
+            + esc(x.tipo||x.titulo||'—') + ' — <span style="color:#dc2626;">'
+            + esc(x.st||'Aberto') + '</span></div>'
+            + (x.desc?'<div style="font-size:12px;">' + esc(x.desc) + '</div>':'') + '</div>';
+        })
+      + extra('🔍 Inspeções', '#7c3aed', insp, function(x){
+          return '<div class="item"><div style="font-size:12px;font-weight:700;">'
+            + esc(x.titulo||x.it||'—') + '</div>'
+            + '<div style="font-size:11px;color:#64748b;">' + fd(x.d||'') + ' · '
+            + esc(x.st||x.result||'') + '</div>' + fotosDe(x) + '</div>';
+        })
+      + '</section>';
+  }).join('');
+
+  var titulo = semanas.length === 1
+    ? 'Semana ' + semanas[0]
+    : 'Semanas ' + semanas[0] + ' a ' + semanas[semanas.length-1]
+      + ' (' + semanas.length + ' semanas)';
+
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
+    + '<title>Relatório — ' + esc(titulo) + '</title>'
+    + '<style>'
+    + '*{box-sizing:border-box;margin:0;padding:0;}'
+    + '@page{margin:10mm 11mm;size:A4;}'
+    + 'body{font-family:"Segoe UI",system-ui,Arial,sans-serif;font-size:12px;color:#111827;'
+    + 'background:#f1f5f9;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.sheet{max-width:210mm;margin:0 auto;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.12);}'
+    + '.sem-hdr{background:linear-gradient(135deg,#0e2540,#1A5FA8);color:#fff;padding:11px 16px;'
+    +   'display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;'
+    +   'border-radius:8px;margin:14px 0 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.sem-num{font-size:15px;font-weight:800;letter-spacing:.5px;}'
+    + '.sem-per{font-size:11px;opacity:.85;}'
+    + '.sem-kpi{font-size:11px;opacity:.9;}'
+    + '.grupo{margin-bottom:11px;}'
+    + '.gr-hdr{color:#fff;padding:6px 13px;border-radius:7px 7px 0 0;font-size:12px;font-weight:700;'
+    +   'text-transform:uppercase;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.gr-body{border:1px solid #e5e7eb;border-top:none;border-radius:0 0 7px 7px;}'
+    + '.item{padding:8px 13px;}'
+    + '.item + .item{border-top:1px solid #f1f5f9;}'
+    + '.fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:7px 0 0;}'
+    + '.fgrid figure{margin:0;}'
+    + '.fbox{width:100%;height:0;padding-bottom:75%;position:relative;overflow:hidden;'
+    +   'border-radius:5px;border:1px solid #ddd;background:#0f172a;}'
+    + '.fbox img{position:absolute;inset:0;width:100%;height:100%;display:block;'
+    +   '-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    + '.fcap{font-size:8.5px;color:#555;text-align:center;padding:2px 1px 0;line-height:1.25;}'
+    + '@media print{'
+    +   'html,body{background:#fff;height:auto;}'
+    +   '.no-print{display:none!important;}'
+    +   '.sheet,.semana,.grupo,.gr-body,.item,.conteudo{box-shadow:none;max-width:none;height:auto;'
+    +     'break-inside:auto;page-break-inside:auto;}'
+    +   '.quebra{break-before:page;page-break-before:always;}'
+    +   '.sem-hdr{break-after:avoid;page-break-after:avoid;}'
+    +   '.fgrid figure{break-inside:avoid;page-break-inside:avoid;}'
+    +   '.assinaturas{break-inside:avoid;page-break-inside:avoid;}'
+    +   'img{max-width:100%;}'
+    + '}'
+    + '</style></head><body>'
+    + '<div class="no-print" style="background:#07182e;padding:11px 18px;display:flex;gap:8px;'
+    + 'align-items:center;justify-content:space-between;flex-wrap:wrap;position:sticky;top:0;z-index:10;">'
+    + '<span style="color:#fff;font-size:13px;font-weight:700;">📚 ' + esc(titulo) + '</span>'
+    + '<div style="display:flex;gap:8px;">'
+    + '<button onclick="window.print()" style="background:#3b82f6;color:#fff;border:none;'
+    + 'border-radius:7px;padding:9px 18px;font-weight:700;cursor:pointer;font-size:13px;">🖨 Imprimir</button>'
+    + '<button onclick="alert(\'No diálogo de impressão, escolha \\u201cSalvar como PDF\\u201d como destino.\');window.print()" '
+    + 'style="background:#6DB847;color:#fff;border:none;border-radius:7px;padding:9px 18px;'
+    + 'font-weight:700;cursor:pointer;font-size:13px;">📄 Salvar PDF</button>'
+    + '<button onclick="window.close()" style="background:rgba(255,255,255,.12);color:#fff;'
+    + 'border:1px solid rgba(255,255,255,.22);border-radius:7px;padding:9px 15px;cursor:pointer;font-size:13px;">✕ Fechar</button>'
+    + '</div></div>'
+    + '<div class="sheet">'
+    + '<div style="background:linear-gradient(135deg,#07182e 0%,#143068 55%,#1a4080 100%);color:#fff;'
+    + 'padding:18px 22px;-webkit-print-color-adjust:exact;">'
+    + '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
+    + '<div style="flex-shrink:0;"><div style="font-family:\'Barlow Condensed\',Arial,sans-serif;'
+    + 'font-size:30px;font-weight:800;line-height:1;letter-spacing:-1px;">'
+    + '<span style="color:#fff;">log</span><span style="color:#6DB847;">in</span>'
+    + '<span style="color:#F5A800;">.</span></div>'
+    + '<div style="font-size:8px;opacity:.65;letter-spacing:1.4px;text-transform:uppercase;margin-top:2px;">'
+    + 'logística intermodal</div></div>'
+    + '<div style="width:1px;height:44px;background:rgba(255,255,255,.2);"></div>'
+    + '<div style="flex:1;min-width:180px;">'
+    + '<div style="font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:4px;">'
+    + 'Relatório de Trabalhos a Bordo</div>'
+    + '<div style="font-size:19px;font-weight:800;">' + esc(titulo) + '</div>'
+    + '<div style="font-size:12px;opacity:.85;">⚓ ' + esc(v.name||'M/V LOG-IN JACARANDÁ') + '</div></div>'
+    + '<div style="text-align:right;font-size:10px;opacity:.75;line-height:1.7;flex-shrink:0;">'
+    + '<div>IMO ' + esc(v.imo||'9471886') + '</div>'
+    + '<div>' + totalReg + ' atividade(s)</div>'
+    + '<div>' + new Date().toLocaleDateString('pt-BR') + '</div></div></div></div>'
+    + '<div class="conteudo" style="padding:8px 22px 14px;">' + blocos + '</div>'
+    + jacSigsHTML('semanal')
+    + '<div style="background:#f9fafb;padding:9px 24px;border-top:1px solid #e5e7eb;display:flex;'
+    + 'justify-content:space-between;font-size:9px;color:#9ca3af;flex-wrap:wrap;gap:8px;">'
+    + '<span>' + esc(v.name||'M/V LOG-IN JACARANDÁ') + ' · IMO ' + esc(v.imo||'9471886') + '</span>'
+    + '<span>Gerado em ' + new Date().toLocaleString('pt-BR') + '</span></div>'
+    + '</div></body></html>';
+
+  var wOpen = window.open('', '_blank', 'width=940,height=1100');
+  if(!wOpen){ toast('⚠️ Permita pop-ups para abrir o relatório','warn'); return; }
+  wOpen.document.write(html);
+  wOpen.document.close();
+  toast('📚 ' + semanas.length + ' semana(s) · ' + totalReg + ' atividade(s) no relatório','ok');
 }
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -14907,7 +15234,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.8.3';
+const APP_VERSION = '3.9.0';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
