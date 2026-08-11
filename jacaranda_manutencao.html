@@ -6810,7 +6810,7 @@ async function buildBackupDataFull(scope){
 // ═══════════════════════════════════════════════════════════
 // CONTROLE DE VERSÃO E ATUALIZAÇÃO FORÇADA
 // ═══════════════════════════════════════════════════════════
-var JAC_BUILD = '20260810-0900';
+var JAC_BUILD = '20260811-0900';
 
 // Mostra o build atual no canto da tela (clique = forçar atualização)
 function jacVersionBadge(){
@@ -7449,7 +7449,8 @@ async function jacEspacoRender(){
     + '<button class="btn btn-ghost btn-sm" onclick="jacComprimirForte().then(jacEspacoRender)" style="font-size:11px;">'
     + '🗜️ Comprimir fotos</button>'
     + '<button class="btn btn-ghost btn-sm" onclick="jacEspacoRender()" style="font-size:11px;">'
-    + '🔄 Atualizar</button></div>';
+    + '🔄 Atualizar</button></div>'
+    + '<button class="btn btn-primary btn-sm" onclick="jacDiagFotosPainel()" style="width:100%;margin-top:8px;font-size:12px;">🔍 Diagnosticar fotos</button>';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -8780,6 +8781,250 @@ async function semMultiGerar(){
   wOpen.document.write(html);
   wOpen.document.close();
   toast('📚 ' + semanas.length + ' semana(s) · ' + totalReg + ' atividade(s) no relatório','ok');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DIAGNÓSTICO E REPARO DE FOTOS
+// ═══════════════════════════════════════════════════════════════
+async function jacDiagFotos(){
+  var res = {base64:0, idbOk:0, idbFalta:0, vazias:0, total:0, quebradas:[], origem:location.origin};
+
+  var testar = async function(arr, ondeDesc){
+    if(!arr) return;
+    for(var i=0;i<arr.length;i++){
+      var u = jacFotoURL(arr[i]);
+      res.total++;
+      if(!u){ res.vazias++; res.quebradas.push({onde:ondeDesc, i:i, motivo:'referência vazia'}); continue; }
+      if(u.indexOf('data:image')===0){ res.base64++; continue; }
+      if(u.indexOf('idb:')===0){
+        try{
+          var real = await jacFotoGet(u);
+          if(real && real.length>50) res.idbOk++;
+          else { res.idbFalta++; res.quebradas.push({onde:ondeDesc, i:i, motivo:'não está no banco', ref:u}); }
+        }catch(e){
+          res.idbFalta++; res.quebradas.push({onde:ondeDesc, i:i, motivo:'erro: '+e.message, ref:u});
+        }
+      } else {
+        res.vazias++; res.quebradas.push({onde:ondeDesc, i:i, motivo:'formato desconhecido'});
+      }
+    }
+  };
+
+  for(var r of (S.regs||[]))       await testar(r.fotos, 'Registro: ' + String(r.a||'').slice(0,32));
+  for(var o of (S.oficina||[]))    await testar(o.fotos, 'Oficina: ' + String(o.item||'').slice(0,32));
+  for(var x of (S.inspecoes||[]))  await testar(x.fotos, 'Inspeção: ' + String(x.titulo||'').slice(0,32));
+  await testar(S.fotos, 'Galeria');
+  for(var rel of (S.relatorios||[]))
+    for(var it of (rel.items||[])) await testar(it.fotos, 'Relatório: ' + String(rel.titulo||'').slice(0,28));
+
+  // Contar o que existe no banco interno
+  try{
+    var db = await jacDBOpen();
+    res.noBanco = await new Promise(function(ok){
+      var tx = db.transaction('fotos','readonly');
+      var rq = tx.objectStore('fotos').count();
+      rq.onsuccess = function(){ ok(rq.result); };
+      rq.onerror = function(){ ok(-1); };
+    });
+  }catch(e){ res.noBanco = -1; res.erroDB = e.message; }
+
+  return res;
+}
+
+async function jacDiagFotosPainel(){
+  toast('⏳ Verificando as fotos...','ok');
+  var r = await jacDiagFotos();
+
+  var linha = function(icone, rotulo, valor, cor){
+    return '<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);">'
+      + '<span style="font-size:15px;">' + icone + '</span>'
+      + '<span style="flex:1;font-size:12px;">' + rotulo + '</span>'
+      + '<strong style="font-size:14px;color:' + (cor||'var(--text)') + ';">' + valor + '</strong></div>';
+  };
+
+  var ok = (r.idbFalta===0 && r.vazias===0);
+  var diagnostico, acao;
+
+  if(r.total === 0){
+    diagnostico = 'Não há fotos cadastradas em nenhum registro.';
+    acao = '<div style="font-size:12px;color:var(--text-dim);">Adicione fotos pelos formulários de registro.</div>';
+  } else if(r.noBanco === 0 && r.idbFalta > 0){
+    diagnostico = '<strong style="color:#dc2626;">O banco interno de fotos está vazio.</strong><br>'
+      + 'Os registros apontam para fotos que não existem mais neste navegador. '
+      + 'Isso acontece quando os dados vieram de outro aparelho, de outro endereço, '
+      + 'ou quando os dados do site foram apagados.';
+    acao = '<button class="btn btn-primary" style="width:100%;margin-bottom:8px;" onclick="jacRestaurarFotosArquivo()">'
+      + '📥 Restaurar fotos de um arquivo de backup</button>'
+      + '<div style="font-size:11px;color:var(--text-dim);">Use um backup .json gerado quando as fotos ainda apareciam.</div>';
+  } else if(r.idbFalta > 0){
+    diagnostico = '<strong style="color:#d97706;">' + r.idbFalta + ' foto(s) faltando no banco interno.</strong><br>'
+      + 'As demais estão íntegras.';
+    acao = '<button class="btn btn-primary" style="width:100%;margin-bottom:8px;" onclick="jacRestaurarFotosArquivo()">'
+      + '📥 Restaurar de um backup</button>'
+      + '<button class="btn btn-ghost btn-sm" style="width:100%;" onclick="jacLimparFotosQuebradas()">'
+      + '🧹 Remover as referências quebradas</button>';
+  } else if(r.base64 > 0){
+    diagnostico = '<strong style="color:#d97706;">' + r.base64 + ' foto(s) ainda no espaço limitado.</strong><br>'
+      + 'Elas aparecem normalmente, mas convém movê-las para o banco interno.';
+    acao = '<button class="btn btn-primary" style="width:100%;" onclick="jacMigrarFotosIDB(true)">'
+      + '📦 Mover para o banco interno</button>';
+  } else {
+    diagnostico = '<strong style="color:#15803d;">Todas as fotos estão íntegras.</strong><br>'
+      + 'Se mesmo assim não aparecem no relatório, o problema é outro — me avise.';
+    acao = '';
+  }
+
+  var ov = document.createElement('div');
+  ov.id = 'modal-diag-fotos';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;display:flex;'
+    + 'align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
+  ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+  var p = document.createElement('div');
+  p.style.cssText = 'background:#fff;border-radius:14px;max-width:500px;width:100%;margin:auto;max-height:88vh;overflow-y:auto;';
+  p.innerHTML =
+    '<div style="background:' + (ok?'linear-gradient(135deg,#16a34a,#15803d)':'linear-gradient(135deg,#dc2626,#b91c1c)')
+    + ';color:#fff;padding:15px 19px;border-radius:14px 14px 0 0;">'
+    + '<div style="font-size:15px;font-weight:800;">' + (ok?'✅':'⚠️') + ' Diagnóstico das fotos</div>'
+    + '<div style="font-size:11px;opacity:.9;">' + r.total + ' foto(s) verificada(s)</div></div>'
+    + '<div style="padding:16px;">'
+    + linha('✅','Fotos íntegras no banco interno', r.idbOk, '#15803d')
+    + linha('📦','Fotos no espaço limitado (base64)', r.base64, r.base64?'#d97706':'#94a3b8')
+    + linha('❌','Fotos faltando no banco', r.idbFalta, r.idbFalta?'#dc2626':'#94a3b8')
+    + linha('❓','Referências inválidas', r.vazias, r.vazias?'#dc2626':'#94a3b8')
+    + linha('🗄️','Arquivos guardados no banco', r.noBanco<0?'erro':r.noBanco, '#1A5FA8')
+    + '<div style="font-size:10px;color:var(--text-dim);margin-top:6px;word-break:break-all;">'
+    + 'Endereço deste app: ' + escHtml(r.origem) + '</div>'
+    + '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:9px;padding:12px;margin:14px 0;font-size:12px;line-height:1.6;">'
+    + diagnostico + '</div>'
+    + acao
+    + (r.quebradas.length
+      ? '<details style="margin-top:12px;"><summary style="font-size:12px;cursor:pointer;color:var(--login-blue);">'
+        + 'Ver os ' + r.quebradas.length + ' registro(s) afetado(s)</summary>'
+        + '<div style="font-size:11px;max-height:160px;overflow-y:auto;margin-top:8px;">'
+        + r.quebradas.slice(0,40).map(function(q){
+            return '<div style="padding:4px 0;border-bottom:1px solid var(--border);">'
+              + '<strong>' + escHtml(q.onde) + '</strong> — foto ' + (q.i+1) + ': ' + escHtml(q.motivo) + '</div>';
+          }).join('')
+        + '</div></details>'
+      : '')
+    + '<button class="btn btn-ghost" style="width:100%;margin-top:12px;" '
+    + 'onclick="document.getElementById(\'modal-diag-fotos\').remove()">Fechar</button>'
+    + '</div>';
+  ov.appendChild(p);
+  document.body.appendChild(ov);
+}
+
+// Restaura as fotos a partir de um arquivo de backup
+function jacRestaurarFotosArquivo(){
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json';
+  inp.onchange = async function(){
+    var f = inp.files && inp.files[0];
+    if(!f) return;
+    var m = document.getElementById('modal-diag-fotos'); if(m) m.remove();
+    jacProgresso('📥 Restaurando fotos do backup');
+    try{
+      var txt = await f.text();
+      var d = JSON.parse(txt);
+      var dados = d.relatorio ? {relatorios:[d.relatorio]} : (d.regs ? d : (d.data||d));
+
+      // Mapa: identificador do registro -> fotos em base64 do backup
+      var recuperadas = 0, total = 0;
+
+      var casar = async function(atuais, backupFotos){
+        if(!atuais || !backupFotos) return;
+        for(var i=0;i<atuais.length && i<backupFotos.length;i++){
+          var uAtual = jacFotoURL(atuais[i]);
+          var uBack  = jacFotoURL(backupFotos[i]);
+          total++;
+          if(!uBack || uBack.indexOf('data:image')!==0) continue;
+          // Só repõe se a atual estiver quebrada
+          var precisa = true;
+          if(uAtual && uAtual.indexOf('data:image')===0) precisa = false;
+          else if(uAtual && uAtual.indexOf('idb:')===0){
+            try{ var t = await jacFotoGet(uAtual); if(t && t.length>50) precisa = false; }catch(e){}
+          }
+          if(!precisa) continue;
+          var ref = await jacFotoPut(uBack);
+          if(typeof atuais[i] === 'string') atuais[i] = ref; else atuais[i].u = ref;
+          recuperadas++;
+          if(recuperadas % 3 === 0){
+            jacProgAtualizar(Math.min(99, Math.round((recuperadas/Math.max(total,1))*100)),
+              recuperadas + ' foto(s) restaurada(s)', '');
+            await new Promise(function(r){ setTimeout(r,0); });
+          }
+        }
+      };
+
+      // Casar por id
+      var mapa = {};
+      (dados.regs||[]).forEach(function(r){ if(r.id) mapa['reg:'+r.id] = r; });
+      (dados.oficina||[]).forEach(function(o){ if(o.id) mapa['of:'+o.id] = o; });
+      (dados.inspecoes||[]).forEach(function(x){ if(x.id) mapa['insp:'+x.id] = x; });
+      (dados.relatorios||[]).forEach(function(rel){ if(rel.id) mapa['rel:'+rel.id] = rel; });
+
+      for(var r of (S.regs||[]))      { var b = mapa['reg:'+r.id];  if(b) await casar(r.fotos, b.fotos); }
+      for(var o of (S.oficina||[]))   { var b2 = mapa['of:'+o.id];  if(b2) await casar(o.fotos, b2.fotos); }
+      for(var x of (S.inspecoes||[])) { var b3 = mapa['insp:'+x.id];if(b3) await casar(x.fotos, b3.fotos); }
+      for(var rel of (S.relatorios||[])){
+        var b4 = mapa['rel:'+rel.id];
+        if(b4) for(var i2=0;i2<(rel.items||[]).length && i2<(b4.items||[]).length;i2++)
+          await casar(rel.items[i2].fotos, b4.items[i2].fotos);
+      }
+      if(dados.fotos) await casar(S.fotos, dados.fotos);
+
+      saveData(true);
+      jacProgFechar();
+      try{ renderDash(); kpis(); }catch(e){}
+      if(recuperadas) toast('✅ ' + recuperadas + ' foto(s) restaurada(s) do backup','ok');
+      else toast('⚠️ Nenhuma foto do backup casou com os registros atuais','warn');
+    }catch(e){
+      jacProgFechar();
+      toast('❌ Erro ao ler o backup: ' + e.message,'err');
+    }
+  };
+  inp.click();
+}
+
+// Remove referências de fotos que não existem mais
+async function jacLimparFotosQuebradas(){
+  if(!confirm('Remover as referências de fotos que não existem mais?\n\nOs registros continuam, só as fotos quebradas saem da lista.')) return;
+  var m = document.getElementById('modal-diag-fotos'); if(m) m.remove();
+  jacProgresso('🧹 Limpando referências quebradas');
+  var removidas = 0;
+
+  var limpar = async function(obj, campoFotos, campoCaps, campoPos){
+    var arr = obj[campoFotos];
+    if(!arr) return;
+    var manter = [], caps = [], poss = [];
+    for(var i=0;i<arr.length;i++){
+      var u = jacFotoURL(arr[i]);
+      var vale = false;
+      if(u && u.indexOf('data:image')===0) vale = true;
+      else if(u && u.indexOf('idb:')===0){
+        try{ var t = await jacFotoGet(u); vale = !!(t && t.length>50); }catch(e){}
+      }
+      if(vale){
+        manter.push(arr[i]);
+        if(obj[campoCaps]) caps.push(obj[campoCaps][i]||'');
+        if(obj[campoPos])  poss.push(obj[campoPos][i]||null);
+      } else removidas++;
+    }
+    obj[campoFotos] = manter;
+    if(obj[campoCaps]) obj[campoCaps] = caps;
+    if(obj[campoPos])  obj[campoPos]  = poss;
+  };
+
+  for(var r of (S.regs||[]))      await limpar(r,'fotos','fotosCaptions','fotosPos');
+  for(var o of (S.oficina||[]))   await limpar(o,'fotos','fotosCaptions','fotosPos');
+  for(var x of (S.inspecoes||[])) await limpar(x,'fotos','fotosCaptions','fotosPos');
+  for(var rel of (S.relatorios||[]))
+    for(var it of (rel.items||[])) await limpar(it,'fotos','fotosDesc','fotosPos');
+
+  saveData(true);
+  jacProgFechar();
+  try{ renderDash(); kpis(); }catch(e){}
+  toast('🧹 ' + removidas + ' referência(s) quebrada(s) removida(s)','ok');
 }
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -15234,7 +15479,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.9.0';
+const APP_VERSION = '3.9.1';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
