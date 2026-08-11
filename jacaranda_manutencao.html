@@ -2886,7 +2886,7 @@ ou qualquer formato com horas e alturas..." style="width:100%;font-size:11px;fon
 
 
 // ── STATE ──
-let S={regs:[],crew:[],fotos:[],empresas:[],oficina:[],desvios:[],inspecoes:[],embHistory:[],relatorios:[],rioCfg:{},tp:{reg:[],av:[],of:[],insp:[]}};
+let S={regs:[],crew:[],fotos:[],empresas:[],oficina:[],desvios:[],inspecoes:[],embHistory:[],relatorios:[],rioCfg:{},thumbs:{},tp:{reg:[],av:[],of:[],insp:[]}};
 let activeDept='Todos', curWeek=null;
 var _r2Items = [];        // itens do relatório técnico
 var _crewSel  = new Set(); // tripulantes selecionados (ações em lote)
@@ -2918,7 +2918,7 @@ const CREW_SEED=[
 
 // ── PERSIST ──
 function loadData(){
-  try{const d=JSON.parse(localStorage.getItem('jac_v5')||'{}');S.regs=d.regs||[];S.crew=d.crew||[];S.fotos=d.fotos||[];S.empresas=d.empresas||[];S.oficina=d.oficina||[];S.desvios=d.desvios||[];S.inspecoes=d.inspecoes||[];S.embHistory=d.embHistory||[];S.relatorios=d.relatorios||[];S.rioCfg=d.rioCfg||{};}catch(e){}
+  try{const d=JSON.parse(localStorage.getItem('jac_v5')||'{}');S.regs=d.regs||[];S.crew=d.crew||[];S.fotos=d.fotos||[];S.empresas=d.empresas||[];S.oficina=d.oficina||[];S.desvios=d.desvios||[];S.inspecoes=d.inspecoes||[];S.embHistory=d.embHistory||[];S.relatorios=d.relatorios||[];S.rioCfg=d.rioCfg||{};S.thumbs=d.thumbs||{};}catch(e){}
   if(!S.crew.length) seedCrew();
   if(!S.regs.length) seedRegs();
   storStatus();
@@ -2929,7 +2929,8 @@ function saveData(silent){
   try{
     payload = JSON.stringify({regs:S.regs,crew:S.crew,fotos:S.fotos,empresas:S.empresas,
       oficina:S.oficina,desvios:S.desvios,inspecoes:S.inspecoes,
-      embHistory:S.embHistory||[],relatorios:S.relatorios||[],rioCfg:S.rioCfg||{}});
+      embHistory:S.embHistory||[],relatorios:S.relatorios||[],rioCfg:S.rioCfg||{},
+      thumbs:S.thumbs||{}});
   }catch(e){
     toast('❌ Erro ao preparar dados: '+e.message,'err');
     console.error('saveData/stringify:',e);
@@ -3123,7 +3124,7 @@ async function jacMigrarFotosIDB(recomprimir){
           img = await jacRecomprimir(img, 1280, 0.72);
         }
         depois += img.length;
-        var ref = await jacFotoPut(img);
+        var ref = await jacFotoPutComThumb(img);
         if(ehObj) arr[i].u = ref; else arr[i] = ref;
       }catch(err){ erros++; console.warn('migração:', err); }
       feitas++;
@@ -4999,7 +5000,7 @@ function addFotoR2Item(itemIdx, files){
   if(!_r2Items[itemIdx]) return;
   Array.from(files).forEach(function(f){
     compress(f, function(u){
-      jacFotoPut(u).then(function(ref){
+      jacFotoPutComThumb(u).then(function(ref){
         if(!_r2Items[itemIdx]) return;
         if(!_r2Items[itemIdx].fotos) _r2Items[itemIdx].fotos=[];
         if(!_r2Items[itemIdx].fotosDesc) _r2Items[itemIdx].fotosDesc=[];
@@ -6700,7 +6701,10 @@ async function jacFotoGet(ref){
 // Resolve um array de referências de uma vez
 async function jacFotosResolve(arr){
   if(!arr || !arr.length) return [];
-  return await Promise.all(arr.map(function(u){ return jacFotoGet(u); }));
+  return await Promise.all(arr.map(async function(u){
+    var r = await jacFotoGet(u);
+    return r || jacThumbGet(u) || '';   // miniatura como reserva
+  }));
 }
 
 // Troca todos os <img data-idb="..."> pelas imagens reais
@@ -6717,20 +6721,26 @@ async function jacHydrateImgs(root){
         el.src = u;
         el.removeAttribute('data-idb');
       } else {
-        // Foto não encontrada no banco — sinaliza em vez de ficar em branco
+        // Banco falhou: usa a miniatura de segurança
+        var t = jacThumbGet(ref);
         el.removeAttribute('data-idb');
-        el.style.background = '#1e293b';
-        el.setAttribute('title','Foto não encontrada no banco interno');
-        if(el.parentElement && !el.parentElement.querySelector('.foto-erro')){
-          var av = document.createElement('div');
-          av.className = 'foto-erro';
-          av.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;'
-            + 'justify-content:center;color:#94a3b8;font-size:9px;text-align:center;padding:4px;';
-          av.textContent = '📷 foto indisponível';
-          if(getComputedStyle(el.parentElement).position === 'static'){
-            el.parentElement.style.position = 'relative';
+        if(t){
+          el.src = t;
+          el.setAttribute('title','Miniatura (foto original indisponível)');
+        } else {
+          el.style.background = '#1e293b';
+          el.setAttribute('title','Foto não encontrada');
+          if(el.parentElement && !el.parentElement.querySelector('.foto-erro')){
+            var av = document.createElement('div');
+            av.className = 'foto-erro';
+            av.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;'
+              + 'justify-content:center;color:#94a3b8;font-size:9px;text-align:center;padding:4px;';
+            av.textContent = '📷 indisponível';
+            if(getComputedStyle(el.parentElement).position === 'static'){
+              el.parentElement.style.position = 'relative';
+            }
+            el.parentElement.appendChild(av);
           }
-          el.parentElement.appendChild(av);
         }
       }
     }catch(e){ console.warn('hydrate:', e); }
@@ -6748,7 +6758,9 @@ function jacImgSrc(ref){
   var u = jacFotoURL(ref);
   if(!u) return 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
   if(u.indexOf('idb:') === 0){
-    // 1x1 transparente enquanto carrega do banco interno
+    // Mostra a miniatura na hora; a hidratação troca pela foto cheia depois
+    var t = jacThumbGet(u);
+    if(t) return t;
     return 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
   }
   return u;
@@ -6810,7 +6822,7 @@ async function buildBackupDataFull(scope){
 // ═══════════════════════════════════════════════════════════
 // CONTROLE DE VERSÃO E ATUALIZAÇÃO FORÇADA
 // ═══════════════════════════════════════════════════════════
-var JAC_BUILD = '20260811-0900';
+var JAC_BUILD = '20260811-1400';
 
 // Mostra o build atual no canto da tela (clique = forçar atualização)
 function jacVersionBadge(){
@@ -7450,7 +7462,11 @@ async function jacEspacoRender(){
     + '🗜️ Comprimir fotos</button>'
     + '<button class="btn btn-ghost btn-sm" onclick="jacEspacoRender()" style="font-size:11px;">'
     + '🔄 Atualizar</button></div>'
-    + '<button class="btn btn-primary btn-sm" onclick="jacDiagFotosPainel()" style="width:100%;margin-top:8px;font-size:12px;">🔍 Diagnosticar fotos</button>';
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px;">'
+    + '<button class="btn btn-primary btn-sm" onclick="jacDiagFotosPainel()" style="font-size:12px;">'
+    + '🔍 Diagnosticar</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="jacThumbsGerarTodas().then(jacEspacoRender)" style="font-size:12px;">'
+    + '🖼️ Criar miniaturas</button></div>';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -7583,7 +7599,7 @@ function semAddFoto(regId, files){
   if(!r.fotosPos) r.fotosPos = [];
   Array.from(files).forEach(function(f){
     compress(f, function(u){
-      jacFotoPut(u).then(function(ref){
+      jacFotoPutComThumb(u).then(function(ref){
         r.fotos.push(ref); r.fotosCaptions.push(''); r.fotosPos.push(null);
         saveData(true);
         semRenderFotosModal(regId);
@@ -7661,8 +7677,9 @@ async function jacResolverFotosParaImpressao(week){
 
 // Devolve o base64 pronto para impressão (usa a cache)
 function jacFotoImpressao(u){
+  u = jacFotoURL(u);
   if(!u) return '';
-  if(String(u).indexOf('idb:')===0) return _fotoCache[u] || '';
+  if(u.indexOf('idb:')===0) return _fotoCache[u] || jacThumbGet(u) || '';
   return u;
 }
 
@@ -8869,9 +8886,35 @@ async function jacDiagFotosPainel(){
     acao = '<button class="btn btn-primary" style="width:100%;" onclick="jacMigrarFotosIDB(true)">'
       + '📦 Mover para o banco interno</button>';
   } else {
-    diagnostico = '<strong style="color:#15803d;">Todas as fotos estão íntegras.</strong><br>'
-      + 'Se mesmo assim não aparecem no relatório, o problema é outro — me avise.';
+    diagnostico = '<strong style="color:#15803d;">Todas as fotos estão íntegras.</strong>';
     acao = '';
+  }
+  // Quantas têm miniatura de segurança
+  var comThumb = 0, semThumb = 0;
+  (function(){
+    var vistos = {};
+    var conta = function(arr){
+      if(!arr) return;
+      arr.forEach(function(it){
+        var u = jacFotoURL(it);
+        if(!u || u.indexOf('idb:')!==0 || vistos[u]) return;
+        vistos[u] = 1;
+        if(jacThumbGet(u)) comThumb++; else semThumb++;
+      });
+    };
+    (S.regs||[]).forEach(function(r){ conta(r.fotos); });
+    (S.oficina||[]).forEach(function(o){ conta(o.fotos); });
+    (S.inspecoes||[]).forEach(function(x){ conta(x.fotos); });
+    conta(S.fotos);
+    (S.relatorios||[]).forEach(function(rel){ (rel.items||[]).forEach(function(it){ conta(it.fotos); }); });
+  })();
+  if(semThumb > 0){
+    acao = '<button class="btn btn-primary" style="width:100%;margin-bottom:8px;" '
+      + 'onclick="document.getElementById(\'modal-diag-fotos\').remove();jacThumbsGerarTodas()">'
+      + '🖼️ Criar ' + semThumb + ' miniatura(s) de segurança</button>'
+      + '<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">'
+      + 'As miniaturas garantem que a foto apareça mesmo se o banco interno falhar.</div>'
+      + acao;
   }
 
   var ov = document.createElement('div');
@@ -8892,6 +8935,7 @@ async function jacDiagFotosPainel(){
     + linha('❌','Fotos faltando no banco', r.idbFalta, r.idbFalta?'#dc2626':'#94a3b8')
     + linha('❓','Referências inválidas', r.vazias, r.vazias?'#dc2626':'#94a3b8')
     + linha('🗄️','Arquivos guardados no banco', r.noBanco<0?'erro':r.noBanco, '#1A5FA8')
+    + linha('🖼️','Fotos com miniatura de segurança', comThumb, comThumb?'#15803d':'#94a3b8')
     + '<div style="font-size:10px;color:var(--text-dim);margin-top:6px;word-break:break-all;">'
     + 'Endereço deste app: ' + escHtml(r.origem) + '</div>'
     + '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:9px;padding:12px;margin:14px 0;font-size:12px;line-height:1.6;">'
@@ -9025,6 +9069,97 @@ async function jacLimparFotosQuebradas(){
   jacProgFechar();
   try{ renderDash(); kpis(); }catch(e){}
   toast('🧹 ' + removidas + ' referência(s) quebrada(s) removida(s)','ok');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MINIATURAS — garantem que a foto SEMPRE apareça
+// Guardadas no localStorage junto com os dados (~6 KB cada)
+// ═══════════════════════════════════════════════════════════════
+
+// Gera uma miniatura pequena a partir de um dataURL
+function jacThumbGerar(dataUrl){
+  return new Promise(function(resolve){
+    try{
+      var img = new Image();
+      img.onload = function(){
+        var mx = 320;                       // miniatura de 320px
+        var w = img.width, h = img.height;
+        if(w > mx || h > mx){
+          if(w > h){ h = Math.round(h*mx/w); w = mx; }
+          else     { w = Math.round(w*mx/h); h = mx; }
+        }
+        try{
+          var c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(c.toDataURL('image/jpeg', 0.55));
+        }catch(e){ resolve(''); }
+      };
+      img.onerror = function(){ resolve(''); };
+      img.src = dataUrl;
+    }catch(e){ resolve(''); }
+  });
+}
+
+// Guarda a miniatura ligada à referência
+function jacThumbSet(ref, thumb){
+  if(!ref || !thumb) return;
+  if(!S.thumbs) S.thumbs = {};
+  S.thumbs[ref] = thumb;
+}
+function jacThumbGet(ref){
+  if(!ref || !S.thumbs) return '';
+  return S.thumbs[jacFotoURL(ref)] || '';
+}
+
+// Guarda a foto no banco interno E cria a miniatura de segurança
+async function jacFotoPutComThumb(dataUrl){
+  var ref = await jacFotoPut(dataUrl);
+  try{
+    var t = await jacThumbGerar(dataUrl);
+    if(t) jacThumbSet(ref, t);
+  }catch(e){}
+  return ref;
+}
+
+// Cria miniaturas para todas as fotos que ainda não têm
+async function jacThumbsGerarTodas(silencioso){
+  var refs = [];
+  var coleta = function(arr){
+    if(!arr) return;
+    arr.forEach(function(it){
+      var u = jacFotoURL(it);
+      if(u && u.indexOf('idb:')===0 && !jacThumbGet(u)) refs.push(u);
+    });
+  };
+  (S.regs||[]).forEach(function(r){ coleta(r.fotos); });
+  (S.oficina||[]).forEach(function(o){ coleta(o.fotos); });
+  (S.inspecoes||[]).forEach(function(x){ coleta(x.fotos); });
+  coleta(S.fotos);
+  (S.relatorios||[]).forEach(function(rel){
+    (rel.items||[]).forEach(function(it){ coleta(it.fotos); });
+  });
+  refs = Array.from(new Set(refs));
+  if(!refs.length){ if(!silencioso) toast('Todas as fotos já têm miniatura','ok'); return 0; }
+
+  if(!silencioso) jacProgresso('🖼️ Criando miniaturas de segurança');
+  var feitas = 0;
+  for(var i=0;i<refs.length;i++){
+    try{
+      var full = await jacFotoGet(refs[i]);
+      if(full){
+        var t = await jacThumbGerar(full);
+        if(t){ jacThumbSet(refs[i], t); feitas++; }
+      }
+    }catch(e){}
+    if(!silencioso && i % 3 === 0){
+      jacProgAtualizar(Math.round((i/refs.length)*100), (i+1)+' de '+refs.length, '');
+      await new Promise(function(r){ setTimeout(r,0); });
+    }
+  }
+  saveData(true);
+  if(!silencioso){ jacProgFechar(); toast('✅ '+feitas+' miniatura(s) criada(s)','ok'); }
+  return feitas;
 }
 
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -14434,7 +14569,7 @@ function switchCrewTab(tab){
 function addPhotosWithCaption(files, ctx){
   Array.from(files).forEach(function(f){
     compress(f, function(u){
-      jacFotoPut(u).then(function(ref){
+      jacFotoPutComThumb(u).then(function(ref){
         S.tp[ctx]=S.tp[ctx]||[];
         S.tp[ctx].push({nm:f.name, u:ref, caption:''});
         renderTPWithCaption(ctx);
@@ -15479,7 +15614,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.9.1';
+const APP_VERSION = '3.9.2';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
@@ -18734,7 +18869,7 @@ const _importApply = {
 window.addEventListener('beforeunload', function(){ saveData(true); });
 // Auto-save every 60s as safety net  
 setInterval(function(){ saveData(true); }, 60000);
-loadData();checkInspFromURL();kpis();renderDash();fillWeekSel();renderDriveLinks();try{jacVersionBadge();}catch(e){}setTimeout(function(){try{jacAutoMigrar();}catch(e){}},2500);try{applyDriveDefaults();}catch(e){}try{syncConfigFromDrive();}catch(e){}try{restoreRootDir();}catch(e){}try{npPopulate();}catch(e){}setTimeout(function(){try{autoStartupSync();}catch(e){}},1200);
+loadData();checkInspFromURL();kpis();renderDash();fillWeekSel();renderDriveLinks();try{jacVersionBadge();}catch(e){}setTimeout(function(){try{jacAutoMigrar();}catch(e){}},2500);setTimeout(function(){try{jacThumbsGerarTodas(true);}catch(e){}},6000);try{applyDriveDefaults();}catch(e){}try{syncConfigFromDrive();}catch(e){}try{restoreRootDir();}catch(e){}try{npPopulate();}catch(e){}setTimeout(function(){try{autoStartupSync();}catch(e){}},1200);
 // Check for embedded data from shared HTML
 if(window.__JDATA_PENDING__){
   setTimeout(function(){
