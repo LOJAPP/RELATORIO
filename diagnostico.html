@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Diagnóstico de Fotos — LOG-IN Jacarandá</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,Segoe UI,sans-serif;background:#0a1e45;color:#111;padding:16px}
+.card{background:#fff;border-radius:14px;max-width:680px;margin:0 auto 16px;overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.hd{background:linear-gradient(135deg,#07182e,#1a4080);color:#fff;padding:16px 20px}
+.hd h1{font-size:18px;font-weight:800}.hd p{font-size:12px;opacity:.8;margin-top:2px}
+.bd{padding:16px 20px}
+.row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #e5e7eb}
+.row span:first-child{font-size:16px}.row .lbl{flex:1;font-size:13px}
+.row .val{font-size:15px;font-weight:800;font-family:monospace}
+.box{background:#f8fafc;border:1px solid #e5e7eb;border-radius:9px;padding:12px;margin:12px 0;
+  font-size:13px;line-height:1.6}
+.ok{color:#15803d}.warn{color:#d97706}.err{color:#dc2626}.mut{color:#94a3b8}
+button{width:100%;padding:12px;border:none;border-radius:9px;font-size:14px;font-weight:700;
+  cursor:pointer;margin-bottom:8px;background:#1a4080;color:#fff}
+button.g{background:#16a34a}button.o{background:#e5e7eb;color:#111}
+#amostra{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+#amostra div{aspect-ratio:4/3;border-radius:7px;overflow:hidden;background:#0f172a;
+  display:flex;align-items:center;justify-content:center;font-size:9px;color:#94a3b8;text-align:center}
+#amostra img{width:100%;height:100%;object-fit:cover}
+pre{background:#0f172a;color:#6DB847;font-size:10px;padding:10px;border-radius:8px;
+  overflow-x:auto;max-height:180px;white-space:pre-wrap;word-break:break-all}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="hd"><h1>🔍 Diagnóstico de Fotos</h1><p>Lê seus dados direto, sem passar pelo app</p></div>
+  <div class="bd" id="saida">Analisando…</div>
+</div>
+<div class="card">
+  <div class="hd" style="background:#334155"><h1>🖼️ Amostra visual</h1><p>Primeiras 8 fotos encontradas</p></div>
+  <div class="bd"><div id="amostra"></div></div>
+</div>
+<div class="card">
+  <div class="hd" style="background:#475569"><h1>📋 Detalhes técnicos</h1></div>
+  <div class="bd"><pre id="tec">…</pre>
+    <button class="o" onclick="copiar()">📋 Copiar relatório para enviar</button>
+    <button onclick="location.href='jacaranda_manutencao.html?v='+Date.now()">➡️ Voltar ao app</button>
+  </div>
+</div>
+<script>
+var LOG=[];
+function L(t){LOG.push(t);}
+function fotoURL(x){ if(!x) return ''; if(typeof x==='string') return x; return x.u||x.url||x.src||''; }
+
+function abrirDB(){
+  return new Promise(function(res,rej){
+    if(!window.indexedDB) return rej(new Error('IndexedDB indisponível'));
+    var rq=indexedDB.open('jac_fotos_db',1);
+    rq.onupgradeneeded=function(e){var db=e.target.result;
+      if(!db.objectStoreNames.contains('fotos')) db.createObjectStore('fotos');};
+    rq.onsuccess=function(e){res(e.target.result);};
+    rq.onerror=function(e){rej(e.target.error||new Error('erro'));};
+  });
+}
+function lerFoto(db,key){
+  return new Promise(function(res){
+    try{var tx=db.transaction('fotos','readonly');var rq=tx.objectStore('fotos').get(key);
+      rq.onsuccess=function(){res(rq.result||'');};rq.onerror=function(){res('');};
+    }catch(e){res('');}
+  });
+}
+
+async function rodar(){
+  var out=document.getElementById('saida');
+  var linha=function(ic,lb,vl,cl){return '<div class="row"><span>'+ic+'</span><span class="lbl">'+lb+
+    '</span><span class="val '+(cl||'')+'">'+vl+'</span></div>';};
+
+  L('Endereço: '+location.href);
+  L('Navegador: '+navigator.userAgent.slice(0,110));
+
+  // 1. localStorage
+  var raw=null, d={};
+  try{ raw=localStorage.getItem('jac_v5'); }catch(e){ L('ERRO localStorage: '+e.message); }
+  if(!raw){
+    out.innerHTML='<div class="box err"><strong>Nenhum dado encontrado neste endereço.</strong><br>'+
+      'O app guarda os dados por endereço. Se você costuma abrir por outro link, os dados estão lá.<br><br>'+
+      'Endereço atual:<br><code style="font-size:11px;word-break:break-all">'+location.origin+location.pathname+'</code></div>';
+    L('localStorage jac_v5: VAZIO');
+    document.getElementById('tec').textContent=LOG.join('\n');
+    return;
+  }
+  L('localStorage jac_v5: '+(raw.length/1024).toFixed(1)+' KB');
+  try{ d=JSON.parse(raw); }catch(e){ L('ERRO ao ler JSON: '+e.message); }
+
+  // 2. Contar fotos
+  var refs=[], base64=0, vazias=0, objetos=0;
+  function coleta(arr,onde){
+    if(!Array.isArray(arr)) return;
+    arr.forEach(function(it,i){
+      if(it && typeof it!=='string') objetos++;
+      var u=fotoURL(it);
+      if(!u){ vazias++; return; }
+      if(u.indexOf('data:image')===0){ base64++; return; }
+      if(u.indexOf('idb:')===0){ refs.push({ref:u,onde:onde,i:i}); return; }
+      vazias++;
+    });
+  }
+  (d.regs||[]).forEach(function(r){coleta(r.fotos,'Registro "'+String(r.a||'').slice(0,26)+'"');});
+  (d.oficina||[]).forEach(function(o){coleta(o.fotos,'Oficina');});
+  (d.inspecoes||[]).forEach(function(x){coleta(x.fotos,'Inspeção');});
+  coleta(d.fotos,'Galeria');
+  (d.relatorios||[]).forEach(function(rel){(rel.items||[]).forEach(function(it){
+    coleta(it.fotos,'Relatório "'+String(rel.titulo||'').slice(0,22)+'"');});});
+
+  var thumbs=d.thumbs||{};
+  var nThumbs=Object.keys(thumbs).length;
+  L('Registros: '+(d.regs||[]).length+' | Relatórios: '+(d.relatorios||[]).length);
+  L('Fotos: '+refs.length+' refs idb / '+base64+' base64 / '+vazias+' inválidas / '+objetos+' em objeto');
+  L('Miniaturas salvas: '+nThumbs);
+
+  // 3. Testar o banco
+  var db=null, noBanco=-1, erroDB='';
+  try{
+    db=await abrirDB();
+    noBanco=await new Promise(function(res){
+      var tx=db.transaction('fotos','readonly');var rq=tx.objectStore('fotos').count();
+      rq.onsuccess=function(){res(rq.result);};rq.onerror=function(){res(-1);};});
+  }catch(e){ erroDB=e.message; L('ERRO banco: '+e.message); }
+  L('Arquivos no banco interno: '+noBanco);
+
+  // 4. Testar leitura real
+  var okLidas=0, falharam=[];
+  var amostras=[];
+  for(var i=0;i<refs.length;i++){
+    var u='';
+    if(db){ try{ u=await lerFoto(db,refs[i].ref.slice(4)); }catch(e){} }
+    if(u && u.length>50){ okLidas++; if(amostras.length<8) amostras.push({src:u,tp:'banco'}); }
+    else{
+      var t=thumbs[refs[i].ref];
+      if(t){ if(amostras.length<8) amostras.push({src:t,tp:'miniatura'}); }
+      else falharam.push(refs[i]);
+    }
+  }
+  L('Lidas do banco: '+okLidas+' | Falharam: '+falharam.length);
+  if(falharam.length) L('Exemplos: '+falharam.slice(0,3).map(function(f){return f.onde+' → '+f.ref;}).join(' | '));
+
+  // 5. Veredito
+  var total=refs.length+base64;
+  var conc, cor;
+  if(total===0){ conc='<strong>Não há nenhuma foto cadastrada.</strong><br>Os registros existem, mas sem fotos anexadas.'; cor='warn'; }
+  else if(noBanco===0 && refs.length>0 && nThumbs===0){
+    conc='<strong class="err">O banco interno está vazio e não há miniaturas.</strong><br>'+
+    'As '+refs.length+' fotos foram perdidas neste navegador. Restaure de um backup .json que contenha as fotos.'; cor='err'; }
+  else if(okLidas===0 && nThumbs>0){
+    conc='<strong class="warn">O banco está vazio, mas há '+nThumbs+' miniatura(s).</strong><br>'+
+    'As fotos devem aparecer em qualidade reduzida. Se não aparecem, o app está numa versão antiga em cache.'; cor='warn'; }
+  else if(okLidas===refs.length && refs.length>0){
+    conc='<strong class="ok">Todas as '+okLidas+' fotos estão íntegras no banco.</strong><br>'+
+    'Se não aparecem no app, o problema é a versão em cache — use o botão abaixo.'; cor='ok'; }
+  else{
+    conc='<strong class="warn">'+okLidas+' de '+refs.length+' fotos íntegras.</strong><br>'+
+    falharam.length+' não foram encontradas no banco.'; cor='warn'; }
+
+  out.innerHTML=
+    linha('📦','Dados salvos',(raw.length/1024).toFixed(0)+' KB')+
+    linha('📋','Registros',(d.regs||[]).length)+
+    linha('🖼️','Fotos referenciadas',total, total?'':'mut')+
+    linha('✅','Lidas do banco com sucesso',okLidas, okLidas?'ok':'err')+
+    linha('❌','Não encontradas',falharam.length, falharam.length?'err':'mut')+
+    linha('📷','Fotos em base64',base64, base64?'warn':'mut')+
+    linha('🗄️','Arquivos no banco interno',noBanco<0?'ERRO':noBanco, noBanco>0?'ok':'err')+
+    linha('🖼️','Miniaturas de segurança',nThumbs, nThumbs?'ok':'mut')+
+    '<div class="box">'+conc+'</div>'+
+    (falharam.length?'<div class="box"><strong>Registros afetados:</strong><br>'+
+      falharam.slice(0,10).map(function(f){return '• '+f.onde;}).join('<br>')+'</div>':'');
+
+  // Amostra visual
+  var am=document.getElementById('amostra');
+  am.innerHTML=amostras.length
+    ? amostras.map(function(a){return '<div><img src="'+a.src+'" title="'+a.tp+'"></div>';}).join('')
+    : '<div style="grid-column:1/-1;padding:20px">Nenhuma foto pôde ser carregada</div>';
+
+  document.getElementById('tec').textContent=LOG.join('\n');
+}
+function copiar(){
+  var t=document.getElementById('tec').textContent;
+  navigator.clipboard.writeText(t).then(function(){alert('Relatório copiado — cole na conversa');},
+    function(){alert('Selecione o texto e copie manualmente');});
+}
+rodar().catch(function(e){
+  document.getElementById('saida').innerHTML='<div class="box err">Erro: '+e.message+'</div>';
+  document.getElementById('tec').textContent=LOG.join('\n')+'\nERRO FATAL: '+e.message;
+});
+</script>
+</body>
+</html>
