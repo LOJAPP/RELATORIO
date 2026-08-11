@@ -6867,7 +6867,7 @@ async function buildBackupDataFull(scope){
 // ═══════════════════════════════════════════════════════════
 // CONTROLE DE VERSÃO E ATUALIZAÇÃO FORÇADA
 // ═══════════════════════════════════════════════════════════
-var JAC_BUILD = '20260811-1800';
+var JAC_BUILD = '20260811-2100';
 
 // Mostra o build atual no canto da tela (clique = forçar atualização)
 function jacVersionBadge(){
@@ -7507,11 +7507,13 @@ async function jacEspacoRender(){
     + '🗜️ Comprimir fotos</button>'
     + '<button class="btn btn-ghost btn-sm" onclick="jacEspacoRender()" style="font-size:11px;">'
     + '🔄 Atualizar</button></div>'
-    + '<button class="btn btn-primary" onclick="jacRecuperarFotos().then(jacEspacoRender)" '
-    + 'style="width:100%;margin-top:10px;padding:12px;font-weight:800;">'
-    + '🔧 Recuperar fotos interrompidas</button>'
+    + '<button class="btn btn-primary" onclick="jacRecuperacaoProfunda().then(jacEspacoRender)" '
+    + 'style="width:100%;margin-top:10px;padding:13px;font-weight:800;background:#b45309;border-color:#92400e;">'
+    + '🔎 VARREDURA PROFUNDA — recuperar fotos</button>'
     + '<div style="font-size:10px;color:var(--text-dim);margin-top:4px;text-align:center;">'
-    + 'Move as pendentes, religa as soltas e cria as miniaturas</div>'
+    + 'Procura em todo o navegador e religa o que encontrar</div>'
+    + '<button class="btn btn-ghost btn-sm" onclick="jacRecuperarFotos().then(jacEspacoRender)" '
+    + 'style="width:100%;margin-top:7px;font-size:12px;">🔧 Recuperação simples</button>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px;">'
     + '<button class="btn btn-ghost btn-sm" onclick="jacDiagFotosPainel()" style="font-size:12px;">'
     + '🔍 Diagnosticar</button>'
@@ -9009,72 +9011,161 @@ async function jacDiagFotosPainel(){
 }
 
 // Restaura as fotos a partir de um arquivo de backup
+// Restaura fotos de um backup — tolerante: casa por id, por título e por posição
 function jacRestaurarFotosArquivo(){
   var inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = '.json';
+  inp.type = 'file'; inp.accept = '.json,.txt';
   inp.onchange = async function(){
     var f = inp.files && inp.files[0];
     if(!f) return;
-    var m = document.getElementById('modal-diag-fotos'); if(m) m.remove();
-    jacProgresso('📥 Restaurando fotos do backup');
+    ['modal-diag-fotos','modal-prof','modal-recup'].forEach(function(id){
+      var m = document.getElementById(id); if(m) m.remove();
+    });
+    jacProgresso('📥 Lendo o backup');
     try{
       var txt = await f.text();
-      var d = JSON.parse(txt);
-      var dados = d.relatorio ? {relatorios:[d.relatorio]} : (d.regs ? d : (d.data||d));
+      jacProgAtualizar(10, 'Arquivo de ' + (txt.length/1048576).toFixed(1) + ' MB', 'Procurando imagens...');
+      await new Promise(function(r){ setTimeout(r,50); });
 
-      // Mapa: identificador do registro -> fotos em base64 do backup
-      var recuperadas = 0, total = 0;
+      var d = null;
+      try{ d = JSON.parse(txt); }catch(e){ d = null; }
 
-      var casar = async function(atuais, backupFotos){
-        if(!atuais || !backupFotos) return;
-        for(var i=0;i<atuais.length && i<backupFotos.length;i++){
-          var uAtual = jacFotoURL(atuais[i]);
-          var uBack  = jacFotoURL(backupFotos[i]);
-          total++;
-          if(!uBack || uBack.indexOf('data:image')!==0) continue;
-          // Só repõe se a atual estiver quebrada
-          var precisa = true;
-          if(uAtual && uAtual.indexOf('data:image')===0) precisa = false;
-          else if(uAtual && uAtual.indexOf('idb:')===0){
-            try{ var t = await jacFotoGet(uAtual); if(t && t.length>50) precisa = false; }catch(e){}
-          }
-          if(!precisa) continue;
-          var ref = await jacFotoPut(uBack);
-          if(typeof atuais[i] === 'string') atuais[i] = ref; else atuais[i].u = ref;
-          recuperadas++;
-          if(recuperadas % 3 === 0){
-            jacProgAtualizar(Math.min(99, Math.round((recuperadas/Math.max(total,1))*100)),
-              recuperadas + ' foto(s) restaurada(s)', '');
-            await new Promise(function(r){ setTimeout(r,0); });
-          }
+      // ── Todas as imagens do backup, com o caminho onde estavam ──
+      var imagens = [];
+      if(d){
+        imagens = jacExtrairImagens(d, [], '');
+      } else {
+        var rx = /data:image\/[a-z]+;base64,[A-Za-z0-9+\/=]{200,}/g, m;
+        while((m = rx.exec(txt)) !== null && imagens.length < 4000)
+          imagens.push({url:m[0], onde:'texto'});
+      }
+      jacProgAtualizar(22, imagens.length + ' imagem(ns) no backup', '');
+      await new Promise(function(r){ setTimeout(r,50); });
+
+      if(!imagens.length){
+        jacProgFechar();
+        toast('⚠️ Este arquivo não contém nenhuma foto','warn');
+        return;
+      }
+
+      var dados = d ? (d.relatorio ? {relatorios:[d.relatorio]} : (d.regs ? d : (d.data||d.backup||d))) : {};
+      var repostas = 0, thumbs = 0;
+
+      // Uma foto atual está quebrada?
+      var quebrada = async function(x){
+        var u = jacFotoURL(x);
+        if(!u) return true;
+        if(u.indexOf('data:image')===0) return false;
+        if(u.indexOf('idb:')===0){
+          try{ var t = await jacFotoGet(u); return !(t && t.length>50); }catch(e){ return true; }
+        }
+        return true;
+      };
+
+      var repor = async function(arr, i, urlBackup){
+        try{
+          var ref = await jacFotoPut(urlBackup);
+          try{ var th = await jacThumbGerar(urlBackup); if(th){ jacThumbSet(ref, th); thumbs++; } }catch(e){}
+          if(typeof arr[i] === 'string') arr[i] = ref; else if(arr[i]) arr[i].u = ref; else arr[i] = ref;
+          repostas++;
+          return true;
+        }catch(e){ return false; }
+      };
+
+      // ── ESTRATÉGIA 1: casar pelos ids ──
+      var casarPorId = async function(atuais, backups){
+        if(!atuais || !backups) return;
+        for(var i=0;i<atuais.length && i<backups.length;i++){
+          var uB = jacFotoURL(backups[i]);
+          if(!uB || uB.indexOf('data:image')!==0) continue;
+          if(await quebrada(atuais[i])) await repor(atuais, i, uB);
         }
       };
 
-      // Casar por id
       var mapa = {};
       (dados.regs||[]).forEach(function(r){ if(r.id) mapa['reg:'+r.id] = r; });
       (dados.oficina||[]).forEach(function(o){ if(o.id) mapa['of:'+o.id] = o; });
       (dados.inspecoes||[]).forEach(function(x){ if(x.id) mapa['insp:'+x.id] = x; });
       (dados.relatorios||[]).forEach(function(rel){ if(rel.id) mapa['rel:'+rel.id] = rel; });
 
-      for(var r of (S.regs||[]))      { var b = mapa['reg:'+r.id];  if(b) await casar(r.fotos, b.fotos); }
-      for(var o of (S.oficina||[]))   { var b2 = mapa['of:'+o.id];  if(b2) await casar(o.fotos, b2.fotos); }
-      for(var x of (S.inspecoes||[])) { var b3 = mapa['insp:'+x.id];if(b3) await casar(x.fotos, b3.fotos); }
+      for(var r of (S.regs||[]))      { var b = mapa['reg:'+r.id];   if(b) await casarPorId(r.fotos, b.fotos); }
+      for(var o of (S.oficina||[]))   { var b2 = mapa['of:'+o.id];   if(b2) await casarPorId(o.fotos, b2.fotos); }
+      for(var x of (S.inspecoes||[])) { var b3 = mapa['insp:'+x.id]; if(b3) await casarPorId(x.fotos, b3.fotos); }
       for(var rel of (S.relatorios||[])){
         var b4 = mapa['rel:'+rel.id];
         if(b4) for(var i2=0;i2<(rel.items||[]).length && i2<(b4.items||[]).length;i2++)
-          await casar(rel.items[i2].fotos, b4.items[i2].fotos);
+          await casarPorId(rel.items[i2].fotos, b4.items[i2].fotos);
       }
-      if(dados.fotos) await casar(S.fotos, dados.fotos);
+      if(dados.fotos) await casarPorId(S.fotos, dados.fotos);
+      try{ saveData(true); }catch(e){}
+      jacProgAtualizar(45, repostas + ' reposta(s) pelo identificador', 'Tentando pelo título...');
+      await new Promise(function(r){ setTimeout(r,50); });
 
-      saveData(true);
+      // ── ESTRATÉGIA 2: casar pelo título da atividade ──
+      var porTitulo = {};
+      (dados.regs||[]).forEach(function(r){
+        var t = String(r.a||r.titulo||'').trim().toLowerCase();
+        if(t) porTitulo[t] = r;
+      });
+      for(var r2 of (S.regs||[])){
+        var t2 = String(r2.a||r2.titulo||'').trim().toLowerCase();
+        var b5 = porTitulo[t2];
+        if(b5) await casarPorId(r2.fotos, b5.fotos);
+      }
+      try{ saveData(true); }catch(e){}
+      jacProgAtualizar(62, repostas + ' reposta(s)', 'Preenchendo o que sobrou...');
+      await new Promise(function(r){ setTimeout(r,50); });
+
+      // ── ESTRATÉGIA 3: preencher o resto, na ordem ──
+      var fila = imagens.map(function(im){ return im.url; });
+      // Tira as que já foram usadas
+      var pendentes = [];
+      var varrer = async function(arr, dono){
+        if(!arr) return;
+        for(var i=0;i<arr.length;i++)
+          if(await quebrada(arr[i])) pendentes.push({arr:arr, i:i, dono:dono});
+      };
+      for(var r3 of (S.regs||[]))      await varrer(r3.fotos, 'reg');
+      for(var o3 of (S.oficina||[]))   await varrer(o3.fotos, 'of');
+      for(var x3 of (S.inspecoes||[])) await varrer(x3.fotos, 'insp');
+      await varrer(S.fotos, 'gal');
+      for(var rel3 of (S.relatorios||[]))
+        for(var it3 of (rel3.items||[])) await varrer(it3.fotos, 'rel');
+
+      if(pendentes.length && fila.length){
+        for(var p=0;p<pendentes.length && fila.length;p++){
+          await repor(pendentes[p].arr, pendentes[p].i, fila.shift());
+          if(p % 3 === 0){
+            jacProgAtualizar(62 + Math.round((p/pendentes.length)*32),
+              repostas + ' foto(s) restaurada(s)', '');
+            try{ saveData(true); }catch(e){}
+            await new Promise(function(r){ setTimeout(r,0); });
+          }
+        }
+      }
+
+      jacProgAtualizar(97, 'Gravando...', '');
+      var salvou = false;
+      try{ salvou = saveData(true); }catch(e){}
       jacProgFechar();
+
       try{ renderDash(); kpis(); }catch(e){}
-      if(recuperadas) toast('✅ ' + recuperadas + ' foto(s) restaurada(s) do backup','ok');
-      else toast('⚠️ Nenhuma foto do backup casou com os registros atuais','warn');
+      try{ if(curWeek) renderSem(curWeek); }catch(e){}
+      try{ renderR2Saved(); }catch(e){}
+
+      var final = await jacDiagFotos();
+      if(repostas){
+        toast('✅ ' + repostas + ' foto(s) restaurada(s) do backup'
+          + (final.idbFalta ? ' — ainda faltam ' + final.idbFalta : ''), 'ok');
+      } else {
+        toast('⚠️ O backup tem ' + imagens.length + ' foto(s), mas nenhuma coube nos registros atuais','warn');
+      }
+      if(!salvou) toast('⚠️ Espaço cheio — comprima as fotos em 💾 Armazenamento','warn');
+
     }catch(e){
       jacProgFechar();
       toast('❌ Erro ao ler o backup: ' + e.message,'err');
+      console.error('restaurar:', e);
     }
   };
   inp.click();
@@ -9453,6 +9544,304 @@ function jacRecuperarRelatorio(rel, final, salvou){
       : '')
     + '<button class="btn btn-ghost" style="width:100%;" '
     + 'onclick="document.getElementById(\'modal-recup\').remove()">Fechar</button></div>';
+  ov.appendChild(p);
+  document.body.appendChild(ov);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VARREDURA PROFUNDA — procura fotos em TODOS os lugares
+// ═══════════════════════════════════════════════════════════════
+
+// Extrai toda imagem base64 de qualquer estrutura JSON, por mais aninhada
+function jacExtrairImagens(obj, achadas, caminho, prof){
+  achadas = achadas || [];
+  caminho = caminho || '';
+  prof = prof || 0;
+  if(prof > 12 || achadas.length > 3000) return achadas;
+
+  if(typeof obj === 'string'){
+    if(obj.indexOf('data:image') === 0 && obj.length > 200)
+      achadas.push({url: obj, onde: caminho});
+    return achadas;
+  }
+  if(Array.isArray(obj)){
+    for(var i=0;i<obj.length;i++) jacExtrairImagens(obj[i], achadas, caminho+'['+i+']', prof+1);
+    return achadas;
+  }
+  if(obj && typeof obj === 'object'){
+    for(var k in obj){
+      if(!Object.prototype.hasOwnProperty.call(obj,k)) continue;
+      jacExtrairImagens(obj[k], achadas, caminho ? caminho+'.'+k : k, prof+1);
+    }
+  }
+  return achadas;
+}
+
+// Procura fotos em todo o armazenamento do navegador
+async function jacVarreduraProfunda(){
+  var res = {locais: [], imagens: [], bancos: [], total: 0};
+
+  // 1. Todas as chaves do localStorage
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k = localStorage.key(i);
+      var v = localStorage.getItem(k) || '';
+      if(v.indexOf('data:image') < 0) continue;
+      var achadas = [];
+      try{ achadas = jacExtrairImagens(JSON.parse(v), [], k); }
+      catch(e){
+        // Não é JSON: extrai por padrão de texto
+        var rx = /data:image\/[a-z]+;base64,[A-Za-z0-9+\/=]{200,}/g, m;
+        while((m = rx.exec(v)) !== null && achadas.length < 500)
+          achadas.push({url: m[0], onde: k});
+      }
+      if(achadas.length){
+        res.locais.push({chave: k, qtd: achadas.length, kb: Math.round(v.length/1024)});
+        res.imagens = res.imagens.concat(achadas);
+      }
+    }
+  }catch(e){ console.warn('varredura localStorage:', e); }
+
+  // 2. sessionStorage
+  try{
+    for(var j=0;j<sessionStorage.length;j++){
+      var k2 = sessionStorage.key(j);
+      var v2 = sessionStorage.getItem(k2) || '';
+      if(v2.indexOf('data:image') < 0) continue;
+      var rx2 = /data:image\/[a-z]+;base64,[A-Za-z0-9+\/=]{200,}/g, m2, ach2 = [];
+      while((m2 = rx2.exec(v2)) !== null && ach2.length < 300) ach2.push({url:m2[0], onde:'sessão:'+k2});
+      if(ach2.length){
+        res.locais.push({chave:'sessão: '+k2, qtd:ach2.length, kb:Math.round(v2.length/1024)});
+        res.imagens = res.imagens.concat(ach2);
+      }
+    }
+  }catch(e){}
+
+  // 3. Todos os bancos IndexedDB
+  try{
+    var lista = [];
+    if(indexedDB.databases){
+      lista = await indexedDB.databases();
+    } else {
+      lista = [{name:'jac_fotos_db'}];   // navegadores antigos
+    }
+    for(var db of lista){
+      if(!db.name) continue;
+      try{
+        var conteudo = await jacLerBancoQualquer(db.name);
+        if(conteudo.length){
+          res.bancos.push({nome: db.name, qtd: conteudo.length});
+          conteudo.forEach(function(c){
+            if(c.url && c.url.indexOf('data:image')===0)
+              res.imagens.push({url:c.url, onde:'banco '+db.name, key:c.key, ref:'idb:'+c.key});
+          });
+        }
+      }catch(e){}
+    }
+  }catch(e){ console.warn('varredura bancos:', e); }
+
+  res.total = res.imagens.length;
+  return res;
+}
+
+// Lê qualquer banco IndexedDB procurando imagens
+function jacLerBancoQualquer(nome){
+  return new Promise(function(resolve){
+    var achado = [];
+    var rq;
+    try{ rq = indexedDB.open(nome); }catch(e){ return resolve([]); }
+    rq.onerror = function(){ resolve([]); };
+    rq.onsuccess = function(e){
+      var db = e.target.result;
+      var stores = Array.from(db.objectStoreNames||[]);
+      if(!stores.length){ db.close(); return resolve([]); }
+      var pend = stores.length;
+      stores.forEach(function(st){
+        try{
+          var tx = db.transaction(st,'readonly');
+          var os = tx.objectStore(st);
+          var rk = os.getAllKeys();
+          rk.onsuccess = function(){
+            var keys = rk.result||[];
+            var rv = os.getAll();
+            rv.onsuccess = function(){
+              var vals = rv.result||[];
+              keys.forEach(function(k,i){
+                var v = vals[i];
+                if(typeof v === 'string' && v.indexOf('data:image')===0)
+                  achado.push({key:k, url:v, store:st});
+                else if(v && typeof v === 'object'){
+                  var sub = jacExtrairImagens(v, [], String(k));
+                  sub.forEach(function(s){ achado.push({key:k, url:s.url, store:st}); });
+                }
+              });
+              if(--pend === 0){ db.close(); resolve(achado); }
+            };
+            rv.onerror = function(){ if(--pend===0){ db.close(); resolve(achado); } };
+          };
+          rk.onerror = function(){ if(--pend===0){ db.close(); resolve(achado); } };
+        }catch(e2){ if(--pend===0){ db.close(); resolve(achado); } }
+      });
+    };
+  });
+}
+
+// ═══ RECUPERAÇÃO PROFUNDA ═══
+async function jacRecuperacaoProfunda(){
+  jacProgresso('🔎 Varredura profunda');
+  jacProgAtualizar(5, 'Procurando fotos em todo o navegador...', '');
+  await new Promise(function(r){ setTimeout(r, 60); });
+
+  var v = await jacVarreduraProfunda();
+  jacProgAtualizar(30, v.total + ' imagem(ns) encontrada(s)',
+    v.locais.length + ' local(is) · ' + v.bancos.length + ' banco(s)');
+  await new Promise(function(r){ setTimeout(r, 60); });
+
+  // Fotos que precisam de conserto
+  var precisam = [];
+  var visitar = async function(arr, dono){
+    if(!arr) return;
+    for(var i=0;i<arr.length;i++){
+      var u = jacFotoURL(arr[i]);
+      var ok = false;
+      if(u && u.indexOf('data:image')===0) ok = true;
+      else if(u && u.indexOf('idb:')===0){
+        try{ var t = await jacFotoGet(u); ok = !!(t && t.length>50); }catch(e){}
+      }
+      if(!ok) precisam.push({arr:arr, i:i, dono:dono});
+    }
+  };
+  for(var r of (S.regs||[]))       await visitar(r.fotos, 'Registro: ' + String(r.a||'').slice(0,28));
+  for(var o of (S.oficina||[]))    await visitar(o.fotos, 'Oficina');
+  for(var x of (S.inspecoes||[]))  await visitar(x.fotos, 'Inspeção');
+  await visitar(S.fotos, 'Galeria');
+  for(var rel of (S.relatorios||[]))
+    for(var it of (rel.items||[])) await visitar(it.fotos, 'Relatório: ' + String(rel.titulo||'').slice(0,24));
+
+  jacProgAtualizar(45, precisam.length + ' foto(s) precisam de conserto', '');
+  await new Promise(function(r){ setTimeout(r, 60); });
+
+  // Descartar as que já estão em uso e íntegras
+  var emUso = jacRefsEmUso();
+  var disponiveis = [];
+  var vistas = {};
+  for(var img of v.imagens){
+    if(img.ref && emUso[img.ref]){
+      // Já está ligada a um registro — confere se funciona
+      try{ var t2 = await jacFotoGet(img.ref); if(t2 && t2.length>50) continue; }catch(e){}
+    }
+    var assinatura = img.url.length + ':' + img.url.slice(-40);
+    if(vistas[assinatura]) continue;
+    vistas[assinatura] = 1;
+    disponiveis.push(img);
+  }
+
+  jacProgAtualizar(55, disponiveis.length + ' foto(s) disponíveis para religar', '');
+  await new Promise(function(r){ setTimeout(r, 60); });
+
+  // Religar, na ordem
+  var recuperadas = 0, thumbs = 0;
+  for(var p=0; p<precisam.length && disponiveis.length; p++){
+    var alvo = precisam[p];
+    var cand = disponiveis.shift();
+    try{
+      var ref = cand.ref;
+      // Se veio de fora do banco padrão, grava lá
+      if(!ref || !(await (async function(){ try{ var t=await jacFotoGet(ref); return t && t.length>50; }catch(e){ return false; } })())){
+        ref = await jacFotoPut(cand.url);
+      }
+      try{
+        var th = await jacThumbGerar(cand.url);
+        if(th){ jacThumbSet(ref, th); thumbs++; }
+      }catch(e){}
+      if(typeof alvo.arr[alvo.i] === 'string') alvo.arr[alvo.i] = ref;
+      else alvo.arr[alvo.i].u = ref;
+      recuperadas++;
+    }catch(e){ console.warn('religar:', e); }
+
+    if(p % 2 === 0){
+      jacProgAtualizar(55 + Math.round((p/Math.max(precisam.length,1))*38),
+        recuperadas + ' de ' + precisam.length + ' religada(s)', '');
+      try{ saveData(true); }catch(e){}
+      await new Promise(function(r){ setTimeout(r, 0); });
+    }
+  }
+
+  jacProgAtualizar(96, 'Gravando...', '');
+  var salvou = false;
+  try{ salvou = saveData(true); }catch(e){}
+  jacProgFechar();
+
+  var final = await jacDiagFotos();
+  jacRecupProfundaRelatorio(v, precisam.length, recuperadas, thumbs, final, salvou, disponiveis.length);
+
+  try{ renderDash(); kpis(); }catch(e){}
+  try{ if(curWeek) renderSem(curWeek); }catch(e){}
+  return {recuperadas:recuperadas, final:final};
+}
+
+function jacRecupProfundaRelatorio(v, precisavam, recuperadas, thumbs, final, salvou, sobraram){
+  var ov = document.createElement('div');
+  ov.id = 'modal-prof';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.74);z-index:99999;display:flex;'
+    + 'align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
+  ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+  var bom = recuperadas > 0;
+  var linha = function(ic, lb, vl, cor){
+    return '<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);">'
+      + '<span>' + ic + '</span><span style="flex:1;font-size:12px;">' + lb + '</span>'
+      + '<strong style="font-size:14px;color:' + (cor||'var(--text)') + ';">' + vl + '</strong></div>';
+  };
+  var p = document.createElement('div');
+  p.style.cssText = 'background:#fff;border-radius:14px;max-width:490px;width:100%;margin:auto;max-height:88vh;overflow-y:auto;';
+  p.innerHTML =
+    '<div style="background:' + (bom?'linear-gradient(135deg,#16a34a,#15803d)':'linear-gradient(135deg,#dc2626,#b91c1c)')
+    + ';color:#fff;padding:15px 19px;border-radius:14px 14px 0 0;">'
+    + '<div style="font-size:15px;font-weight:800;">' + (bom?'✅ Fotos recuperadas':'⚠️ Nada foi encontrado') + '</div>'
+    + '<div style="font-size:11px;opacity:.9;">Varredura completa do navegador</div></div>'
+    + '<div style="padding:16px;">'
+    + linha('🔎','Imagens encontradas na varredura', v.total, v.total?'#15803d':'#dc2626')
+    + linha('📂','Locais com fotos', v.locais.length + v.bancos.length, '#1A5FA8')
+    + linha('🔧','Precisavam de conserto', precisavam, '#d97706')
+    + linha('✅','Recuperadas agora', recuperadas, recuperadas?'#15803d':'#dc2626')
+    + linha('🖼️','Miniaturas criadas', thumbs, '#15803d')
+    + linha('❌','Ainda faltando', final.idbFalta, final.idbFalta?'#dc2626':'#94a3b8')
+    + (sobraram ? linha('📦','Sobraram sem dono', sobraram, '#94a3b8') : '')
+    + (v.locais.length || v.bancos.length
+      ? '<details style="margin-top:10px;"><summary style="font-size:12px;cursor:pointer;color:var(--login-blue);">'
+        + 'Onde as fotos foram encontradas</summary><div style="font-size:11px;margin-top:7px;">'
+        + v.locais.map(function(l){ return '<div style="padding:3px 0;">📄 ' + escHtml(l.chave)
+            + ' — ' + l.qtd + ' foto(s), ' + l.kb + ' KB</div>'; }).join('')
+        + v.bancos.map(function(b){ return '<div style="padding:3px 0;">🗄️ banco "' + escHtml(b.nome)
+            + '" — ' + b.qtd + ' foto(s)</div>'; }).join('')
+        + '</div></details>'
+      : '')
+    + '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:9px;padding:12px;'
+    + 'margin:13px 0;font-size:12px;line-height:1.6;">'
+    + (v.total === 0
+      ? '<strong style="color:#dc2626;">Nenhuma imagem existe neste navegador.</strong><br>'
+        + 'As fotos não estão mais aqui. Restam duas saídas:<br>'
+        + '• Abrir o app no aparelho/endereço onde as fotos ainda aparecem e exportar um backup<br>'
+        + '• Usar um arquivo de backup antigo que contenha as fotos'
+      : !salvou
+        ? '<strong style="color:#dc2626;">Espaço cheio ao gravar.</strong><br>'
+          + 'Use 🗜️ Comprimir fotos e repita a recuperação.'
+        : final.idbFalta === 0
+          ? '<strong style="color:#15803d;">Todas as fotos estão acessíveis.</strong><br>'
+            + 'Abra o relatório semanal para conferir.'
+          : '<strong style="color:#d97706;">' + final.idbFalta + ' foto(s) continuam sem imagem.</strong><br>'
+            + 'Não há mais cópias no navegador para essas.')
+    + '</div>'
+    + '<button class="btn btn-primary" style="width:100%;margin-bottom:7px;" '
+    + 'onclick="document.getElementById(\'modal-prof\').remove();jacRestaurarFotosArquivo()">'
+    + '📥 Restaurar de um arquivo de backup</button>'
+    + (final.idbFalta
+      ? '<button class="btn btn-ghost btn-sm" style="width:100%;margin-bottom:7px;" '
+        + 'onclick="document.getElementById(\'modal-prof\').remove();jacLimparFotosQuebradas()">'
+        + '🧹 Remover as referências sem imagem</button>'
+      : '')
+    + '<button class="btn btn-ghost" style="width:100%;" '
+    + 'onclick="document.getElementById(\'modal-prof\').remove()">Fechar</button></div>';
   ov.appendChild(p);
   document.body.appendChild(ov);
 }
@@ -15909,7 +16298,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.9.3';
+const APP_VERSION = '3.9.4';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
