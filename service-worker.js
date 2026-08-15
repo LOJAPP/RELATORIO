@@ -1,7 +1,7 @@
 // LOG-IN Jacarandá — Service Worker
 // ESTRATÉGIA: network-first para HTML/JS (sempre pega a versão nova)
 //             cache-first apenas para assets estáticos
-const CACHE = 'jac-20260811-1800';
+const CACHE = 'jac-20260812-0900';
 
 self.addEventListener('install', e => {
   self.skipWaiting();   // ativa imediatamente, sem esperar abas fecharem

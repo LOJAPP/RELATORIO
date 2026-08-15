@@ -2966,8 +2966,8 @@ function saveData(silent){
           return false;
         }
       }
-      // Não há o que migrar: backup de emergência + modal
-      jacEmergencyBackup(payload);
+      // Não baixa nada sozinho — guarda o conteúdo e pergunta ao usuário
+      window._jacPayloadEmergencia = payload;
       jacQuotaModal(mb);
     } else {
       toast('❌ Erro ao salvar: '+(e.message||e.name),'err');
@@ -2977,21 +2977,35 @@ function saveData(silent){
   }
 }
 
-// Baixa um backup automaticamente quando o armazenamento estoura
+// Baixa o backup — só quando o usuário pede
 function jacEmergencyBackup(payload){
+  payload = payload || window._jacPayloadEmergencia;
+  if(!payload){
+    try{ payload = buildBackupData(); }catch(e){ payload = localStorage.getItem('jac_v5')||''; }
+  }
+  if(!payload){ toast('⚠️ Nada para baixar','warn'); return; }
   try{
     var blob = new Blob([payload], {type:'application/json'});
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'JAC_BACKUP_EMERGENCIA_' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'') + '.json';
+    a.download = 'JAC_BACKUP_' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'') + '.json';
     document.body.appendChild(a); a.click();
     setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
-  }catch(e){ console.error('backup emergência:',e); }
+    toast('⬇️ Backup baixado (' + (payload.length/1048576).toFixed(1) + ' MB)','ok');
+  }catch(e){
+    toast('❌ Não foi possível baixar: ' + e.message,'err');
+    console.error('backup:',e);
+  }
 }
 
 // Modal explicando o problema e oferecendo soluções
 function jacQuotaModal(mb){
   if(document.getElementById('modal-quota')) return;
+  // Não repete o aviso na mesma sessão
+  try{
+    if(sessionStorage.getItem('jac_quota_avisado')) return;
+    sessionStorage.setItem('jac_quota_avisado','1');
+  }catch(e){}
   var ov = document.createElement('div');
   ov.id = 'modal-quota';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
@@ -3003,13 +3017,15 @@ function jacQuotaModal(mb){
     + '<div style="font-size:12px;opacity:.9;margin-top:3px;">Seus dados ocupam ' + mb + ' MB — o limite é ~5 MB</div>'
     + '</div>'
     + '<div style="padding:18px 20px;font-size:13px;line-height:1.65;">'
-    + '<p style="margin-bottom:12px;"><strong>Um backup foi baixado automaticamente</strong> para não perder nada.</p>'
-    + '<p style="margin-bottom:12px;">As fotos ocupam quase todo o espaço. Escolha uma opção:</p>'
+    + '<p style="margin-bottom:12px;">As fotos ocupam quase todo o espaço, então os dados novos '
+    + 'não estão sendo gravados. Escolha o que fazer:</p>'
     + '<div style="display:flex;flex-direction:column;gap:8px;">'
     + '<button class="btn btn-primary" onclick="jacMigrarFotosIDB(true)" style="justify-content:flex-start;text-align:left;padding:11px 14px;">'
     + '📦 Mover fotos para o banco interno <span style="opacity:.8;font-weight:400;font-size:11px;">(recomendado)</span></button>'
     + '<button class="btn btn-ghost" onclick="jacComprimirForte()" style="justify-content:flex-start;text-align:left;padding:11px 14px;">'
     + '🗜️ Comprimir todas as fotos <span style="opacity:.7;font-weight:400;font-size:11px;">(800px — libera muito espaço)</span></button>'
+    + '<button class="btn btn-ghost" onclick="jacEmergencyBackup()" style="justify-content:flex-start;text-align:left;padding:11px 14px;">'
+    + '⬇️ Baixar um backup agora <span style="opacity:.7;font-weight:400;font-size:11px;">(por segurança)</span></button>'
     + '<button class="btn btn-ghost" onclick="jacQuotaClose();showPage(\'storage\')" style="justify-content:flex-start;text-align:left;padding:11px 14px;">'
     + '💾 Ir para Armazenamento <span style="opacity:.7;font-weight:400;font-size:11px;">(exportar e limpar)</span></button>'
     + '<button class="btn btn-ghost" onclick="jacQuotaClose()" style="justify-content:center;">Fechar</button>'
@@ -6867,7 +6883,7 @@ async function buildBackupDataFull(scope){
 // ═══════════════════════════════════════════════════════════
 // CONTROLE DE VERSÃO E ATUALIZAÇÃO FORÇADA
 // ═══════════════════════════════════════════════════════════
-var JAC_BUILD = '20260811-2100';
+var JAC_BUILD = '20260812-0900';
 
 // Mostra o build atual no canto da tela (clique = forçar atualização)
 function jacVersionBadge(){
@@ -16298,7 +16314,7 @@ function exportSnapshotMestre(){
 // ── SISTEMA DE ATUALIZAÇÃO DE VERSÃO ──
 // ══════════════════════════════════════════════════
 
-const APP_VERSION = '3.9.4';
+const APP_VERSION = '3.9.5';
 const APP_BUILD   = '2026-07-14';
 
 // Pending patch data
